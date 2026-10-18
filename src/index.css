@@ -163,3 +163,7 @@ h1 { font-size: 1.75rem; letter-spacing: -.02em; }
   .reader-title { order: 1; flex-basis: calc(100% - 90px); }
   .stats div { flex: 1; flex-direction: column; gap: 0; align-items: flex-start; }
 }
+.google { display: flex; align-items: center; justify-content: center; gap: .6rem; background: var(--panel); border: 1px solid var(--line); font-weight: 600; min-height: 42px; }
+.google:hover { background: var(--chip); }
+.or { display: flex; align-items: center; gap: .7rem; color: var(--muted); font-size: .8rem; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
