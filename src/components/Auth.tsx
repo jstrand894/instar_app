@@ -49,7 +49,7 @@ function SignIn() {
   return (
     <div className="center">
       <form className="card auth" onSubmit={submit}>
-        <h1>Research Notebook</h1>
+        <h1>Instar</h1>
         <p className="muted">{mode === 'in' ? 'Sign in to your workspace' : 'Create your account'}</p>
         <button type="button" className="google" onClick={() => oauth('github')}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>

@@ -71,7 +71,7 @@ export default function Pomodoro() {
     }
   }
 
-  useEffect(() => { document.title = running ? `${mm}:${ss} · ${LABEL[s.mode]}` : 'Research Notebook' }, [running, mm, ss, s.mode])
+  useEffect(() => { document.title = running ? `${mm}:${ss} · ${LABEL[s.mode]}` : 'Instar' }, [running, mm, ss, s.mode])
 
   return (
     <div className="pomo">

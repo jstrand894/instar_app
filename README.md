@@ -1,4 +1,6 @@
-# Research Notebook
+# Instar
+
+A personal research workspace for projects, manuscripts and reading (an *instar* is the stage between insect molts).
 
 Personal app for Mac, iPad and iPhone (installable web app).
 

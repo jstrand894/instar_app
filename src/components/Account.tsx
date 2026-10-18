@@ -97,9 +97,10 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
         ) : (
           <div className="modal-body about">
             <div className="about-logo"><img className="logo" src="/icon.svg" alt="" width="72" height="72" /></div>
-            <h2>Research Notebook</h2>
+            <h2>Instar</h2>
             <p className="muted small">Version {__APP_VERSION__}</p>
             <p>A personal research workspace for keeping track of projects, manuscripts and reading, in one place that works on a Mac, iPad and iPhone.</p>
+            <p className="muted small">An <i>instar</i> is the stage between molts in an insect's growth. Every project and manuscript moves through stages too.</p>
             <ul>
               <li><b>Projects and manuscripts</b> with dated timelines, notes, schedules and deadlines</li>
               <li><b>Reading</b> with a PDF reader, highlights, Apple Pencil notes and a recommended next read</li>

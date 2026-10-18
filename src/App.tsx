@@ -31,7 +31,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
   return (
     <div className={`shell ${reading ? 'in-reader' : ''}`}>
       <nav className="nav">
-        <div className="brand"><img className="logo" src="/icon.svg" alt="" width="24" height="24" />Research Notebook</div>
+        <div className="brand"><img className="logo" src="/icon.svg" alt="" width="44" height="44" />Instar</div>
         <NavLink to="/" end><Icon d={ICONS.today} /><span>Today</span></NavLink>
         <NavLink to="/projects"><Icon d={ICONS.projects} /><span>Projects</span></NavLink>
         <NavLink to="/manuscripts"><Icon d={ICONS.manuscripts} /><span>Manuscripts</span></NavLink>
