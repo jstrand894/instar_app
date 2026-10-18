@@ -32,6 +32,10 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
     document.addEventListener('keydown', onKey); return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  const saveName = async (v: string) => {
+    const name = v.trim(); setPrefs({ name }); setLocal(getPrefs())
+    if (supabase) await supabase.auth.updateUser({ data: { display_name: name } }).catch(() => {})
+  }
   const update = (patch: Parameters<typeof setPrefs>[0]) => { setPrefs(patch); setLocal(getPrefs()) }
   const pomo = (k: 'focus' | 'short' | 'long', v: string) => {
     const n = Math.min(180, Math.max(1, Math.round(Number(v) || 1))); update({ pomo: { ...prefs.pomo, [k]: n } })
@@ -51,6 +55,11 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
               <span className="avatar">{(email ?? '?')[0].toUpperCase()}</span>
               <div><b>{email ?? 'Demo mode'}</b><div className="muted small">{email ? 'Signed in' : 'Data stays in this browser only'}</div></div>
             </div>
+
+            <section>
+              <h3>Your name</h3>
+              <input key={prefs.name} defaultValue={prefs.name} placeholder="Used in your Today greeting" autoComplete="given-name" onBlur={e => saveName(e.target.value)} />
+            </section>
 
             <section>
               <h3>Appearance</h3>

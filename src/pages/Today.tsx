@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { store } from '../lib/store'
-import { ago, occurrencesBetween } from '../lib/util'
+import { ago, greeting, occurrencesBetween } from '../lib/util'
+import { firstName } from '../lib/user'
 import { deadlineInfo } from '../lib/manuscript'
 import type { Deadline, Paper, Project, ProjectEvent, ProjectUpdate } from '../types'
 
@@ -25,6 +26,8 @@ export default function Today() {
   const [text, setText] = useState('')
   const [saved, setSaved] = useState('')
   const [error, setError] = useState('')
+  const [name, setName] = useState('')
+  useEffect(() => { firstName().then(setName).catch(() => {}) }, [])
 
   const load = useCallback(async () => {
     try {
@@ -69,6 +72,12 @@ export default function Today() {
   const coreLeft = papers.filter(p => p.status === 'to-read' && p.priority === 'Core').length
   const recent = [...updates].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 8)
 
+  const dueThisWeek = dueItems.filter(x => x.info.days <= 7).length
+  const summary = [
+    todays.length ? `${todays.length} event${todays.length === 1 ? '' : 's'} today` : '',
+    dueThisWeek ? `${dueThisWeek} deadline${dueThisWeek === 1 ? '' : 's'} this week` : '',
+  ].filter(Boolean).join(' · ')
+
   async function addDeadline(e: React.FormEvent) {
     e.preventDefault()
     if (!dlTitle.trim() || !dlDate || !dlProject) return
@@ -94,7 +103,10 @@ export default function Today() {
   return (
     <div className="page today">
       <header className="page-head">
-        <div><h1>Today</h1><p className="muted today-date">{now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p></div>
+        <div>
+          <h1>{greeting(now.getHours())}{name ? `, ${name}` : ''}</h1>
+          <p className="muted today-date">{now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}{summary && ` · ${summary}`}</p>
+        </div>
       </header>
       {error && <p className="error">{error}</p>}
 

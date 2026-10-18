@@ -44,3 +44,10 @@ export function occurrencesBetween(e: ProjectEvent, from: Date, to: Date): Date[
   for (let i = 0; d < to && i < 200; i++) { out.push(new Date(d)); d.setDate(d.getDate() + 7) }
   return out
 }
+
+/** "Good morning" / "Good afternoon" / "Good evening" for an hour (0-23). */
+export function greeting(hour: number): string {
+  if (hour >= 5 && hour < 12) return 'Good morning'
+  if (hour >= 12 && hour < 17) return 'Good afternoon'
+  return 'Good evening'
+}

@@ -13,11 +13,12 @@ export const ACCENTS = [
 export interface Prefs {
   theme: Theme
   accent: string
+  name: string
   pomo: { focus: number; short: number; long: number }
 }
 
 const KEY = 'tm-prefs-v1'
-const DEFAULTS: Prefs = { theme: 'system', accent: 'forest', pomo: { focus: 25, short: 5, long: 15 } }
+const DEFAULTS: Prefs = { theme: 'system', accent: 'forest', name: '', pomo: { focus: 25, short: 5, long: 15 } }
 
 export function getPrefs(): Prefs {
   try {

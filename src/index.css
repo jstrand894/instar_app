@@ -380,3 +380,4 @@ main { scrollbar-gutter: stable; }
 .dl-list li { grid-template-columns: 1fr auto auto; } .dl-check { display: flex; gap: .5rem; align-items: center; font-size: .95rem; } .dl-check input { width: 18px; height: 18px; min-height: 0; accent-color: var(--accent); }
 .done-row .dl-check span { text-decoration: line-through; color: var(--muted); }
 @media (max-width: 760px) { .dl-row { grid-template-columns: 1fr 1fr; } .dl-row input:first-child { grid-column: 1 / -1; } }
+@media (max-width: 360px) { .nav { gap: .1rem; padding-left: .2rem; padding-right: .2rem; } .nav a, .nav .account-btn { font-size: .62rem; padding: .35rem .1rem; } }
