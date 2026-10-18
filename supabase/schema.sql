@@ -54,6 +54,9 @@ create table if not exists ink (
 -- added later: free-form project notes (safe to re-run)
 alter table projects add column if not exists notes text not null default '';
 
+-- added later: timeline entries can be quick updates or longer notes (safe to re-run)
+alter table project_updates add column if not exists kind text not null default 'update';
+
 alter table projects enable row level security;
 alter table project_updates enable row level security;
 alter table papers enable row level security;

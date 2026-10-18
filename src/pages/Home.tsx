@@ -138,7 +138,7 @@ function ProjectCard({ project, updates, onChange }: { project: Project; updates
       <ul className="updates">
         {shown.map(u => (
           <li key={u.id}>
-            <span>{u.body}</span>
+            <span>{u.kind === 'note' && <em className="notetag">Note · </em>}{u.body.length > 140 ? u.body.slice(0, 140) + '…' : u.body}</span>
             <time>{ago(u.created_at)}</time>
           </li>
         ))}

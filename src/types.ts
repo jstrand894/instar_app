@@ -15,6 +15,7 @@ export interface Project {
 export interface ProjectUpdate {
   id: string
   project_id: string
+  kind: 'update' | 'note'
   body: string
   created_at: string
 }

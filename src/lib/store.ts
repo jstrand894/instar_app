@@ -35,11 +35,11 @@ function seed(): Db {
     { id: 'p4', name: 'Sensor dataset QA', type: 'data', status: 'paused', description: '', notes: '', created_at: t(10) },
   ]
   const updates: ProjectUpdate[] = [
-    { id: 'u1', project_id: 'p1', body: 'Reviewer 2 comments addressed in Discussion', created_at: t(1) },
-    { id: 'u2', project_id: 'p1', body: 'Redrew Figure 3', created_at: t(3) },
-    { id: 'u3', project_id: 'p2', body: 'Plots 12–18 resampled', created_at: t(2) },
-    { id: 'u4', project_id: 'p3', body: 'Added gap-filling step, tests passing', created_at: t(0.2) },
-    { id: 'u5', project_id: 'p4', body: 'Waiting on calibration files', created_at: t(9) },
+    { id: 'u1', kind: 'update', project_id: 'p1', body: 'Reviewer 2 comments addressed in Discussion', created_at: t(1) },
+    { id: 'u2', kind: 'update', project_id: 'p1', body: 'Redrew Figure 3', created_at: t(3) },
+    { id: 'u3', kind: 'update', project_id: 'p2', body: 'Plots 12–18 resampled', created_at: t(2) },
+    { id: 'u4', kind: 'update', project_id: 'p3', body: 'Added gap-filling step, tests passing', created_at: t(0.2) },
+    { id: 'u5', kind: 'update', project_id: 'p4', body: 'Waiting on calibration files', created_at: t(9) },
   ]
   return { projects, updates, papers: [], highlights: [], ink: [] }
 }
@@ -59,9 +59,12 @@ const local = {
     const d = load(); d.projects = d.projects.filter(p => p.id !== id)
     d.updates = d.updates.filter(u => u.project_id !== id); save(d)
   },
-  async addUpdate(project_id: string, body: string) {
-    const d = load(); const row = { id: uid(), project_id, body, created_at: now() }
+  async addUpdate(project_id: string, body: string, kind: ProjectUpdate['kind'] = 'update') {
+    const d = load(); const row: ProjectUpdate = { id: uid(), project_id, kind, body, created_at: now() }
     d.updates.push(row); save(d); return row
+  },
+  async patchUpdate(id: string, patch: Partial<ProjectUpdate>) {
+    const d = load(); d.updates = d.updates.map(u => u.id === id ? { ...u, ...patch } : u); save(d)
   },
   async deleteUpdate(id: string) {
     const d = load(); d.updates = d.updates.filter(u => u.id !== id); save(d)
@@ -112,7 +115,8 @@ const remote: typeof local = {
   async addProject(p) { return ok(await sb().from('projects').insert(p).select().single()) },
   async patchProject(id, patch) { ok(await sb().from('projects').update(patch).eq('id', id)) },
   async deleteProject(id) { ok(await sb().from('projects').delete().eq('id', id)) },
-  async addUpdate(project_id, body) { return ok(await sb().from('project_updates').insert({ project_id, body }).select().single()) },
+  async addUpdate(project_id, body, kind = 'update') { return ok(await sb().from('project_updates').insert({ project_id, body, kind }).select().single()) },
+  async patchUpdate(id, patch) { ok(await sb().from('project_updates').update(patch).eq('id', id)) },
   async deleteUpdate(id) { ok(await sb().from('project_updates').delete().eq('id', id)) },
   async papers() { return ok(await sb().from('papers').select('*').order('created_at', { ascending: false })) },
   async addPaper(file, meta) {
