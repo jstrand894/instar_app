@@ -97,7 +97,7 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
         ) : (
           <div className="modal-body about">
             <div className="about-logo"><img className="logo" src="/icon.svg" alt="" width="72" height="72" /></div>
-            <h2>Lab Notebook</h2>
+            <h2>Research Notebook</h2>
             <p className="muted small">Version {__APP_VERSION__}</p>
             <p>A personal research workspace for keeping track of projects, manuscripts and reading, in one place that works on a Mac, iPad and iPhone.</p>
             <ul>

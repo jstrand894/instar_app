@@ -1,4 +1,4 @@
-# Lab Notebook
+# Research Notebook
 
 Personal app for Mac, iPad and iPhone (installable web app).
 
