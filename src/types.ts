@@ -1,6 +1,7 @@
 export type ProjectType = 'manuscript' | 'data' | 'field' | 'code' | 'other'
 export type ProjectStatus = 'active' | 'paused' | 'done'
 export type Area = 'work' | 'home'
+export type Stage = 'planning' | 'drafting' | 'internal' | 'submitted' | 'revision' | 'accepted'
 export type PaperStatus = 'to-read' | 'reading' | 'read' | 'unavailable'
 export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink'
 
@@ -12,6 +13,10 @@ export interface Project {
   area: Area
   pinned?: boolean
   sort_order?: number | null
+  stage?: Stage | null
+  journal?: string
+  coauthors?: string
+  deadline?: string | null
   description: string
   notes: string
   created_at: string
@@ -70,3 +75,5 @@ export interface ProjectImport {
   name: string; type: ProjectType; status: ProjectStatus; area?: Area; description: string
   entries: { kind: 'update' | 'note'; body: string; date: string }[]
 }
+
+export interface PaperLink { project_id: string; paper_id: string; created_at: string }

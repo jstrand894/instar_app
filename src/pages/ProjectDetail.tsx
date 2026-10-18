@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { store } from '../lib/store'
 import { ago, fmtWhen, nextOccurrence } from '../lib/util'
-import type { Area, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
+import { STAGES, deadlineInfo, stageLabel } from '../lib/manuscript'
+import type { Area, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
   { id: 'manuscript', label: 'Manuscript' }, { id: 'data', label: 'Data' },
@@ -19,6 +20,9 @@ export default function ProjectDetail() {
   const [project, setProject] = useState<Project | null>(null)
   const [entries, setEntries] = useState<ProjectUpdate[]>([])
   const [events, setEvents] = useState<ProjectEvent[]>([])
+  const [papers, setPapers] = useState<Paper[]>([])
+  const [links, setLinks] = useState<PaperLink[]>([])
+  const [paperQ, setPaperQ] = useState('')
   const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
   const [evTitle, setEvTitle] = useState('')
   const [evDate, setEvDate] = useState(todayStr)
@@ -30,8 +34,8 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     try {
-      const [ps, us, evs] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[])])
-      setEvents(evs.filter(e => e.project_id === id))
+      const [ps, us, evs, pp, ls] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[])])
+      setEvents(evs.filter(e => e.project_id === id)); setPapers(pp); setLinks(ls.filter(l => l.project_id === id))
       const p = ps.find(x => x.id === id) ?? null
       setProject(p)
       setEntries(us.filter(u => u.project_id === id).sort((a, b) => b.created_at.localeCompare(a.created_at)))
@@ -45,6 +49,18 @@ export default function ProjectDetail() {
     setProject({ ...project, ...p })
     try { await store.patchProject(project.id, p) } catch (e) { setError((e as Error).message) }
   }
+
+  async function setStage(next: Stage) {
+    if (!project) return
+    const prev = project.stage ?? 'drafting'; if (prev === next) return
+    await patch({ stage: next })
+    try { await store.addUpdate(project.id, `Stage: ${stageLabel(prev)} → ${stageLabel(next)}`); load() } catch (e) { setError((e as Error).message) }
+  }
+
+  const linkedIds = new Set(links.map(l => l.paper_id))
+  const linked = papers.filter(p => linkedIds.has(p.id))
+  const needle = paperQ.trim().toLowerCase()
+  const matches = needle ? papers.filter(p => !linkedIds.has(p.id) && `${p.title} ${p.authors} ${p.year}`.toLowerCase().includes(needle)).slice(0, 8) : []
 
   async function add(e: React.FormEvent) {
     e.preventDefault()
@@ -67,11 +83,11 @@ export default function ProjectDetail() {
     try { await store.patchUpdate(u.id, { body }) } catch (e) { setError((e as Error).message) }
   }
 
-  if (!project) return <div className="page">{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}<Link to="/" className="link">← Projects</Link></div>
+  if (!project) return <div className="page">{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}<Link to="/projects" className="link">← Projects</Link></div>
 
   return (
     <div className="page detail">
-      <Link to="/" className="link back-link">← Projects</Link>
+      <Link to={project.type === 'manuscript' ? '/manuscripts' : '/projects'} className="link back-link">← {project.type === 'manuscript' ? 'Manuscripts' : 'Projects'}</Link>
       <header className="detail-head">
         <button className={`star big ${project.pinned ? 'on' : ''}`} onClick={() => patch({ pinned: !project.pinned })} aria-pressed={!!project.pinned} title={project.pinned ? 'Unpin' : 'Pin to top'}>{project.pinned ? '★' : '☆'}</button>
         <input className="title-input" defaultValue={project.name} aria-label="Project name"
@@ -92,6 +108,32 @@ export default function ProjectDetail() {
         onBlur={e => e.target.value !== project.description && patch({ description: e.target.value })} />
       {error && <p className="error">{error}</p>}
 
+      {project.type === 'manuscript' && (
+        <section className="card ms-panel">
+          <h2>Manuscript</h2>
+          <div className="ms-grid">
+            <label>Stage
+              <select value={project.stage ?? 'drafting'} onChange={e => setStage(e.target.value as Stage)}>
+                {STAGES.map(st => <option key={st.id} value={st.id}>{st.label}</option>)}
+              </select>
+            </label>
+            <label>Journal
+              <input placeholder="Target or submitted journal" defaultValue={project.journal ?? ''} onBlur={e => e.target.value !== (project.journal ?? '') && patch({ journal: e.target.value })} />
+            </label>
+            <label>Co-authors
+              <input placeholder="e.g. Smith, Jones, Lee" defaultValue={project.coauthors ?? ''} onBlur={e => e.target.value !== (project.coauthors ?? '') && patch({ coauthors: e.target.value })} />
+            </label>
+            <label>Next deadline
+              <span className="row">
+                <input type="date" value={project.deadline ?? ''} onChange={e => patch({ deadline: e.target.value || null })} />
+                {project.deadline && <button type="button" className="link small" onClick={() => patch({ deadline: null })}>Clear</button>}
+              </span>
+            </label>
+          </div>
+          {deadlineInfo(project.deadline) && <span className={`pill dl-${deadlineInfo(project.deadline)!.tone}`}>{deadlineInfo(project.deadline)!.text}</span>}
+        </section>
+      )}
+
       <section className="card schedule">
         <h2>Schedule</h2>
         <form className="sched-form" onSubmit={addEvent}>
@@ -111,6 +153,30 @@ export default function ProjectDetail() {
           ))}
           {!events.some(e => nextOccurrence(e)) && <li className="muted">Nothing scheduled.</li>}
         </ul>
+      </section>
+
+      <section className="card reading">
+        <h2>Reading</h2>
+        <ul className="linked">
+          {linked.map(p => (
+            <li key={p.id}>
+              <div><Link to={`/read/${p.id}`} className="paper-title">{p.title}</Link>
+                <div className="muted small">{[p.authors, p.year].filter(Boolean).join(' · ')} <span className={`pill st-${p.status}`}>{p.status.replace('-', ' ')}</span></div></div>
+              <button className="link small danger" onClick={async () => { await store.unlinkPaper(project.id, p.id); load() }}>Unlink</button>
+            </li>
+          ))}
+          {!linked.length && <li className="muted">No papers linked yet.</li>}
+        </ul>
+        <input placeholder="Search your library to link a paper…" value={paperQ} onChange={e => setPaperQ(e.target.value)} />
+        {matches.length > 0 && (
+          <ul className="matches">
+            {matches.map(p => (
+              <li key={p.id}><button onClick={async () => { await store.linkPaper(project.id, p.id); setPaperQ(''); load() }}>
+                <b>{p.title}</b><span className="muted small">{[p.authors, p.year].filter(Boolean).join(' · ')}</span></button></li>
+            ))}
+          </ul>
+        )}
+        {needle && !matches.length && <p className="muted small">No unlinked papers match. <Link to="/library" className="link">Add papers in the library</Link>.</p>}
       </section>
 
       <form className="card composer" onSubmit={add}>
@@ -158,7 +224,7 @@ export default function ProjectDetail() {
       </ol>
 
       <button className="link small danger" onClick={async () => {
-        if (confirm(`Delete "${project.name}" and everything in its timeline?`)) { await store.deleteProject(project.id); nav('/') }
+        if (confirm(`Delete "${project.name}" and everything in its timeline?`)) { await store.deleteProject(project.id); nav(project.type === 'manuscript' ? '/manuscripts' : '/projects') }
       }}>Delete project</button>
     </div>
   )

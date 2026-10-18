@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { store } from '../lib/store'
 import { parseReadingList } from '../lib/readingList'
-import type { Paper, PaperStatus } from '../types'
+import { firstSurname, isConfident, lookupDoi, searchByTitle } from '../lib/crossref'
+import type { Paper, PaperLink, PaperStatus, Project } from '../types'
 
 const STATUS: { id: PaperStatus; label: string }[] = [
   { id: 'to-read', label: 'To read' }, { id: 'reading', label: 'Reading' },
@@ -11,6 +12,9 @@ const STATUS: { id: PaperStatus; label: string }[] = [
 
 export default function Library() {
   const [papers, setPapers] = useState<Paper[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [links, setLinks] = useState<PaperLink[]>([])
+  const [projFilter, setProjFilter] = useState('all')
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<PaperStatus | 'all'>('all')
   const [category, setCategory] = useState('all')
@@ -20,12 +24,19 @@ export default function Library() {
   const [drag, setDrag] = useState(false)
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
+  const [doiOpen, setDoiOpen] = useState(false)
+  const [doiText, setDoiText] = useState('')
+  const [progress, setProgress] = useState('')
+  const cancel = useRef(false)
   const pdfInput = useRef<HTMLInputElement>(null)
   const listInput = useRef<HTMLInputElement>(null)
   const attachFor = useRef<string | null>(null)
 
   const refresh = useCallback(async () => {
-    try { setPapers(await store.papers()) } catch (e) { setError((e as Error).message) }
+    try {
+      const [pp, pr, ls] = await Promise.all([store.papers(), store.projects(), store.projectPapers().catch(() => [] as PaperLink[])])
+      setPapers(pp); setProjects(pr); setLinks(ls)
+    } catch (e) { setError((e as Error).message) }
   }, [])
   useEffect(() => { refresh() }, [refresh])
 
@@ -60,6 +71,45 @@ export default function Library() {
     setBusy(false)
   }
 
+  async function addByDoi(e: React.FormEvent) {
+    e.preventDefault(); setBusy(true); setError(''); setNote('')
+    try {
+      const m = await lookupDoi(doiText)
+      const dup = papers.find(p => p.doi && p.doi.toLowerCase() === m.doi.toLowerCase())
+      if (dup) setNote(`Already in your library: "${dup.title}"`)
+      else {
+        await store.addPaper(null, { title: m.title || m.doi, authors: m.authors, year: m.year, source: m.source, doi: m.doi })
+        setNote(`Added "${m.title}". Attach the PDF from its card when you have it.`); setDoiText(''); setDoiOpen(false); await refresh()
+      }
+    } catch (er) { setError((er as Error).message) }
+    setBusy(false)
+  }
+
+  async function findMissingDois() {
+    const todo = papers.filter(p => !p.doi && p.title)
+    if (!todo.length) return
+    if (!confirm(`Look up ${todo.length} papers on Crossref? Confident matches get their DOI (and any blank author, year or journal) filled in; anything uncertain is left alone.`)) return
+    cancel.current = false; setBusy(true); setError(''); setNote('')
+    let found = 0, unsure = 0, failed = 0
+    for (let i = 0; i < todo.length && !cancel.current; i++) {
+      const p = todo[i]; setProgress(`Checking ${i + 1} of ${todo.length}…`)
+      try {
+        const cands = await searchByTitle(p.title, firstSurname(p.authors))
+        const best = cands.find(c => isConfident(c, p))
+        if (best) {
+          const patch: Partial<Paper> = { doi: best.doi }
+          if (!p.authors && best.authors) patch.authors = best.authors
+          if (!p.year && best.year) patch.year = best.year
+          if (!p.source && best.source) patch.source = best.source
+          await store.patchPaper(p.id, patch); found++
+        } else unsure++
+      } catch { failed++ }
+      await new Promise(r => setTimeout(r, 400))
+    }
+    setProgress(''); setBusy(false); await refresh()
+    setNote(`Found ${found} DOIs${unsure ? `; ${unsure} had no confident match (books, old papers, or different titles), so check those by hand` : ''}${failed ? `; ${failed} could not be checked because Crossref was busy, so run it again` : ''}${cancel.current ? ' (stopped early)' : ''}.`)
+  }
+
   async function setPaperStatus(p: Paper, s: PaperStatus) {
     setPapers(ps => ps.map(x => x.id === p.id ? { ...x, status: s } : x))
     try { await store.patchPaper(p.id, { status: s }) } catch (e) { setError((e as Error).message) }
@@ -74,6 +124,7 @@ export default function Library() {
     (category === 'all' || p.category === category) &&
     (priority === 'all' || p.priority === priority) &&
     (!pdfOnly || p.file_path) &&
+    (projFilter === 'all' || links.some(l => l.paper_id === p.id && l.project_id === projFilter)) &&
     (!needle || `${p.title} ${p.authors} ${p.year} ${p.source} ${p.why} ${p.category}`.toLowerCase().includes(needle)))
 
   const groups = useMemo(() => {
@@ -95,6 +146,7 @@ export default function Library() {
       <header className="page-head">
         <h1>Papers</h1>
         <div className="row">
+          <button disabled={busy} onClick={() => setDoiOpen(!doiOpen)}>Add by DOI</button>
           <button disabled={busy} onClick={() => listInput.current?.click()}>Import reading list</button>
           <button className="primary" disabled={busy} onClick={() => { attachFor.current = null; pdfInput.current?.click() }}>{busy ? 'Working…' : 'Upload PDF'}</button>
         </div>
@@ -105,6 +157,13 @@ export default function Library() {
         }} />
         <input ref={listInput} type="file" accept=".xlsx" hidden onChange={e => { const f = e.target.files?.[0]; if (f) importList(f); e.target.value = '' }} />
       </header>
+
+      {doiOpen && (
+        <form className="card doi-form" onSubmit={addByDoi}>
+          <input autoFocus placeholder="Paste a DOI, e.g. 10.2307/3894934 or https://doi.org/…" value={doiText} onChange={e => setDoiText(e.target.value)} />
+          <button className="primary" disabled={busy || !doiText.trim()}>Look up and add</button>
+        </form>
+      )}
 
       {papers.length > 0 && (
         <div className="stats">
@@ -135,11 +194,24 @@ export default function Library() {
             {priorities.map(c => <option key={c}>{c}</option>)}
           </select>
         )}
+        {links.length > 0 && (
+          <select value={projFilter} onChange={e => setProjFilter(e.target.value)} aria-label="Project">
+            <option value="all">All projects</option>
+            {projects.filter(pr => links.some(l => l.project_id === pr.id)).map(pr => <option key={pr.id} value={pr.id}>{pr.name}</option>)}
+          </select>
+        )}
         <input className="search" type="search" placeholder="Search title, author, year, notes" value={q} onChange={e => setQ(e.target.value)} />
       </div>
 
       {error && <p className="error">{error}</p>}
       {note && <p className="ok">{note}</p>}
+      {papers.some(p => !p.doi) && (
+        <div className="row small-row">
+          {progress
+            ? <><span className="muted small">{progress}</span><button className="link small" onClick={() => { cancel.current = true }}>Stop</button></>
+            : <button className="link small" disabled={busy} onClick={findMissingDois}>Find missing DOIs ({papers.filter(p => !p.doi).length})</button>}
+        </div>
+      )}
 
       {groups.map(g => (
         <section key={g.name} className="group">
@@ -155,6 +227,13 @@ export default function Library() {
                 </div>
                 <div className="muted small">{[p.authors, p.year, p.source].filter(Boolean).join(' · ')}</div>
                 {p.why && <div className="why">{p.why}</div>}
+                {links.some(l => l.paper_id === p.id) && (
+                  <div className="paper-foot">
+                    {links.filter(l => l.paper_id === p.id).map(l => projects.find(pr => pr.id === l.project_id)).filter((x): x is Project => !!x).map(pr => (
+                      <Link key={pr.id} to={`/project/${pr.id}`} className="pill proj-tag">{pr.type === 'manuscript' ? '📄 ' : ''}{pr.name}</Link>
+                    ))}
+                  </div>
+                )}
                 <div className="paper-foot">
                   {p.priority && <span className={`pill pr-${p.priority.toLowerCase()}`}>{p.priority}</span>}
                   {p.file_path

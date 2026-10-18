@@ -69,8 +69,9 @@ export default function Home() {
     return m
   }, [events])
 
-  const inArea = projects.filter(p => (p.area ?? 'work') === area)
-  const areaCount = (a: Area) => projects.filter(p => (p.area ?? 'work') === a && p.status !== 'done').length
+  const notMs = projects.filter(p => p.type !== 'manuscript') // manuscripts live on their own page
+  const inArea = notMs.filter(p => (p.area ?? 'work') === area)
+  const areaCount = (a: Area) => notMs.filter(p => (p.area ?? 'work') === a && p.status !== 'done').length
   const lastActivity = (p: Project) => byProject.get(p.id)?.[0]?.created_at ?? p.created_at
 
   const rank = (p: Project) => p.sort_order ?? Number.MAX_SAFE_INTEGER
@@ -147,7 +148,7 @@ export default function Home() {
 
       <div className="chips">
         <button className={filter === 'all' ? 'on' : ''} onClick={() => setFilter('all')}>All</button>
-        {TYPES.map(t => (
+        {TYPES.filter(t => t.id !== 'manuscript').map(t => (
           <button key={t.id} className={filter === t.id ? 'on' : ''} onClick={() => setFilter(t.id)}>{t.label}</button>
         ))}
         <label className="check"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Show done</label>
@@ -185,7 +186,7 @@ export default function Home() {
 
 function NewProject({ area, onClose, onCreated }: { area: Area; onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState('')
-  const [type, setType] = useState<ProjectType>('manuscript')
+  const [type, setType] = useState<ProjectType>('data')
   const [description, setDescription] = useState('')
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -197,7 +198,7 @@ function NewProject({ area, onClose, onCreated }: { area: Area; onClose: () => v
     <form className="card form" onSubmit={submit}>
       <input autoFocus placeholder="Project name" value={name} onChange={e => setName(e.target.value)} />
       <select value={type} onChange={e => setType(e.target.value as ProjectType)}>
-        {TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+        {TYPES.filter(t => t.id !== 'manuscript').map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
       </select>
       <input placeholder="Short description (optional)" value={description} onChange={e => setDescription(e.target.value)} />
       <div className="row">

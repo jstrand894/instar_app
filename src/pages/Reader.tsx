@@ -6,7 +6,8 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import 'pdfjs-dist/web/pdf_viewer.css'
 import PageView, { HL_COLORS, type Tool } from '../components/PageView'
 import { store } from '../lib/store'
-import type { Highlight, HighlightColor, Paper, PaperStatus, Rect, Stroke } from '../types'
+import { cleanDoi, firstSurname, lookupDoi, searchByTitle, type Candidate } from '../lib/crossref'
+import type { Highlight, HighlightColor, Paper, PaperLink, PaperStatus, Project, Rect, Stroke } from '../types'
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 
@@ -20,6 +21,8 @@ export default function Reader() {
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null)
   const [sizes, setSizes] = useState<{ w: number; h: number }[]>([])
   const [highlights, setHighlights] = useState<Highlight[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [links, setLinks] = useState<PaperLink[]>([])
   const [ink, setInk] = useState<Record<number, Stroke[]>>({})
   const [error, setError] = useState('')
   const [zoom, setZoom] = useState(1)
@@ -45,6 +48,7 @@ export default function Reader() {
         const p = papers.find(x => x.id === id)
         if (!p) { setError('Paper not found.'); return }
         setPaper(p)
+        Promise.all([store.projects(), store.projectPapers().catch(() => [] as PaperLink[])]).then(([pr, ls]) => { if (!dead) { setProjects(pr); setLinks(ls.filter(l => l.paper_id === id)) } })
         const [url, hl, inkRows] = await Promise.all([store.fileUrl(p.file_path), store.highlights(id), store.ink(id)])
         if (!p.file_path) { setHighlights(hl); setTab('notes'); return }
         if (!url) { setError('PDF file is not available on this device. (Demo mode only keeps uploads until you reload; add Supabase keys to keep them.)'); setHighlights(hl); return }
@@ -127,6 +131,16 @@ export default function Reader() {
   async function patchPaper(patch: Partial<Paper>) {
     if (!paper) return
     setPaper({ ...paper, ...patch }); await store.patchPaper(paper.id, patch)
+  }
+  async function linkProject(pid: string) {
+    if (!paper || !pid) return
+    setLinks(ls => [...ls, { project_id: pid, paper_id: paper.id, created_at: new Date().toISOString() }])
+    try { await store.linkPaper(pid, paper.id) } catch (e) { setError((e as Error).message) }
+  }
+  async function unlinkProject(pid: string) {
+    if (!paper) return
+    setLinks(ls => ls.filter(l => l.project_id !== pid))
+    try { await store.unlinkPaper(pid, paper.id) } catch (e) { setError((e as Error).message) }
   }
   async function attachPdf(file: File) {
     if (!paper) return
@@ -219,9 +233,9 @@ export default function Reader() {
               </div>
             ) : paper && (
               <div className="side-scroll pad">
-                <label>Title<input defaultValue={paper.title} onBlur={e => patchPaper({ title: e.target.value })} /></label>
-                <label>Authors<input defaultValue={paper.authors} onBlur={e => patchPaper({ authors: e.target.value })} /></label>
-                <label>Year<input defaultValue={paper.year} onBlur={e => patchPaper({ year: e.target.value })} /></label>
+                <label>Title<input key={'t' + paper.title} defaultValue={paper.title} onBlur={e => patchPaper({ title: e.target.value })} /></label>
+                <label>Authors<input key={'a' + paper.authors} defaultValue={paper.authors} onBlur={e => patchPaper({ authors: e.target.value })} /></label>
+                <label>Year<input key={'y' + paper.year} defaultValue={paper.year} onBlur={e => patchPaper({ year: e.target.value })} /></label>
                 <label>Status
                   <select value={paper.status} onChange={e => patchPaper({ status: e.target.value as PaperStatus })}>
                     <option value="to-read">To read</option><option value="reading">Reading</option><option value="read">Read</option><option value="unavailable">Unavailable</option>
@@ -229,8 +243,23 @@ export default function Reader() {
                 </label>
                 <label>Category<input defaultValue={paper.category} onBlur={e => patchPaper({ category: e.target.value })} /></label>
                 <label>Priority<input defaultValue={paper.priority} placeholder="Core / Recommended" onBlur={e => patchPaper({ priority: e.target.value })} /></label>
-                <label>Source<input defaultValue={paper.source} onBlur={e => patchPaper({ source: e.target.value })} /></label>
-                <label>DOI<input defaultValue={paper.doi} onBlur={e => patchPaper({ doi: e.target.value.replace(/^https?:\/\/(dx\.)?doi\.org\//i, '') })} /></label>
+                <label>Source<input key={'s' + paper.source} defaultValue={paper.source} onBlur={e => patchPaper({ source: e.target.value })} /></label>
+                <label>DOI<input key={'d' + paper.doi} defaultValue={paper.doi} onBlur={e => patchPaper({ doi: e.target.value.replace(/^https?:\/\/(dx\.)?doi\.org\//i, '') })} /></label>
+                <div className="linked-projects">
+                  <span className="muted small">Projects</span>
+                  <div className="row wrap">
+                    {links.map(l => projects.find(pr => pr.id === l.project_id)).filter((x): x is Project => !!x).map(pr => (
+                      <span className="pill proj-chip" key={pr.id}><Link to={`/project/${pr.id}`}>{pr.name}</Link><button aria-label={`Unlink ${pr.name}`} onClick={() => unlinkProject(pr.id)}>×</button></span>
+                    ))}
+                    {!links.length && <span className="muted small">Not linked to any project</span>}
+                  </div>
+                  <select value="" onChange={e => linkProject(e.target.value)} aria-label="Link to project">
+                    <option value="">Link to a project…</option>
+                    {[...projects].filter(pr => !links.some(l => l.project_id === pr.id)).sort((a, b) => Number(b.type === 'manuscript') - Number(a.type === 'manuscript') || a.name.localeCompare(b.name))
+                      .map(pr => <option key={pr.id} value={pr.id}>{pr.type === 'manuscript' ? '📄 ' : ''}{pr.name}</option>)}
+                  </select>
+                </div>
+                <DoiTools paper={paper} onApply={patchPaper} />
                 <label>Why it matters<textarea defaultValue={paper.why} onBlur={e => patchPaper({ why: e.target.value })} /></label>
                 <label>Notes
                   <textarea className="big" placeholder="Summary, questions, ideas…" defaultValue={paper.notes} onBlur={e => e.target.value !== paper.notes && patchPaper({ notes: e.target.value })} />
@@ -249,6 +278,54 @@ export default function Reader() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function DoiTools({ paper, onApply }: { paper: Paper; onApply: (patch: Partial<Paper>) => void | Promise<void> }) {
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [cands, setCands] = useState<Candidate[]>([])
+
+  async function fill() {
+    setBusy(true); setMsg(''); setCands([])
+    try {
+      const m = await lookupDoi(paper.doi)
+      const patch: Partial<Paper> = { doi: m.doi }
+      if (!paper.title && m.title) patch.title = m.title
+      if (!paper.authors && m.authors) patch.authors = m.authors
+      if (!paper.year && m.year) patch.year = m.year
+      if (!paper.source && m.source) patch.source = m.source
+      await onApply(patch)
+      setMsg(Object.keys(patch).length > 1 ? 'Filled in the blank fields from Crossref.' : 'Nothing to fill: all fields already have values.')
+    } catch (e) { setMsg((e as Error).message) }
+    setBusy(false)
+  }
+  async function find() {
+    setBusy(true); setMsg(''); setCands([])
+    try {
+      const r = await searchByTitle(paper.title, firstSurname(paper.authors))
+      setCands(r.slice(0, 3)); if (!r.length) setMsg('No matches found.')
+    } catch (e) { setMsg((e as Error).message) }
+    setBusy(false)
+  }
+
+  return (
+    <div className="doi-tools">
+      <div className="row wrap">
+        {paper.doi
+          ? <><button disabled={busy} onClick={fill}>Fill blanks from DOI</button>
+              <a className="link small" href={`https://doi.org/${cleanDoi(paper.doi)}`} target="_blank" rel="noreferrer">Open DOI</a></>
+          : <button disabled={busy} onClick={find}>Find DOI from title</button>}
+      </div>
+      {msg && <p className="muted small">{msg}</p>}
+      {cands.map(c => (
+        <div className="cand" key={c.doi}>
+          <b>{c.title}</b>
+          <span className="muted small">{[c.authors, c.year, c.source].filter(Boolean).join(' · ')}</span>
+          <button className="small" onClick={async () => { await onApply({ doi: c.doi, ...(paper.authors ? {} : { authors: c.authors }), ...(paper.year ? {} : { year: c.year }), ...(paper.source ? {} : { source: c.source }) }); setCands([]); setMsg('DOI saved.') }}>Use this one</button>
+        </div>
+      ))}
     </div>
   )
 }

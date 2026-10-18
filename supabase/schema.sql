@@ -83,6 +83,21 @@ alter table project_events enable row level security;
 alter table projects add column if not exists pinned boolean not null default false;
 alter table projects add column if not exists sort_order int;
 
+-- added later: manuscript tracker fields and paper-to-project links (safe to re-run)
+alter table projects add column if not exists stage text;
+alter table projects add column if not exists journal text not null default '';
+alter table projects add column if not exists coauthors text not null default '';
+alter table projects add column if not exists deadline date;
+
+create table if not exists project_papers (
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  project_id uuid not null references projects on delete cascade,
+  paper_id uuid not null references papers on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (project_id, paper_id)
+);
+alter table project_papers enable row level security;
+
 alter table projects enable row level security;
 alter table project_updates enable row level security;
 alter table papers enable row level security;
@@ -92,7 +107,7 @@ alter table ink enable row level security;
 do $$
 declare t text;
 begin
-  foreach t in array array['projects','project_updates','project_events','papers','highlights','ink'] loop
+  foreach t in array array['projects','project_updates','project_events','project_papers','papers','highlights','ink'] loop
     execute format('drop policy if exists "own rows" on %I', t);
     execute format('create policy "own rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
   end loop;

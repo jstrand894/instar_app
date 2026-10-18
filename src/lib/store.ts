@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Highlight, InkPage, Paper, PaperInput, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
+  Highlight, InkPage, Paper, PaperInput, PaperLink, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
 } from '../types'
 
 const blankPaper = { authors: '', year: '', status: 'to-read', notes: '', doi: '', category: '', priority: '', source: '', why: '' } as const
@@ -24,13 +24,13 @@ const now = () => new Date().toISOString()
 // ---------- local demo backend ----------
 const LS = 'tm-demo-v1'
 interface Db {
-  projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; papers: Paper[]
+  projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; links: PaperLink[]; papers: Paper[]
   highlights: Highlight[]; ink: InkPage[]
 }
 function load(): Db {
   try {
     const raw = localStorage.getItem(LS)
-    if (raw) { const d = JSON.parse(raw); d.events ??= []; return d }
+    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.links ??= []; return d }
   } catch { /* ignore */ }
   const d = seed()
   localStorage.setItem(LS, JSON.stringify(d))
@@ -53,14 +53,14 @@ function seed(): Db {
     { id: 'u4', kind: 'update', project_id: 'p3', body: 'Added gap-filling step, tests passing', created_at: t(0.2) },
     { id: 'u5', kind: 'update', project_id: 'p4', body: 'Waiting on calibration files', created_at: t(9) },
   ]
-  return { projects, updates, events: [], papers: [], highlights: [], ink: [] }
+  return { projects, updates, events: [], links: [], papers: [], highlights: [], ink: [] }
 }
 const demoFiles = new Map<string, string>() // path -> blob url (session only)
 
 const local = {
   async projects() { return load().projects },
   async updates() { return load().updates },
-  async addProject(p: Pick<Project, 'name' | 'type' | 'description'> & { area?: Project['area'] }) {
+  async addProject(p: Pick<Project, 'name' | 'type' | 'description'> & Partial<Pick<Project, 'area' | 'stage' | 'journal'>>) {
     const d = load(); const row: Project = { id: uid(), status: 'active', area: 'work', notes: '', created_at: now(), ...p }
     d.projects.push(row); save(d); return row
   },
@@ -86,7 +86,15 @@ const local = {
   async deleteProject(id: string) {
     const d = load(); d.projects = d.projects.filter(p => p.id !== id)
     d.updates = d.updates.filter(u => u.project_id !== id)
-    d.events = d.events.filter(e => e.project_id !== id); save(d)
+    d.events = d.events.filter(e => e.project_id !== id)
+    d.links = d.links.filter(l => l.project_id !== id); save(d)
+  },
+  async projectPapers() { return load().links },
+  async linkPaper(project_id: string, paper_id: string) {
+    const d = load(); if (!d.links.some(l => l.project_id === project_id && l.paper_id === paper_id)) d.links.push({ project_id, paper_id, created_at: now() }); save(d)
+  },
+  async unlinkPaper(project_id: string, paper_id: string) {
+    const d = load(); d.links = d.links.filter(l => !(l.project_id === project_id && l.paper_id === paper_id)); save(d)
   },
   async reorderProjects(ids: string[], reset = false) {
     const d = load(); d.projects = d.projects.map(p => { const i = ids.indexOf(p.id); return i < 0 ? p : { ...p, sort_order: reset ? null : i } }); save(d)
@@ -129,6 +137,7 @@ const local = {
   async deletePaper(id: string) {
     const d = load(); d.papers = d.papers.filter(p => p.id !== id)
     d.highlights = d.highlights.filter(h => h.paper_id !== id)
+    d.links = d.links.filter(l => l.paper_id !== id)
     d.ink = d.ink.filter(i => i.paper_id !== id); save(d)
   },
   async fileUrl(path: string | null) { return path ? demoFiles.get(path) ?? null : null },
@@ -189,6 +198,9 @@ const remote: typeof local = {
   async reorderProjects(ids, reset = false) {
     await Promise.all(ids.map(async (id, i) => ok(await sb().from('projects').update({ sort_order: reset ? null : i }).eq('id', id))))
   },
+  async projectPapers() { return ok(await sb().from('project_papers').select('*')) },
+  async linkPaper(project_id, paper_id) { ok(await sb().from('project_papers').upsert({ project_id, paper_id }, { onConflict: 'project_id,paper_id' })) },
+  async unlinkPaper(project_id, paper_id) { ok(await sb().from('project_papers').delete().eq('project_id', project_id).eq('paper_id', paper_id)) },
   async events() { return ok(await sb().from('project_events').select('*').order('starts_at')) },
   async addEvent(project_id, title, starts_at, repeat) { return ok(await sb().from('project_events').insert({ project_id, title, starts_at, repeat }).select().single()) },
   async deleteEvent(id) { ok(await sb().from('project_events').delete().eq('id', id)) },
