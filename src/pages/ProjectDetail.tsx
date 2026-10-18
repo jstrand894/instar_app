@@ -5,7 +5,8 @@ import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
 import { ago, fmtWhen, nextOccurrence } from '../lib/util'
 import { STAGES, deadlineInfo, stageLabel } from '../lib/manuscript'
-import type { Area, Deadline, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
+import TaskList from '../components/TaskList'
+import type { Area, Deadline, ProjectTask, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
   { id: 'manuscript', label: 'Manuscript' }, { id: 'data', label: 'Data' },
@@ -26,6 +27,7 @@ export default function ProjectDetail() {
   const [links, setLinks] = useState<PaperLink[]>([])
   const [paperQ, setPaperQ] = useState('')
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
+  const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [dlTitle, setDlTitle] = useState('')
   const [dlDate, setDlDate] = useState('')
   const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
@@ -39,8 +41,8 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     try {
-      const [ps, us, evs, pp, ls, dls] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[]), store.deadlines().catch(() => [] as Deadline[])])
-      setEvents(evs.filter(e => e.project_id === id)); setPapers(pp); setLinks(ls.filter(l => l.project_id === id)); setDeadlines(dls.filter(d => d.project_id === id))
+      const [ps, us, evs, pp, ls, dls, tks] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[]), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[])])
+      setEvents(evs.filter(e => e.project_id === id)); setPapers(pp); setLinks(ls.filter(l => l.project_id === id)); setDeadlines(dls.filter(d => d.project_id === id)); setTasks(tks.filter(t => t.project_id === id))
       const p = ps.find(x => x.id === id) ?? null
       setProject(p)
       setEntries(us.filter(u => u.project_id === id).sort((a, b) => b.created_at.localeCompare(a.created_at)))
@@ -166,6 +168,8 @@ export default function ProjectDetail() {
           {!events.some(e => nextOccurrence(e)) && <li className="muted">Nothing scheduled.</li>}
         </ul>
       </section>
+
+      <TaskList projectId={project.id} tasks={tasks} onChange={load} />
 
       <section className="card deadlines">
         <h2>Deadlines</h2>

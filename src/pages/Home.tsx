@@ -7,7 +7,7 @@ import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError, UserError } from '../lib/errors'
 import { ago, fmtWhen, nextOccurrence } from '../lib/util'
-import type { Area, Project, ProjectEvent, ProjectImport, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
+import type { ProjectTask, Area, Project, ProjectEvent, ProjectImport, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
   { id: 'manuscript', label: 'Manuscript' },
@@ -22,6 +22,7 @@ export default function Home() {
   const [projects, setProjects] = useState<Project[]>([])
   const [updates, setUpdates] = useState<ProjectUpdate[]>([])
   const [events, setEvents] = useState<ProjectEvent[]>([])
+  const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [area, setAreaState] = useState<Area>(() => {
     try { return localStorage.getItem('tm-area') === 'home' ? 'home' : 'work' } catch { return 'work' }
   })
@@ -49,8 +50,8 @@ export default function Home() {
 
   const refresh = useCallback(async () => {
     try {
-      const [p, u, ev] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[])])
-      setProjects(p); setUpdates(u); setEvents(ev)
+      const [p, u, ev, tk] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.tasks().catch(() => [] as ProjectTask[])])
+      setProjects(p); setUpdates(u); setEvents(ev); setTasks(tk)
     } catch (e) { setError(friendlyError(e)) }
   }, [])
   useEffect(() => { refresh() }, [refresh])
@@ -122,7 +123,7 @@ export default function Home() {
       <SortableContext items={list.map(p => p.id)} strategy={rectSortingStrategy}>
         <div className="grid">
           {list.map(p => (
-            <ProjectCard key={p.id} project={p} updates={byProject.get(p.id) ?? []} upcoming={upcomingByProject.get(p.id) ?? []}
+            <ProjectCard key={p.id} project={p} updates={byProject.get(p.id) ?? []} upcoming={upcomingByProject.get(p.id) ?? []} openTasks={tasks.filter(t => t.project_id === p.id && !t.done)}
               onChange={refresh} onPin={() => togglePin(p)} />
           ))}
         </div>
@@ -223,7 +224,11 @@ function NewProject({ area, onClose, onCreated }: { area: Area; onClose: () => v
   )
 }
 
-function ProjectCard({ project, updates, upcoming, onChange, onPin }: { project: Project; updates: ProjectUpdate[]; upcoming: { id: string; title: string; when: Date; weekly: boolean }[]; onChange: () => void; onPin: () => void }) {
+const overdueCount = (ts: ProjectTask[]) => ts.filter(t => t.due_on && t.due_on < new Date().toISOString().slice(0, 10)).length
+
+function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks }: {
+  openTasks: ProjectTask[]
+  project: Project; updates: ProjectUpdate[]; upcoming: { id: string; title: string; when: Date; weekly: boolean }[]; onChange: () => void; onPin: () => void }) {
   const nav = useNavigate()
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: project.id })
   const dragStyle = { transform: CSS.Transform.toString(transform), transition }
@@ -264,6 +269,13 @@ function ProjectCard({ project, updates, upcoming, onChange, onPin }: { project:
           ))}
           {upcoming.length > 2 && <li className="muted small">+{upcoming.length - 2} more</li>}
         </ul>
+      )}
+
+      {openTasks.length > 0 && (
+        <div className="task-chip">
+          <span>☑ {openTasks.length} open task{openTasks.length === 1 ? '' : 's'}</span>
+          {overdueCount(openTasks) > 0 && <b>{overdueCount(openTasks)} overdue</b>}
+        </div>
       )}
 
       <ul className="updates">

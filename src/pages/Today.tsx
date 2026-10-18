@@ -5,7 +5,8 @@ import { friendlyError } from '../lib/errors'
 import { ago, greeting, occurrencesBetween } from '../lib/util'
 import { firstName } from '../lib/user'
 import { deadlineInfo } from '../lib/manuscript'
-import type { Deadline, Paper, Project, ProjectEvent, ProjectUpdate } from '../types'
+import ProgressChart from '../components/ProgressChart'
+import type { Deadline, Paper, Project, ProjectEvent, ProjectTask, ProjectUpdate } from '../types'
 
 const DAY = 864e5
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -19,6 +20,7 @@ export default function Today() {
   const [events, setEvents] = useState<ProjectEvent[]>([])
   const [papers, setPapers] = useState<Paper[]>([])
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
+  const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [dlOpen, setDlOpen] = useState(false)
   const [dlTitle, setDlTitle] = useState('')
   const [dlDate, setDlDate] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 7); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
@@ -32,8 +34,8 @@ export default function Today() {
 
   const load = useCallback(async () => {
     try {
-      const [p, u, e, pa, dl] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.deadlines().catch(() => [] as Deadline[])])
-      setProjects(p); setUpdates(u); setEvents(e); setPapers(pa); setDeadlines(dl)
+      const [p, u, e, pa, dl, tk] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[])])
+      setProjects(p); setUpdates(u); setEvents(e); setPapers(pa); setDeadlines(dl); setTasks(tk)
     } catch (er) { setError(friendlyError(er)) }
   }, [])
   useEffect(() => { load() }, [load])
@@ -74,9 +76,17 @@ export default function Today() {
   const coreLeft = papers.filter(p => p.status === 'to-read' && p.priority === 'Core').length
   const recent = [...updates].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 8)
 
+  // open tasks across every project, soonest first; undated ones come last
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const todayIso = iso(today)
+  const openTasks = tasks.filter(t => !t.done && byId.has(t.project_id))
+    .sort((a, b) => (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999') || a.created_at.localeCompare(b.created_at))
+  const tasksDueNow = openTasks.filter(t => t.due_on && t.due_on <= todayIso).length
+
   const dueThisWeek = dueItems.filter(x => x.info.days <= 7).length
   const summary = [
     todays.length ? `${todays.length} event${todays.length === 1 ? '' : 's'} today` : '',
+    tasksDueNow ? `${tasksDueNow} task${tasksDueNow === 1 ? '' : 's'} due` : '',
     dueThisWeek ? `${dueThisWeek} deadline${dueThisWeek === 1 ? '' : 's'} this week` : '',
   ].filter(Boolean).join(' · ')
 
@@ -84,6 +94,10 @@ export default function Today() {
     e.preventDefault()
     if (!dlTitle.trim() || !dlDate || !dlProject) return
     try { await store.addDeadline(dlProject, dlTitle.trim(), dlDate); setDlTitle(''); setDlOpen(false); load() } catch (er) { setError(friendlyError(er)) }
+  }
+  async function checkOff(id: string) {
+    setTasks(ts => ts.map(t => t.id === id ? { ...t, done: true } : t))
+    try { await store.patchTask(id, { done: true }) } catch (er) { setError(friendlyError(er)); load() }
   }
   async function finish(id: string) {
     setDeadlines(ds => ds.map(d => d.id === id ? { ...d, done: true } : d))
@@ -123,6 +137,8 @@ export default function Today() {
         <button className="primary" disabled={!target || !text.trim()}>Log</button>
         {saved && <span className="ok small">{saved}</span>}
       </form>
+
+      <ProgressChart updates={updates} projects={projects} papers={papers} tasks={tasks} />
 
       <div className="today-grid">
         <section className="card">
@@ -168,6 +184,23 @@ export default function Today() {
             </div>
           ))}
           {!dueItems.length && !dlOpen && <p className="muted">Nothing due in the next three weeks. Use + to add a deadline.</p>}
+        </section>
+
+        <section className="card">
+          <div className="card-head"><h2>Tasks {openTasks.length > 0 && <span className="count-pill">{openTasks.length}</span>}</h2></div>
+          {openTasks.slice(0, 8).map(t => {
+            const info = deadlineInfo(t.due_on); const pr = byId.get(t.project_id)!
+            return (
+              <div className="trow" key={t.id}>
+                <input type="checkbox" className="tick" aria-label={`Mark "${t.title}" done`} onChange={() => checkOff(t.id)} />
+                <span>{t.title}</span>
+                {info && <span className={`pill dl-${info.tone}`}>{info.text}</span>}
+                <Link to={link(pr)} className="muted small">{pr.name}</Link>
+              </div>
+            )
+          })}
+          {openTasks.length > 8 && <p className="muted small">+{openTasks.length - 8} more inside your projects</p>}
+          {!openTasks.length && <p className="muted">No open tasks. Add steps inside any project, or use the + button to capture one.</p>}
         </section>
 
         <section className="card">
