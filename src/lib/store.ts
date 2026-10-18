@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { trackMutation } from './sync'
 import { isPendingDelete } from './notify'
 import type {
-  Deadline, Highlight, InkPage, Paper, PaperInput, PaperLink, ProjectTask, TimeEntry, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
+  Deadline, Highlight, InkPage, Paper, PaperInput, PaperLink, ProjectTask, Routine, RoutineCheck, TimeEntry, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
 } from '../types'
 
 const blankPaper = { authors: '', year: '', status: 'to-read', notes: '', doi: '', category: '', priority: '', source: '', why: '' } as const
@@ -32,13 +32,13 @@ const now = () => new Date().toISOString()
 // ---------- local demo backend ----------
 const LS = 'tm-demo-v1'
 interface Db {
-  projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; links: PaperLink[]; deadlines: Deadline[]; tasks: ProjectTask[]; time: TimeEntry[]; papers: Paper[]
+  projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; links: PaperLink[]; deadlines: Deadline[]; tasks: ProjectTask[]; time: TimeEntry[]; routines: Routine[]; checks: RoutineCheck[]; papers: Paper[]
   highlights: Highlight[]; ink: InkPage[]
 }
 function load(): Db {
   try {
     const raw = localStorage.getItem(LS)
-    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.links ??= []; d.deadlines ??= []; d.tasks ??= []; d.time ??= []; return d }
+    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.links ??= []; d.deadlines ??= []; d.tasks ??= []; d.time ??= []; d.routines ??= []; d.checks ??= []; return d }
   } catch { /* ignore */ }
   const d = seed()
   localStorage.setItem(LS, JSON.stringify(d))
@@ -61,7 +61,7 @@ function seed(): Db {
     { id: 'u4', kind: 'update', project_id: 'p3', body: 'Added gap-filling step, tests passing', created_at: t(0.2) },
     { id: 'u5', kind: 'update', project_id: 'p4', body: 'Waiting on calibration files', created_at: t(9) },
   ]
-  return { projects, updates, events: [], links: [], deadlines: [], tasks: [], time: [], papers: [], highlights: [], ink: [] }
+  return { projects, updates, events: [], links: [], deadlines: [], tasks: [], time: [], routines: [], checks: [], papers: [], highlights: [], ink: [] }
 }
 const demoFiles = new Map<string, string>() // path -> blob url (session only)
 
@@ -101,7 +101,7 @@ const local = {
     d.time = d.time.map(x => x.project_id === id ? { ...x, project_id: null } : x); save(d)
   },
   async tasks() { return load().tasks },
-  async addTask(project_id: string, title: string, due_on: string | null) {
+  async addTask(project_id: string | null, title: string, due_on: string | null) {
     const d = load(); const row: ProjectTask = { id: uid(), project_id, title, done: false, due_on, done_at: null, created_at: now() }
     d.tasks.push(row); save(d); return row
   },
@@ -109,6 +109,24 @@ const local = {
     const d = load(); d.tasks = d.tasks.map(x => x.id === id ? { ...x, ...taskPatch(patch) } : x); save(d)
   },
   async deleteTask(id: string) { const d = load(); d.tasks = d.tasks.filter(x => x.id !== id); save(d) },
+  async routines() { return load().routines },
+  async addRoutine(r: { title: string; weekdays: number[]; project_id: string | null; notes: string }) {
+    const d = load(); const row: Routine = { id: uid(), active: true, created_at: now(), ...r }
+    d.routines.push(row); save(d); return row
+  },
+  async patchRoutine(id: string, patch: Partial<Routine>) {
+    const d = load(); d.routines = d.routines.map(x => x.id === id ? { ...x, ...patch } : x); save(d)
+  },
+  async deleteRoutine(id: string) {
+    const d = load(); d.routines = d.routines.filter(x => x.id !== id); d.checks = d.checks.filter(c => c.routine_id !== id); save(d)
+  },
+  async routineChecks() { return load().checks },
+  async checkRoutine(routine_id: string, on_date: string) {
+    const d = load(); if (!d.checks.some(c => c.routine_id === routine_id && c.on_date === on_date)) d.checks.push({ id: uid(), routine_id, on_date, created_at: now() }); save(d)
+  },
+  async uncheckRoutine(routine_id: string, on_date: string) {
+    const d = load(); d.checks = d.checks.filter(c => !(c.routine_id === routine_id && c.on_date === on_date)); save(d)
+  },
   async timeEntries() { return load().time },
   async addTimeEntry(project_id: string | null, minutes: number, started_at: string) {
     const d = load(); const row: TimeEntry = { id: uid(), project_id, minutes, started_at, created_at: now() }
@@ -241,6 +259,13 @@ const remote: typeof local = {
   async addTask(project_id, title, due_on) { return ok(await sb().from('project_tasks').insert({ project_id, title, due_on }).select().single()) },
   async patchTask(id, patch) { ok(await sb().from('project_tasks').update(taskPatch(patch)).eq('id', id)) },
   async deleteTask(id) { ok(await sb().from('project_tasks').delete().eq('id', id)) },
+  async routines() { return ok(await sb().from('routines').select('*').order('created_at')) },
+  async addRoutine(r) { return ok(await sb().from('routines').insert(r).select().single()) },
+  async patchRoutine(id, patch) { ok(await sb().from('routines').update(patch).eq('id', id)) },
+  async deleteRoutine(id) { ok(await sb().from('routines').delete().eq('id', id)) },
+  async routineChecks() { return ok(await sb().from('routine_checks').select('*').gte('on_date', new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10))) },
+  async checkRoutine(routine_id, on_date) { ok(await sb().from('routine_checks').upsert({ routine_id, on_date }, { onConflict: 'routine_id,on_date' })) },
+  async uncheckRoutine(routine_id, on_date) { ok(await sb().from('routine_checks').delete().eq('routine_id', routine_id).eq('on_date', on_date)) },
   async timeEntries() { return ok(await sb().from('time_entries').select('*').order('started_at', { ascending: false }).limit(2000)) },
   async addTimeEntry(project_id, minutes, started_at) { return ok(await sb().from('time_entries').insert({ project_id, minutes, started_at }).select().single()) },
   async allHighlights() { return ok(await sb().from('highlights').select('*').limit(5000)) },
@@ -299,7 +324,7 @@ const remote: typeof local = {
 }
 
 const base: typeof local = supabase ? remote : local
-const MUTATOR = /^(add|patch|delete|link|unlink|reorder|save|import|attach)/
+const MUTATOR = /^(add|patch|delete|link|unlink|reorder|save|import|attach|check|uncheck)/
 
 /** Same API, but every save is tracked for the sync indicator and tells pages to refresh. */
 export const store = new Proxy(base, {

@@ -81,7 +81,7 @@ export default function Today() {
   // open tasks across every project, soonest first; undated ones come last
   const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   const todayIso = iso(today)
-  const openTasks = tasks.filter(t => !t.done && byId.has(t.project_id))
+  const openTasks = tasks.filter(t => !t.done && (!t.project_id || byId.has(t.project_id)))
     .sort((a, b) => (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999') || a.created_at.localeCompare(b.created_at))
   const tasksDueNow = openTasks.filter(t => t.due_on && t.due_on <= todayIso).length
 
@@ -208,13 +208,13 @@ export default function Today() {
         <section className="card">
           <div className="card-head"><h2>Tasks {openTasks.length > 0 && <span className="count-pill">{openTasks.length}</span>}</h2></div>
           {openTasks.slice(0, 8).map(t => {
-            const info = deadlineInfo(t.due_on); const pr = byId.get(t.project_id)!
+            const info = deadlineInfo(t.due_on); const pr = t.project_id ? byId.get(t.project_id) : undefined
             return (
               <div className="trow" key={t.id}>
                 <input type="checkbox" className="tick" aria-label={`Mark "${t.title}" done`} onChange={() => checkOff(t.id)} />
                 <span>{t.title}</span>
                 {info && <span className={`pill dl-${info.tone}`}>{info.text}</span>}
-                <Link to={link(pr)} className="muted small">{pr.name}</Link>
+                {pr ? <Link to={link(pr)} className="muted small">{pr.name}</Link> : <span className="muted small">General</span>}
               </div>
             )
           })}

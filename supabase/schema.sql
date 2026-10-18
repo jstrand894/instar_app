@@ -138,6 +138,31 @@ alter table time_entries enable row level security;
 alter table projects add column if not exists tags text[] not null default '{}';
 alter table papers add column if not exists tags text[] not null default '{}';
 
+-- added later: weekly routines, and to-dos that do not belong to a project (safe to re-run)
+create table if not exists routines (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  title text not null,
+  notes text not null default '',
+  weekdays int[] not null default '{}',     -- 0 = Sunday ... 6 = Saturday
+  project_id uuid references projects on delete set null,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+alter table routines enable row level security;
+
+create table if not exists routine_checks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  routine_id uuid not null references routines on delete cascade,
+  on_date date not null,
+  created_at timestamptz not null default now(),
+  unique (routine_id, on_date)
+);
+alter table routine_checks enable row level security;
+
+alter table project_tasks alter column project_id drop not null;
+
 alter table projects enable row level security;
 alter table project_updates enable row level security;
 alter table papers enable row level security;
@@ -147,7 +172,7 @@ alter table ink enable row level security;
 do $$
 declare t text;
 begin
-  foreach t in array array['projects','project_updates','project_events','project_papers','project_deadlines','project_tasks','time_entries','papers','highlights','ink'] loop
+  foreach t in array array['projects','project_updates','project_events','project_papers','project_deadlines','project_tasks','time_entries','routines','routine_checks','papers','highlights','ink'] loop
     execute format('drop policy if exists "own rows" on %I', t);
     execute format('create policy "own rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
   end loop;

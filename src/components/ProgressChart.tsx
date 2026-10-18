@@ -45,7 +45,7 @@ export default function ProgressChart({ updates, projects, papers, tasks }: {
     }
     for (const t of tasks) {
       const i = t.done ? index(t.done_at) : -1; if (i < 0) continue
-      const pr = byId.get(t.project_id); if (!pr) continue
+      const pr = t.project_id ? byId.get(t.project_id) : undefined; if (!pr) continue
       weeks[i][pr.type === 'manuscript' ? 'manuscripts' : 'projects']++
     }
     const max = Math.max(1, ...weeks.flatMap(w => SERIES.map(s => w[s.id])))

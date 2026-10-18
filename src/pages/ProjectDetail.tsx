@@ -136,6 +136,67 @@ export default function ProjectDetail() {
         onBlur={e => e.target.value !== project.description && patch({ description: e.target.value })} />
       {error && <p className="error">{error}</p>}
 
+      <div className="detail-cols">
+        <div className="col-main">
+      {mentions.length > 0 && (
+        <section className="card">
+          <h2>Mentioned in</h2>
+          <ul className="backlinks">
+            {mentions.map(u => (
+              <li key={u.id}>
+                <Link to={`/project/${u.project_id}`} className="small"><b>{mentionNames.get(u.project_id) ?? 'Another project'}</b></Link>
+                <span><LinkedText text={u.body.length > 160 ? u.body.slice(0, 160) + '…' : u.body} /></span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <form className="card composer" onSubmit={add}>
+        <div className="seg" role="tablist">
+          <button type="button" className={kind === 'update' ? 'on' : ''} onClick={() => setKind('update')}>Update</button>
+          <button type="button" className={kind === 'note' ? 'on' : ''} onClick={() => setKind('note')}>Note</button>
+        </div>
+        <LinkTextarea
+          placeholder={kind === 'update' ? 'What happened? e.g. “Resubmitted with revisions”' : 'Write a longer note. Type [[ to link a project or paper, # to tag.'}
+          rows={kind === 'note' ? 5 : 2}
+          value={text} onChange={setText}
+          onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') add(e) }} />
+        <div className="row between">
+          <span className="muted small">⌘↵ to add</span>
+          <button className="primary" disabled={!text.trim()}>Add {kind}</button>
+        </div>
+      </form>
+
+      <ol className="tl">
+        {entries.map(u => (
+          <li key={u.id} className={`tl-item ${u.kind}`}>
+            <span className="tl-dot" />
+            <div className="tl-meta">
+              <time title={fmt(u.created_at)}>{ago(u.created_at)} · {fmt(u.created_at)}</time>
+              <button className="link small danger" onClick={async () => {
+                notify.undoable(u.kind === 'note' ? 'Note deleted' : 'Update deleted', () => store.deleteUpdate(u.id), [u.id])
+              }}>Delete</button>
+            </div>
+            {u.kind === 'note' ? (
+              <div className="note-box">
+                <span className="tag">Note</span>
+                <EntryBody note body={u.body} onSave={v => saveEntry(u, v)} />
+              </div>
+            ) : (
+              <EntryBody body={u.body} onSave={v => saveEntry(u, v)} />
+            )}
+          </li>
+        ))}
+        {!entries.length && <li className="tl-empty"><b>Nothing logged yet.</b> <span className="muted">This timeline fills in as you add updates and notes, so you can look back at what happened and when.</span> <button className="link" onClick={() => document.querySelector<HTMLTextAreaElement>('.composer textarea')?.focus()}>Log the first update</button></li>}
+      </ol>
+
+      <button className="link small danger" onClick={() => {
+        notify.undoable(`Deleted "${project.name}"`, () => store.deleteProject(project.id), [project.id])
+        nav(project.type === 'manuscript' ? '/manuscripts' : '/projects')
+      }}>Delete project</button>
+        </div>
+        <aside className="col-side">
       {project.type === 'manuscript' && (
         <section className="card ms-panel">
           <h2>Manuscript</h2>
@@ -252,63 +313,8 @@ export default function ProjectDetail() {
         {needle && !matches.length && <p className="muted small">No unlinked papers match. <Link to="/library" className="link">Add papers in the library</Link>.</p>}
       </section>
 
-      {mentions.length > 0 && (
-        <section className="card">
-          <h2>Mentioned in</h2>
-          <ul className="backlinks">
-            {mentions.map(u => (
-              <li key={u.id}>
-                <Link to={`/project/${u.project_id}`} className="small"><b>{mentionNames.get(u.project_id) ?? 'Another project'}</b></Link>
-                <span><LinkedText text={u.body.length > 160 ? u.body.slice(0, 160) + '…' : u.body} /></span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <form className="card composer" onSubmit={add}>
-        <div className="seg" role="tablist">
-          <button type="button" className={kind === 'update' ? 'on' : ''} onClick={() => setKind('update')}>Update</button>
-          <button type="button" className={kind === 'note' ? 'on' : ''} onClick={() => setKind('note')}>Note</button>
-        </div>
-        <LinkTextarea
-          placeholder={kind === 'update' ? 'What happened? e.g. “Resubmitted with revisions”' : 'Write a longer note. Type [[ to link a project or paper, # to tag.'}
-          rows={kind === 'note' ? 5 : 2}
-          value={text} onChange={setText}
-          onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') add(e) }} />
-        <div className="row between">
-          <span className="muted small">⌘↵ to add</span>
-          <button className="primary" disabled={!text.trim()}>Add {kind}</button>
-        </div>
-      </form>
-
-      <ol className="tl">
-        {entries.map(u => (
-          <li key={u.id} className={`tl-item ${u.kind}`}>
-            <span className="tl-dot" />
-            <div className="tl-meta">
-              <time title={fmt(u.created_at)}>{ago(u.created_at)} · {fmt(u.created_at)}</time>
-              <button className="link small danger" onClick={async () => {
-                notify.undoable(u.kind === 'note' ? 'Note deleted' : 'Update deleted', () => store.deleteUpdate(u.id), [u.id])
-              }}>Delete</button>
-            </div>
-            {u.kind === 'note' ? (
-              <div className="note-box">
-                <span className="tag">Note</span>
-                <EntryBody note body={u.body} onSave={v => saveEntry(u, v)} />
-              </div>
-            ) : (
-              <EntryBody body={u.body} onSave={v => saveEntry(u, v)} />
-            )}
-          </li>
-        ))}
-        {!entries.length && <li className="tl-empty"><b>Nothing logged yet.</b> <span className="muted">This timeline fills in as you add updates and notes, so you can look back at what happened and when.</span> <button className="link" onClick={() => document.querySelector<HTMLTextAreaElement>('.composer textarea')?.focus()}>Log the first update</button></li>}
-      </ol>
-
-      <button className="link small danger" onClick={() => {
-        notify.undoable(`Deleted "${project.name}"`, () => store.deleteProject(project.id), [project.id])
-        nav(project.type === 'manuscript' ? '/manuscripts' : '/projects')
-      }}>Delete project</button>
+        </aside>
+      </div>
     </div>
   )
 }
