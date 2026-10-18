@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { ACCENTS, getPrefs, setPrefs, type Theme } from '../lib/prefs'
 import { isDesktop } from '../lib/util'
+import Logo from './Logo'
 
 const PersonIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -96,7 +97,7 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
           </div>
         ) : (
           <div className="modal-body about">
-            <div className="about-logo"><img className="logo" src="/icon.svg" alt="" width="72" height="72" /></div>
+            <div className="about-logo"><Logo size={72} /></div>
             <h2>Instar</h2>
             <p className="muted small">Version {__APP_VERSION__}</p>
             <p>A personal research workspace for keeping track of projects, manuscripts and reading, in one place that works on a Mac, iPad and iPhone.</p>

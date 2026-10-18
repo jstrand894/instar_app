@@ -130,7 +130,7 @@ button, .card, .nav a { transition: background .15s, border-color .15s, box-shad
 body { font-size: 15px; line-height: 1.45; }
 h1 { font-size: 1.75rem; letter-spacing: -.02em; }
 .logo { width: 24px; height: 24px; display: inline-block; flex: none; }
-.brand .logo { width: 44px; height: 44px; filter: drop-shadow(0 2px 5px rgba(0,0,0,.22)); }
+.brand .logo { width: 44px; height: 44px; color: var(--ink); }
 .nav a { display: flex; align-items: center; gap: .6rem; color: var(--muted); }
 .nav a:hover { background: var(--chip); color: var(--ink); }
 .nav a.active { background: var(--chip); color: var(--ink); box-shadow: inset 3px 0 0 var(--accent); }
@@ -341,7 +341,7 @@ main { scrollbar-gutter: stable; }
 .acct-actions { display: flex; gap: .6rem; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 1rem; }
 .danger-btn { color: var(--danger); }
 .about { text-align: center; justify-items: center; gap: .6rem; } .about h2 { margin: 0; font-size: 1.4rem; } .about p { margin: 0; } .about ul { text-align: left; margin: .3rem 0; padding-left: 1.1rem; display: grid; gap: .35rem; }
-.about-logo .logo { width: 72px; height: 72px; filter: drop-shadow(0 6px 14px rgba(0,0,0,.25)); }
+.about-logo .logo { width: 72px; height: 72px; color: var(--ink); }
 .creator { font-size: 1.05rem; margin-top: .6rem; }
 @media (max-width: 760px) { .nav .account-btn { flex-direction: column; gap: .15rem; font-size: .72rem; padding: .35rem; justify-content: center; align-items: center; flex: 1; } }
 

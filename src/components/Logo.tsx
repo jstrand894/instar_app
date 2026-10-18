@@ -1,0 +1,8 @@
+/** The Instar mark: a weevil on a notebook, one color (follows the surrounding text color). */
+const MARKUP = '<g transform="rotate(-7 256 256)">    <rect x="140" y="84" width="236" height="344" rx="32" fill="none" stroke="currentColor" stroke-width="16"/>    <g stroke="currentColor" stroke-width="15" stroke-linecap="round"><path d="M118 150H166M118 256H166M118 362H166"/></g>    <g transform="translate(270 284) rotate(14) scale(.64)">    <g fill="currentColor" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">      <g fill="none"><path d="M-30 -62L-74 -78L-94 -56"/><path d="M-56 30L-74 26L-94 52"/><path d="M-56 88L-74 106L-94 134"/><path d="M30 -62L74 -78L94 -56"/><path d="M56 30L74 26L94 52"/><path d="M56 88L74 106L94 134"/><path d="M-8 -176L-36 -188L-44 -214"/><ellipse cx="-45" cy="-221" rx="6.5" ry="10.5" transform="rotate(-12 -45 -221)" stroke="none"/><path d="M8 -176L36 -188L44 -214"/><ellipse cx="45" cy="-221" rx="6.5" ry="10.5" transform="rotate(12 45 -221)" stroke="none"/><path d="M0 -134C3 -158 8 -184 10 -204" stroke-width="19"/></g>      <ellipse cx="0" cy="50" rx="62" ry="76" stroke="none"/>      <ellipse cx="0" cy="-62" rx="34" ry="28" stroke="none"/>      <circle cx="0" cy="-116" r="21" stroke="none"/>    </g>    </g>  </g>'
+
+export default function Logo({ size = 24, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg className={`logo ${className}`} width={size} height={size} viewBox="0 0 512 512" role="img" aria-label="Instar" dangerouslySetInnerHTML={{ __html: MARKUP }} />
+  )
+}

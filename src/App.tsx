@@ -3,6 +3,7 @@ import { NavLink, Route, Routes, HashRouter, useLocation } from 'react-router-do
 import AuthGate from './components/Auth'
 import Pomodoro from './components/Pomodoro'
 import Account from './components/Account'
+import Logo from './components/Logo'
 import Today from './pages/Today'
 import Home from './pages/Home'
 import Manuscripts from './pages/Manuscripts'
@@ -38,7 +39,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
   return (
     <div className={`shell nav-${navMode} ${reading ? 'in-reader' : ''}`}>
       <nav className="nav">
-        <div className="brand"><img className="logo" src="/icon.svg" alt="" width="44" height="44" /><span className="brand-text">Instar</span></div>
+        <div className="brand"><Logo size={44} /><span className="brand-text">Instar</span></div>
         <NavLink to="/" end><Icon d={ICONS.today} /><span>Today</span></NavLink>
         <NavLink to="/projects"><Icon d={ICONS.projects} /><span>Projects</span></NavLink>
         <NavLink to="/manuscripts"><Icon d={ICONS.manuscripts} /><span>Manuscripts</span></NavLink>
