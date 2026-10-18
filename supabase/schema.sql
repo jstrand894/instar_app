@@ -83,17 +83,6 @@ alter table project_events enable row level security;
 alter table projects add column if not exists pinned boolean not null default false;
 alter table projects add column if not exists sort_order int;
 
--- added later: calendar feed links (private; only the edge function and you can read them) (safe to re-run)
-create table if not exists calendars (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null default auth.uid() references auth.users on delete cascade,
-  name text not null,
-  url text not null,
-  color text not null default '#1982c4',
-  created_at timestamptz not null default now()
-);
-alter table calendars enable row level security;
-
 alter table projects enable row level security;
 alter table project_updates enable row level security;
 alter table papers enable row level security;
@@ -103,7 +92,7 @@ alter table ink enable row level security;
 do $$
 declare t text;
 begin
-  foreach t in array array['projects','project_updates','project_events','calendars','papers','highlights','ink'] loop
+  foreach t in array array['projects','project_updates','project_events','papers','highlights','ink'] loop
     execute format('drop policy if exists "own rows" on %I', t);
     execute format('create policy "own rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
   end loop;

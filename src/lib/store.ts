@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Calendar, Highlight, InkPage, Paper, PaperInput, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
+  Highlight, InkPage, Paper, PaperInput, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
 } from '../types'
 
 const blankPaper = { authors: '', year: '', status: 'to-read', notes: '', doi: '', category: '', priority: '', source: '', why: '' } as const
@@ -24,13 +24,13 @@ const now = () => new Date().toISOString()
 // ---------- local demo backend ----------
 const LS = 'tm-demo-v1'
 interface Db {
-  projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; calendars: Calendar[]; papers: Paper[]
+  projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; papers: Paper[]
   highlights: Highlight[]; ink: InkPage[]
 }
 function load(): Db {
   try {
     const raw = localStorage.getItem(LS)
-    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.calendars ??= []; return d }
+    if (raw) { const d = JSON.parse(raw); d.events ??= []; return d }
   } catch { /* ignore */ }
   const d = seed()
   localStorage.setItem(LS, JSON.stringify(d))
@@ -53,7 +53,7 @@ function seed(): Db {
     { id: 'u4', kind: 'update', project_id: 'p3', body: 'Added gap-filling step, tests passing', created_at: t(0.2) },
     { id: 'u5', kind: 'update', project_id: 'p4', body: 'Waiting on calibration files', created_at: t(9) },
   ]
-  return { projects, updates, events: [], calendars: [], papers: [], highlights: [], ink: [] }
+  return { projects, updates, events: [], papers: [], highlights: [], ink: [] }
 }
 const demoFiles = new Map<string, string>() // path -> blob url (session only)
 
@@ -91,12 +91,6 @@ const local = {
   async reorderProjects(ids: string[], reset = false) {
     const d = load(); d.projects = d.projects.map(p => { const i = ids.indexOf(p.id); return i < 0 ? p : { ...p, sort_order: reset ? null : i } }); save(d)
   },
-  async calendars() { return load().calendars },
-  async addCalendar(name: string, url: string, color: string) {
-    const d = load(); const row: Calendar = { id: uid(), name, url, color, created_at: now() }
-    d.calendars.push(row); save(d); return row
-  },
-  async deleteCalendar(id: string) { const d = load(); d.calendars = d.calendars.filter(c => c.id !== id); save(d) },
   async events() { return load().events },
   async addEvent(project_id: string, title: string, starts_at: string, repeat: ProjectEvent['repeat']) {
     const d = load(); const row: ProjectEvent = { id: uid(), project_id, title, starts_at, repeat, created_at: now() }
@@ -195,9 +189,6 @@ const remote: typeof local = {
   async reorderProjects(ids, reset = false) {
     await Promise.all(ids.map(async (id, i) => ok(await sb().from('projects').update({ sort_order: reset ? null : i }).eq('id', id))))
   },
-  async calendars() { return ok(await sb().from('calendars').select('*').order('created_at')) },
-  async addCalendar(name, url, color) { return ok(await sb().from('calendars').insert({ name, url, color }).select().single()) },
-  async deleteCalendar(id) { ok(await sb().from('calendars').delete().eq('id', id)) },
   async events() { return ok(await sb().from('project_events').select('*').order('starts_at')) },
   async addEvent(project_id, title, starts_at, repeat) { return ok(await sb().from('project_events').insert({ project_id, title, starts_at, repeat }).select().single()) },
   async deleteEvent(id) { ok(await sb().from('project_events').delete().eq('id', id)) },

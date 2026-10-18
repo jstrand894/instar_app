@@ -34,13 +34,3 @@ export function fmtWhen(d: Date, now = new Date()): string {
   if (days > 1 && days < 7) return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${time}`
   return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`
 }
-
-/** Every occurrence of a project event inside [from, to). */
-export function occurrencesBetween(e: ProjectEvent, from: Date, to: Date): Date[] {
-  const out: Date[] = []; const start = new Date(e.starts_at)
-  if (e.repeat !== 'weekly') return start >= from && start < to ? [start] : out
-  const d = new Date(start)
-  if (d < from) d.setDate(d.getDate() + Math.ceil((from.getTime() - d.getTime()) / (7 * 864e5)) * 7)
-  for (let i = 0; d < to && i < 200; i++) { out.push(new Date(d)); d.setDate(d.getDate() + 7) }
-  return out
-}

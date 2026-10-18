@@ -4,7 +4,6 @@ import AuthGate from './components/Auth'
 import Pomodoro from './components/Pomodoro'
 import Home from './pages/Home'
 import Library from './pages/Library'
-import CalendarPage from './pages/CalendarPage'
 import Reader from './pages/Reader'
 import ProjectDetail from './pages/ProjectDetail'
 import { demoMode } from './lib/supabase'
@@ -18,7 +17,6 @@ const Icon = ({ d }: { d: string }) => (
 const ICONS = {
   projects: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
   papers: 'M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7',
-  calendar: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4',
 }
 
 function Shell({ signOut }: { signOut: (() => void) | null }) {
@@ -31,7 +29,6 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
         <div className="brand"><span className="logo" />Lab Notebook</div>
         <NavLink to="/" end><Icon d={ICONS.projects} /><span>Projects</span></NavLink>
         <NavLink to="/library"><Icon d={ICONS.papers} /><span>Papers</span></NavLink>
-        <NavLink to="/calendar"><Icon d={ICONS.calendar} /><span>Calendar</span></NavLink>
         <div className="spacer" />
         {desktop && <Pomodoro />}
         {signOut && <button className="link small" onClick={signOut}>Sign out</button>}
@@ -47,7 +44,6 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
           <Route path="/" element={<Home />} />
           <Route path="/project/:id" element={<ProjectDetail />} />
           <Route path="/library" element={<Library />} />
-          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/read/:id" element={<Reader />} />
         </Routes>
       </main>
