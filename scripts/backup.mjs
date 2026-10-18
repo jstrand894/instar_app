@@ -25,7 +25,12 @@ export function renderPaper(p, pdfName, highlights) {
   const lines = [`# ${p.title}`, '']
   if (p.authors) lines.push(`- Authors: ${p.authors}`)
   if (p.year) lines.push(`- Year: ${p.year}`)
-  lines.push(`- Status: ${p.status}`, `- Added: ${day(p.created_at)}`, `- PDF: [Open PDF](<${pdfName}>)`, '')
+  if (p.category) lines.push(`- Category: ${p.category}`)
+  if (p.priority) lines.push(`- Priority: ${p.priority}`)
+  if (p.source) lines.push(`- Source: ${p.source}`)
+  if (p.doi) lines.push(`- DOI: https://doi.org/${p.doi}`)
+  lines.push(`- Status: ${p.status}`, `- Added: ${day(p.created_at)}`, pdfName ? `- PDF: [Open PDF](<${pdfName}>)` : '- PDF: not attached', '')
+  if (p.why) lines.push('## Why it matters', '', p.why, '')
   if (p.notes) lines.push('## Notes', '', p.notes, '')
   lines.push('## Highlights', '')
   const hs = [...highlights].sort((a, b) => a.page - b.page || (a.rects?.[0]?.y ?? 0) - (b.rects?.[0]?.y ?? 0))
@@ -35,6 +40,13 @@ export function renderPaper(p, pdfName, highlights) {
     if (h.note) lines.push(h.note, '')
   }
   return lines.join('\n') + '\n'
+}
+
+const csvCell = v => `"${String(v ?? '').replace(/"/g, '""')}"`
+export function readingListCsv(papers) {
+  const cols = ['status', 'doi', 'category', 'priority', 'authors', 'year', 'title', 'source', 'why', 'has_pdf']
+  const rows = [...papers].sort((a, b) => (a.category || '').localeCompare(b.category || '') || a.title.localeCompare(b.title))
+  return '\ufeff' + [cols.join(','), ...rows.map(p => cols.map(c => csvCell(c === 'has_pdf' ? (p.file_path ? 'yes' : 'no') : p[c])).join(','))].join('\n') + '\n'
 }
 
 const exists = f => access(f).then(() => true, () => false)
@@ -77,16 +89,21 @@ async function main() {
 
   let newPdfs = 0
   for (const p of papers) {
-    const pdfName = `${safe(p.title)} ${tag(p.id)}.pdf`
-    const pdf = await placeFile(dirs.papers, p.id, pdfName)
-    if (!(await exists(pdf))) {
-      const { data, error } = await sb.storage.from('papers').download(p.file_path)
-      if (error) { console.warn(`  skipped PDF for "${p.title}": ${error.message}`); continue }
-      await writeFile(pdf, Buffer.from(await data.arrayBuffer())); newPdfs++
+    let pdfName = null
+    if (p.file_path) {
+      pdfName = `${safe(p.title)} ${tag(p.id)}.pdf`
+      const pdf = await placeFile(dirs.papers, p.id, pdfName)
+      if (!(await exists(pdf))) {
+        const { data, error } = await sb.storage.from('papers').download(p.file_path)
+        if (error) { console.warn(`  skipped PDF for "${p.title}": ${error.message}`); pdfName = null }
+        else { await writeFile(pdf, Buffer.from(await data.arrayBuffer())); newPdfs++ }
+      }
     }
     const md = await placeFile(dirs.papers, p.id, `${safe(p.title)} ${tag(p.id)}.md`)
     await writeFile(md, renderPaper(p, pdfName, highlights.filter(h => h.paper_id === p.id)))
   }
+
+  await writeFile(join(out, 'Reading List.csv'), readingListCsv(papers))
 
   // Full-fidelity copy (includes pen strokes) for restoring or migrating later.
   await writeFile(join(dirs.raw, 'data.json'), JSON.stringify({ exported_at: new Date().toISOString(), projects, project_updates: updates, papers, highlights, ink }, null, 2))

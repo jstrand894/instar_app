@@ -1,7 +1,17 @@
 import { supabase } from './supabase'
 import type {
-  Highlight, InkPage, Paper, Project, ProjectUpdate, Stroke,
+  Highlight, InkPage, Paper, PaperInput, Project, ProjectUpdate, Stroke,
 } from '../types'
+
+const blankPaper = { authors: '', year: '', status: 'to-read', notes: '', doi: '', category: '', priority: '', source: '', why: '' } as const
+const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+export const paperKey = (p: { doi?: string; title: string; year?: string }) =>
+  p.doi ? `doi:${p.doi.toLowerCase()}` : `t:${norm(p.title)}|${p.year ?? ''}`
+const fresh = (inputs: PaperInput[], existing: Paper[]) => {
+  const seen = new Set(existing.map(paperKey)); const out: PaperInput[] = []
+  for (const i of inputs) { const k = paperKey(i); if (!seen.has(k)) { seen.add(k); out.push(i) } }
+  return out
+}
 
 /* One API, two backends: Supabase when configured, otherwise a localStorage
    demo so the UI works before keys are added. */
@@ -70,11 +80,20 @@ const local = {
     const d = load(); d.updates = d.updates.filter(u => u.id !== id); save(d)
   },
   async papers() { return load().papers },
-  async addPaper(file: File, meta: Pick<Paper, 'title' | 'authors' | 'year'>) {
-    const d = load(); const path = `demo/${uid()}.pdf`
-    demoFiles.set(path, URL.createObjectURL(file))
-    const row: Paper = { id: uid(), file_path: path, status: 'to-read', notes: '', created_at: now(), ...meta }
+  async addPaper(file: File | null, meta: PaperInput) {
+    const d = load(); let path: string | null = null
+    if (file) { path = `demo/${uid()}.pdf`; demoFiles.set(path, URL.createObjectURL(file)) }
+    const row: Paper = { ...blankPaper, id: uid(), file_path: path, created_at: now(), ...meta }
     d.papers.push(row); save(d); return row
+  },
+  async attachPdf(id: string, file: File) {
+    const path = `demo/${uid()}.pdf`; demoFiles.set(path, URL.createObjectURL(file))
+    const d = load(); d.papers = d.papers.map(p => p.id === id ? { ...p, file_path: path } : p); save(d)
+  },
+  async importPapers(items: PaperInput[]) {
+    const d = load(); const add = fresh(items, d.papers)
+    for (const i of add) d.papers.push({ ...blankPaper, id: uid(), file_path: null, created_at: now(), ...i })
+    save(d); return { added: add.length, skipped: items.length - add.length }
   },
   async patchPaper(id: string, patch: Partial<Paper>) {
     const d = load(); d.papers = d.papers.map(p => p.id === id ? { ...p, ...patch } : p); save(d)
@@ -84,7 +103,7 @@ const local = {
     d.highlights = d.highlights.filter(h => h.paper_id !== id)
     d.ink = d.ink.filter(i => i.paper_id !== id); save(d)
   },
-  async fileUrl(path: string) { return demoFiles.get(path) ?? null },
+  async fileUrl(path: string | null) { return path ? demoFiles.get(path) ?? null : null },
   async highlights(paper_id: string) { return load().highlights.filter(h => h.paper_id === paper_id) },
   async addHighlight(h: Omit<Highlight, 'id' | 'created_at'>) {
     const d = load(); const row = { ...h, id: uid(), created_at: now() }
@@ -109,6 +128,13 @@ function ok<T>(r: { data: T | null; error: { message: string } | null }): T {
   if (r.error) throw new Error(r.error.message)
   return r.data as T
 }
+async function uploadPdf(file: File) {
+  const { data: { user } } = await sb().auth.getUser()
+  const path = `${user!.id}/${uid()}.pdf`
+  const up = await sb().storage.from('papers').upload(path, file, { contentType: 'application/pdf' })
+  if (up.error) throw new Error(up.error.message)
+  return path
+}
 const remote: typeof local = {
   async projects() { return ok(await sb().from('projects').select('*').order('created_at')) },
   async updates() { return ok(await sb().from('project_updates').select('*').order('created_at', { ascending: false }).limit(500)) },
@@ -120,19 +146,27 @@ const remote: typeof local = {
   async deleteUpdate(id) { ok(await sb().from('project_updates').delete().eq('id', id)) },
   async papers() { return ok(await sb().from('papers').select('*').order('created_at', { ascending: false })) },
   async addPaper(file, meta) {
-    const { data: { user } } = await sb().auth.getUser()
-    const path = `${user!.id}/${uid()}.pdf`
-    const up = await sb().storage.from('papers').upload(path, file, { contentType: 'application/pdf' })
-    if (up.error) throw new Error(up.error.message)
+    const path = file ? await uploadPdf(file) : null
     return ok(await sb().from('papers').insert({ ...meta, file_path: path }).select().single())
+  },
+  async attachPdf(id, file) {
+    const path = await uploadPdf(file)
+    ok(await sb().from('papers').update({ file_path: path }).eq('id', id))
+  },
+  async importPapers(items) {
+    const existing = ok(await sb().from('papers').select('doi,title,year')) as Paper[]
+    const add = fresh(items, existing)
+    for (let i = 0; i < add.length; i += 100) ok(await sb().from('papers').insert(add.slice(i, i + 100)))
+    return { added: add.length, skipped: items.length - add.length }
   },
   async patchPaper(id, patch) { ok(await sb().from('papers').update(patch).eq('id', id)) },
   async deletePaper(id) {
     const { data } = await sb().from('papers').select('file_path').eq('id', id).single()
-    if (data) await sb().storage.from('papers').remove([data.file_path])
+    if (data?.file_path) await sb().storage.from('papers').remove([data.file_path])
     ok(await sb().from('papers').delete().eq('id', id))
   },
   async fileUrl(path) {
+    if (!path) return null
     const r = await sb().storage.from('papers').createSignedUrl(path, 3600)
     return r.data?.signedUrl ?? null
   },

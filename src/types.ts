@@ -1,6 +1,6 @@
 export type ProjectType = 'manuscript' | 'data' | 'field' | 'code' | 'other'
 export type ProjectStatus = 'active' | 'paused' | 'done'
-export type PaperStatus = 'to-read' | 'reading' | 'read'
+export type PaperStatus = 'to-read' | 'reading' | 'read' | 'unavailable'
 export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink'
 
 export interface Project {
@@ -24,9 +24,14 @@ export interface Paper {
   title: string
   authors: string
   year: string
-  file_path: string
+  file_path: string | null
   status: PaperStatus
   notes: string
+  doi: string
+  category: string
+  priority: string
+  source: string
+  why: string
   created_at: string
 }
 export interface Rect { x: number; y: number; w: number; h: number }
@@ -46,3 +51,5 @@ export interface Stroke {
   points: [number, number, number][]
 }
 export interface InkPage { paper_id: string; page: number; strokes: Stroke[] }
+
+export type PaperInput = Partial<Omit<Paper, 'id' | 'created_at' | 'file_path'>> & { title: string }

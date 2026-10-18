@@ -30,6 +30,7 @@ export default function Reader() {
   const [panel, setPanel] = useState(() => window.innerWidth > 900)
   const [tab, setTab] = useState<'highlights' | 'notes'>('highlights')
   const scroller = useRef<HTMLDivElement>(null)
+  const attachInput = useRef<HTMLInputElement>(null)
   const undoStack = useRef<number[]>([])
   const holding = useRef(false)
   const inkTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
@@ -45,6 +46,7 @@ export default function Reader() {
         if (!p) { setError('Paper not found.'); return }
         setPaper(p)
         const [url, hl, inkRows] = await Promise.all([store.fileUrl(p.file_path), store.highlights(id), store.ink(id)])
+        if (!p.file_path) { setHighlights(hl); setTab('notes'); return }
         if (!url) { setError('PDF file is not available on this device. (Demo mode only keeps uploads until you reload; add Supabase keys to keep them.)'); setHighlights(hl); return }
         const d = await pdfjs.getDocument({ url }).promise
         const pages = await Promise.all(Array.from({ length: d.numPages }, (_, i) => d.getPage(i + 1).then(pg => {
@@ -126,6 +128,10 @@ export default function Reader() {
     if (!paper) return
     setPaper({ ...paper, ...patch }); await store.patchPaper(paper.id, patch)
   }
+  async function attachPdf(file: File) {
+    if (!paper) return
+    try { await store.attachPdf(paper.id, file); window.location.reload() } catch (e) { setError((e as Error).message) }
+  }
   async function patchHL(hid: string, patch: Partial<Highlight>) {
     setHighlights(hs => hs.map(h => h.id === hid ? { ...h, ...patch } : h)); await store.patchHighlight(hid, patch)
   }
@@ -164,7 +170,21 @@ export default function Reader() {
       <div className="reader-body">
         <div className="reader-scroll" ref={scroller}>
           {error && <p className="error pad">{error}</p>}
-          {!doc && !error && <p className="muted pad">Loading…</p>}
+          {paper && !paper.file_path && (
+            <div className="no-pdf">
+              <h2>No PDF attached yet</h2>
+              <p className="muted">You can still keep notes on this paper. Attach the PDF when you find it to read and highlight here.</p>
+              <div className="row">
+                <button className="primary" onClick={() => attachInput.current?.click()}>Attach PDF</button>
+                <a className="link" target="_blank" rel="noreferrer"
+                  href={paper.doi ? `https://doi.org/${paper.doi}` : `https://scholar.google.com/scholar?q=${encodeURIComponent(paper.title)}`}>
+                  {paper.doi ? 'Open DOI' : 'Find online'}
+                </a>
+              </div>
+              <input ref={attachInput} type="file" accept="application/pdf" hidden onChange={e => { const f = e.target.files?.[0]; if (f) attachPdf(f) }} />
+            </div>
+          )}
+          {!doc && !error && paper?.file_path && <p className="muted pad">Loading…</p>}
           {doc && sizes.map((size, i) => (
             <PageView key={i} doc={doc} num={i + 1} size={size} scale={scale}
               highlights={highlights.filter(h => h.page === i + 1)}
@@ -204,9 +224,14 @@ export default function Reader() {
                 <label>Year<input defaultValue={paper.year} onBlur={e => patchPaper({ year: e.target.value })} /></label>
                 <label>Status
                   <select value={paper.status} onChange={e => patchPaper({ status: e.target.value as PaperStatus })}>
-                    <option value="to-read">To read</option><option value="reading">Reading</option><option value="read">Read</option>
+                    <option value="to-read">To read</option><option value="reading">Reading</option><option value="read">Read</option><option value="unavailable">Unavailable</option>
                   </select>
                 </label>
+                <label>Category<input defaultValue={paper.category} onBlur={e => patchPaper({ category: e.target.value })} /></label>
+                <label>Priority<input defaultValue={paper.priority} placeholder="Core / Recommended" onBlur={e => patchPaper({ priority: e.target.value })} /></label>
+                <label>Source<input defaultValue={paper.source} onBlur={e => patchPaper({ source: e.target.value })} /></label>
+                <label>DOI<input defaultValue={paper.doi} onBlur={e => patchPaper({ doi: e.target.value.replace(/^https?:\/\/(dx\.)?doi\.org\//i, '') })} /></label>
+                <label>Why it matters<textarea defaultValue={paper.why} onBlur={e => patchPaper({ why: e.target.value })} /></label>
                 <label>Notes
                   <textarea className="big" placeholder="Summary, questions, ideas…" defaultValue={paper.notes} onBlur={e => e.target.value !== paper.notes && patchPaper({ notes: e.target.value })} />
                 </label>

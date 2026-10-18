@@ -57,6 +57,14 @@ alter table projects add column if not exists notes text not null default '';
 -- added later: timeline entries can be quick updates or longer notes (safe to re-run)
 alter table project_updates add column if not exists kind text not null default 'update';
 
+-- added later: reading-list fields; papers may exist before a PDF is attached (safe to re-run)
+alter table papers alter column file_path drop not null;
+alter table papers add column if not exists doi text not null default '';
+alter table papers add column if not exists category text not null default '';
+alter table papers add column if not exists priority text not null default '';
+alter table papers add column if not exists source text not null default '';
+alter table papers add column if not exists why text not null default '';
+
 alter table projects enable row level security;
 alter table project_updates enable row level security;
 alter table papers enable row level security;
