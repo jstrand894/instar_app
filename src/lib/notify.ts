@@ -29,6 +29,8 @@ const refreshPages = () => window.dispatchEvent(new Event('tm-data'))
 export const notify = {
   info: (message: string, duration = 3500) => emit({ kind: 'info', message, duration }),
   success: (message: string, duration = 3000) => emit({ kind: 'success', message, duration }),
+  /** A confirmation with one button, e.g. "Added to X · Undo". */
+  action(message: string, label: string, run: () => void, duration = 6000) { emit({ kind: 'success', message, duration, action: { label, run } }) },
   error(e: unknown, retry?: () => void) {
     emit({ kind: 'error', message: friendlyError(e), detail: technicalDetail(e), duration: 8000, action: retry ? { label: 'Try again', run: retry } : undefined })
   },

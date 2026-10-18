@@ -6,6 +6,8 @@ import Account from './components/Account'
 import Logo from './components/Logo'
 import Toasts from './components/Toasts'
 import SyncStatus from './components/SyncStatus'
+import CommandPalette from './components/CommandPalette'
+import QuickCapture from './components/QuickCapture'
 import Today from './pages/Today'
 import Home from './pages/Home'
 import Manuscripts from './pages/Manuscripts'
@@ -26,6 +28,7 @@ const ICONS = {
   projects: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
   papers: 'M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7',
   pin: 'M9 3h6M10 3v6l-4 5h12l-4-5V3M12 14v7',
+  search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5',
 }
 
 function Shell({ signOut }: { signOut: (() => void) | null }) {
@@ -42,6 +45,9 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
     <div className={`shell nav-${navMode} ${reading ? 'in-reader' : ''}`}>
       <nav className="nav">
         <div className="brand"><Logo size={64} /><span className="brand-text">Instar</span></div>
+        <button className="nav-search" onClick={() => window.dispatchEvent(new CustomEvent('tm-search'))} title="Search (⌘K or /)">
+          <Icon d={ICONS.search} /><span>Search</span><kbd>⌘K</kbd>
+        </button>
         <NavLink to="/" end><Icon d={ICONS.today} /><span>Today</span></NavLink>
         <NavLink to="/projects"><Icon d={ICONS.projects} /><span>Projects</span></NavLink>
         <NavLink to="/manuscripts"><Icon d={ICONS.manuscripts} /><span>Manuscripts</span></NavLink>
@@ -71,6 +77,8 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
           <Route path="/read/:id" element={<Reader />} />
         </Routes>
       </main>
+      <CommandPalette />
+      <QuickCapture />
       <Toasts />
     </div>
   )

@@ -12,6 +12,7 @@ const PersonIcon = () => (
 
 export default function Account({ signOut }: { signOut: (() => void) | null }) {
   const [open, setOpen] = useState(false)
+  useEffect(() => { const on = () => setOpen(true); window.addEventListener('tm-open-account', on); return () => window.removeEventListener('tm-open-account', on) }, [])
   return (
     <>
       <button className="account-btn" onClick={() => setOpen(true)} aria-haspopup="dialog">
