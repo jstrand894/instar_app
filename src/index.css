@@ -380,3 +380,29 @@ main { scrollbar-gutter: stable; }
 .done-row .dl-check span { text-decoration: line-through; color: var(--muted); }
 @media (max-width: 760px) { .dl-row { grid-template-columns: 1fr 1fr; } .dl-row input:first-child { grid-column: 1 / -1; } }
 @media (max-width: 360px) { .nav { gap: .1rem; padding-left: .2rem; padding-right: .2rem; } .nav a, .nav .account-btn { font-size: .62rem; padding: .35rem .1rem; } }
+
+/* sidebar: slim rail that slides open on hover (desktop), pinned open on request or on touch devices */
+.nav-toggle { display: flex; align-items: center; gap: .6rem; background: none; color: var(--muted); justify-content: flex-start; padding: .55rem .7rem; width: 100%; }
+.nav-toggle:hover { background: var(--chip); color: var(--ink); }
+.nav-toggle[aria-pressed="true"] { color: var(--accent); }
+.pomo-mini { display: none; text-align: center; font-size: .72rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted); padding: .35rem 0; }
+.pomo-mini .run { color: var(--accent); }
+@media (min-width: 761px) {
+  .shell { --nav-w: 64px; display: block; }
+  .shell.nav-pinned { --nav-w: 220px; }
+  .shell .nav { position: fixed; top: 0; left: 0; bottom: 0; width: var(--nav-w); z-index: 40; overflow-x: hidden; overflow-y: auto; white-space: nowrap; padding: 1rem 8px; transition: width .22s cubic-bezier(.3,.9,.3,1), box-shadow .22s; }
+  .shell main { margin-left: var(--nav-w); height: 100%; transition: margin-left .22s cubic-bezier(.3,.9,.3,1); }
+  .shell.nav-auto .nav:hover, .shell.nav-auto .nav:focus-within { width: 220px; box-shadow: 10px 0 36px rgba(0,0,0,.2); }
+  .nav a, .nav .account-btn, .nav-toggle { padding-left: 15px; padding-right: 12px; }
+  .brand { padding-left: 2px; }
+  .brand-text, .nav a span, .account-btn span, .nav-toggle span { transition: opacity .15s; }
+  /* collapsed rail: icons only, a compact timer, no full timer card */
+  .shell.nav-auto .nav:not(:hover):not(:focus-within) .brand-text,
+  .shell.nav-auto .nav:not(:hover):not(:focus-within) a span,
+  .shell.nav-auto .nav:not(:hover):not(:focus-within) .account-btn span,
+  .shell.nav-auto .nav:not(:hover):not(:focus-within) .nav-toggle span { opacity: 0; }
+  .shell.nav-auto .nav:not(:hover):not(:focus-within) .pomo { display: none; }
+  .shell.nav-auto .nav:not(:hover):not(:focus-within) .pomo-mini { display: block; }
+}
+.nav svg { flex: none; }
+@media (max-width: 760px) { .nav-toggle { display: none; } }

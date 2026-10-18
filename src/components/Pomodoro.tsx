@@ -74,6 +74,10 @@ export default function Pomodoro() {
   useEffect(() => { document.title = running ? `${mm}:${ss} · ${LABEL[s.mode]}` : 'Instar' }, [running, mm, ss, s.mode])
 
   return (
+    <>
+    <div className="pomo-mini" title={`${LABEL[s.mode]}${running ? ' (running)' : ''}`}>
+      <span className={running ? 'run' : ''}>{mm}:{ss}</span>
+    </div>
     <div className="pomo">
       <div className="pomo-modes">
         {(['focus', 'short', 'long'] as Mode[]).map(m => (
@@ -88,5 +92,6 @@ export default function Pomodoro() {
       </div>
       <div className="muted small">{s.sessions} session{s.sessions === 1 ? '' : 's'} today</div>
     </div>
+    </>
   )
 }
