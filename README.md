@@ -66,9 +66,19 @@ You need Node 20+ and a free Supabase project.
 
 Without a `.env` the app starts in **demo mode**: data is stored only in that browser, so you can try everything before connecting Supabase.
 
-### Using it on iPad and iPhone
+### Hosting on GitHub Pages (use it on iPad and iPhone)
 
-`localhost` only works on the computer running it. To use Instar on other devices, deploy the built site to any static host (Vercel and Cloudflare Pages both have free tiers): build with `npm run build`, publish the `dist/` folder, and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as build-time environment variables. Add the new web address to Supabase's **Redirect URLs** (and to your GitHub OAuth app if you use it), then open it in Safari and choose *Share → Add to Home Screen*.
+`localhost` only works on the computer running it. This repo includes a workflow (`.github/workflows/deploy.yml`) that builds the site and publishes it to GitHub Pages every time you push to `main`. Your data stays in Supabase, so the site itself holds nothing private.
+
+1. **Make the repo public** (*Settings → General → Danger Zone → Change visibility*). GitHub Pages needs a public repo on the free plan.
+2. **Turn on Pages:** *Settings → Pages → Build and deployment → Source: GitHub Actions*.
+3. **Add your two public keys:** *Settings → Secrets and variables → Actions → Variables → New repository variable*: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the project URL and the **publishable** key, the same values as in `.env`). They are baked in at build time; the publishable key is meant to be in the browser.
+4. **Deploy:** push to `main` (or *Actions → Deploy to GitHub Pages → Run workflow*). The site appears at `https://<your-username>.github.io/<repo-name>/`.
+5. **Allow the address in Supabase:** *Authentication → URL Configuration*: set **Site URL** to that address and add it to **Redirect URLs** (keep `http://localhost:5173` for development).
+6. **Optional, recommended:** after you have created your account, turn off *Allow new users to sign up* (*Authentication → Sign In / Providers*) so the public address cannot be used to create other accounts.
+7. **On iPad / iPhone:** open the address in Safari, then *Share → Add to Home Screen*. Sign in inside the home-screen app. If GitHub sign-in misbehaves there, use email and password.
+
+Any other static host (Vercel, Cloudflare Pages, Netlify) works too: build with `npm run build`, publish `dist/`, and set the same two environment variables.
 
 ## Importing your data
 

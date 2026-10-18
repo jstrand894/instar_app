@@ -41,7 +41,7 @@ function SignIn() {
     setMsg('')
     const { error } = await supabase!.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: window.location.origin + window.location.pathname },
     })
     if (error) setMsg(error.message)
   }
