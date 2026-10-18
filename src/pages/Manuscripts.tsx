@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { store } from '../lib/store'
+import { friendlyError } from '../lib/errors'
 import { ago, fmtWhen, nextOccurrence } from '../lib/util'
 import { STAGES, deadlineInfo, stageLabel } from '../lib/manuscript'
 import type { PaperLink, Project, ProjectEvent, ProjectUpdate, Stage } from '../types'
@@ -24,9 +25,10 @@ export default function Manuscripts() {
         store.events().catch(() => [] as ProjectEvent[]), store.projectPapers().catch(() => [] as PaperLink[]),
       ])
       setAll(p); setUpdates(u); setEvents(ev); setLinks(l)
-    } catch (e) { setError((e as Error).message) }
+    } catch (e) { setError(friendlyError(e)) }
   }, [])
   useEffect(() => { refresh() }, [refresh])
+  useEffect(() => { window.addEventListener('tm-data', refresh); return () => window.removeEventListener('tm-data', refresh) }, [refresh])
 
   const ms = useMemo(() => all.filter(p => p.type === 'manuscript'), [all])
   const latest = useMemo(() => {
@@ -56,11 +58,11 @@ export default function Manuscripts() {
       await store.patchProject(p.id, { stage: next })
       await store.addUpdate(p.id, `Stage: ${stageLabel(prev)} → ${stageLabel(next)}`)
       refresh()
-    } catch (e) { setError((e as Error).message); refresh() }
+    } catch (e) { setError(friendlyError(e)); refresh() }
   }
   async function togglePin(p: Project) {
     setAll(ps => ps.map(x => x.id === p.id ? { ...x, pinned: !p.pinned } : x))
-    try { await store.patchProject(p.id, { pinned: !p.pinned }) } catch (e) { setError((e as Error).message); refresh() }
+    try { await store.patchProject(p.id, { pinned: !p.pinned }) } catch (e) { setError(friendlyError(e)); refresh() }
   }
 
   return (

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { store } from '../lib/store'
+import { notify } from '../lib/notify'
+import { friendlyError } from '../lib/errors'
 import { ago, fmtWhen, nextOccurrence } from '../lib/util'
 import { STAGES, deadlineInfo, stageLabel } from '../lib/manuscript'
 import type { Area, Deadline, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
@@ -43,27 +45,28 @@ export default function ProjectDetail() {
       setProject(p)
       setEntries(us.filter(u => u.project_id === id).sort((a, b) => b.created_at.localeCompare(a.created_at)))
       if (!p) setError('Project not found.')
-    } catch (e) { setError((e as Error).message) }
+    } catch (e) { setError(friendlyError(e)) }
   }, [id])
   useEffect(() => { load() }, [load])
+  useEffect(() => { window.addEventListener('tm-data', load); return () => window.removeEventListener('tm-data', load) }, [load])
 
   async function patch(p: Partial<Project>) {
     if (!project) return
     setProject({ ...project, ...p })
-    try { await store.patchProject(project.id, p) } catch (e) { setError((e as Error).message) }
+    try { await store.patchProject(project.id, p) } catch (e) { setError(friendlyError(e)) }
   }
 
   async function addDeadline(e: React.FormEvent) {
     e.preventDefault()
     if (!project || !dlTitle.trim() || !dlDate) return
-    try { await store.addDeadline(project.id, dlTitle.trim(), dlDate); setDlTitle(''); load() } catch (er) { setError((er as Error).message) }
+    try { await store.addDeadline(project.id, dlTitle.trim(), dlDate); setDlTitle(''); load() } catch (er) { setError(friendlyError(er)) }
   }
 
   async function setStage(next: Stage) {
     if (!project) return
     const prev = project.stage ?? 'drafting'; if (prev === next) return
     await patch({ stage: next })
-    try { await store.addUpdate(project.id, `Stage: ${stageLabel(prev)} → ${stageLabel(next)}`); load() } catch (e) { setError((e as Error).message) }
+    try { await store.addUpdate(project.id, `Stage: ${stageLabel(prev)} → ${stageLabel(next)}`); load() } catch (e) { setError(friendlyError(e)) }
   }
 
   const linkedIds = new Set(links.map(l => l.paper_id))
@@ -74,7 +77,7 @@ export default function ProjectDetail() {
   async function add(e: React.FormEvent) {
     e.preventDefault()
     if (!text.trim() || !project) return
-    try { await store.addUpdate(project.id, text.trim(), kind); setText(''); load() } catch (er) { setError((er as Error).message) }
+    try { await store.addUpdate(project.id, text.trim(), kind); setText(''); load() } catch (er) { setError(friendlyError(er)) }
   }
 
   async function addEvent(e: React.FormEvent) {
@@ -82,14 +85,14 @@ export default function ProjectDetail() {
     if (!evTitle.trim() || !evDate || !evTime || !project) return
     const starts = new Date(`${evDate}T${evTime}`)
     if (isNaN(starts.getTime())) return
-    try { await store.addEvent(project.id, evTitle.trim(), starts.toISOString(), evWeekly ? 'weekly' : 'none'); setEvTitle(''); load() } catch (er) { setError((er as Error).message) }
+    try { await store.addEvent(project.id, evTitle.trim(), starts.toISOString(), evWeekly ? 'weekly' : 'none'); setEvTitle(''); load() } catch (er) { setError(friendlyError(er)) }
   }
 
   async function saveEntry(u: ProjectUpdate, body: string) {
     if (body === u.body) return
     if (!body.trim()) { setError('An entry can’t be empty. Use Delete to remove it.'); load(); return }
     setEntries(es => es.map(x => x.id === u.id ? { ...x, body } : x))
-    try { await store.patchUpdate(u.id, { body }) } catch (e) { setError((e as Error).message) }
+    try { await store.patchUpdate(u.id, { body }) } catch (e) { setError(friendlyError(e)) }
   }
 
   if (!project) return <div className="page">{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}<Link to="/projects" className="link">← Projects</Link></div>
@@ -157,7 +160,7 @@ export default function ProjectDetail() {
           {events.map(e => ({ e, when: nextOccurrence(e) })).filter(x => x.when).sort((a, b) => a.when!.getTime() - b.when!.getTime()).map(({ e, when }) => (
             <li key={e.id}>
               <b>{fmtWhen(when!)}</b><span>{e.title}{e.repeat === 'weekly' && <i className="rep"> ↻ weekly</i>}</span>
-              <button className="link small danger" onClick={async () => { await store.deleteEvent(e.id); load() }}>Remove</button>
+              <button className="link small danger" onClick={() => notify.undoable(`Removed "${e.title}"`, () => store.deleteEvent(e.id), [e.id])}>Remove</button>
             </li>
           ))}
           {!events.some(e => nextOccurrence(e)) && <li className="muted">Nothing scheduled.</li>}
@@ -178,7 +181,7 @@ export default function ProjectDetail() {
               <li key={d.id} className={d.done ? 'done-row' : ''}>
                 <label className="dl-check"><input type="checkbox" checked={d.done} onChange={async e => { await store.patchDeadline(d.id, { done: e.target.checked }); load() }} /> <span>{d.title}</span></label>
                 {info && !d.done ? <span className={`pill dl-${info.tone}`}>{info.text}</span> : <span className="muted small">{d.done ? 'Done' : ''}</span>}
-                <button className="link small danger" onClick={async () => { await store.deleteDeadline(d.id); load() }}>Remove</button>
+                <button className="link small danger" onClick={() => notify.undoable(`Removed deadline "${d.title}"`, () => store.deleteDeadline(d.id), [d.id])}>Remove</button>
               </li>
             )
           })}
@@ -233,8 +236,7 @@ export default function ProjectDetail() {
             <div className="tl-meta">
               <time title={fmt(u.created_at)}>{ago(u.created_at)} · {fmt(u.created_at)}</time>
               <button className="link small danger" onClick={async () => {
-                if (u.kind === 'note' && !confirm('Delete this note?')) return
-                await store.deleteUpdate(u.id); load()
+                notify.undoable(u.kind === 'note' ? 'Note deleted' : 'Update deleted', () => store.deleteUpdate(u.id), [u.id])
               }}>Delete</button>
             </div>
             {u.kind === 'note' ? (
@@ -254,8 +256,9 @@ export default function ProjectDetail() {
         {!entries.length && <li className="muted tl-empty">Nothing logged yet. Add the first update or note above.</li>}
       </ol>
 
-      <button className="link small danger" onClick={async () => {
-        if (confirm(`Delete "${project.name}" and everything in its timeline?`)) { await store.deleteProject(project.id); nav(project.type === 'manuscript' ? '/manuscripts' : '/projects') }
+      <button className="link small danger" onClick={() => {
+        notify.undoable(`Deleted "${project.name}"`, () => store.deleteProject(project.id), [project.id])
+        nav(project.type === 'manuscript' ? '/manuscripts' : '/projects')
       }}>Delete project</button>
     </div>
   )

@@ -1,3 +1,4 @@
+import { UserError } from './errors'
 /** Lookups against Crossref's free public API (works straight from the browser). */
 export interface DoiMeta { doi: string; title: string; authors: string; year: string; source: string }
 
@@ -38,10 +39,10 @@ function toMeta(w: CrWork): DoiMeta {
 
 export async function lookupDoi(raw: string): Promise<DoiMeta> {
   const doi = cleanDoi(raw)
-  if (!/^10\.\d{4,9}\/\S+$/.test(doi)) throw new Error('That does not look like a DOI (it should start with 10.)')
+  if (!/^10\.\d{4,9}\/\S+$/.test(doi)) throw new UserError('That does not look like a DOI (it should start with 10.)')
   const r = await crFetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`)
-  if (r.status === 404) throw new Error('Crossref has no record of that DOI.')
-  if (!r.ok) throw new Error(`Crossref lookup failed (HTTP ${r.status}).`)
+  if (r.status === 404) throw new UserError('Crossref has no record of that DOI.')
+  if (!r.ok) throw new UserError(`Crossref lookup failed (HTTP ${r.status}).`)
   return toMeta((await r.json()).message as CrWork)
 }
 
@@ -59,7 +60,7 @@ export function similarity(a: string, b: string): number {
 export async function searchByTitle(title: string, author = ''): Promise<Candidate[]> {
   const q = encodeURIComponent(`${title} ${author}`.trim())
   const r = await crFetch(`https://api.crossref.org/works?query.bibliographic=${q}&rows=5`)
-  if (!r.ok) throw new Error(r.status === 429 ? 'Crossref is rate-limiting requests right now. Wait a minute and try again.' : `Crossref search failed (HTTP ${r.status}).`)
+  if (!r.ok) throw new UserError(r.status === 429 ? 'Crossref is rate-limiting requests right now. Wait a minute and try again.' : `Crossref search failed (HTTP ${r.status}).`)
   const items = ((await r.json()).message.items ?? []) as CrWork[]
   return items.map(toMeta).map(m => ({ ...m, similarity: similarity(title, m.title) })).sort((a, b) => b.similarity - a.similarity)
 }

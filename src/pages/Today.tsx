@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { store } from '../lib/store'
+import { friendlyError } from '../lib/errors'
 import { ago, greeting, occurrencesBetween } from '../lib/util'
 import { firstName } from '../lib/user'
 import { deadlineInfo } from '../lib/manuscript'
@@ -33,9 +34,10 @@ export default function Today() {
     try {
       const [p, u, e, pa, dl] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.deadlines().catch(() => [] as Deadline[])])
       setProjects(p); setUpdates(u); setEvents(e); setPapers(pa); setDeadlines(dl)
-    } catch (er) { setError((er as Error).message) }
+    } catch (er) { setError(friendlyError(er)) }
   }, [])
   useEffect(() => { load() }, [load])
+  useEffect(() => { window.addEventListener('tm-data', load); return () => window.removeEventListener('tm-data', load) }, [load])
 
   const byId = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects])
   const live = projects.filter(p => p.status === 'active' && p.stage !== 'accepted')
@@ -81,11 +83,11 @@ export default function Today() {
   async function addDeadline(e: React.FormEvent) {
     e.preventDefault()
     if (!dlTitle.trim() || !dlDate || !dlProject) return
-    try { await store.addDeadline(dlProject, dlTitle.trim(), dlDate); setDlTitle(''); setDlOpen(false); load() } catch (er) { setError((er as Error).message) }
+    try { await store.addDeadline(dlProject, dlTitle.trim(), dlDate); setDlTitle(''); setDlOpen(false); load() } catch (er) { setError(friendlyError(er)) }
   }
   async function finish(id: string) {
     setDeadlines(ds => ds.map(d => d.id === id ? { ...d, done: true } : d))
-    try { await store.patchDeadline(id, { done: true }) } catch (er) { setError((er as Error).message); load() }
+    try { await store.patchDeadline(id, { done: true }) } catch (er) { setError(friendlyError(er)); load() }
   }
 
   async function log(e: React.FormEvent) {
@@ -94,7 +96,7 @@ export default function Today() {
     try {
       await store.addUpdate(target, text.trim()); setSaved(`Logged to ${byId.get(target)?.name}`); setText(''); load()
       setTimeout(() => setSaved(''), 3000)
-    } catch (er) { setError((er as Error).message) }
+    } catch (er) { setError(friendlyError(er)) }
   }
 
   const choices = [...live].sort((a, b) => (lastTouch.get(b.id) ?? '').localeCompare(lastTouch.get(a.id) ?? ''))
@@ -139,7 +141,7 @@ export default function Today() {
         <section className="card">
           <div className="card-head">
             <h2>Deadlines</h2>
-            <button className="plus" onClick={() => setDlOpen(!dlOpen)} aria-label="Add a deadline" aria-expanded={dlOpen} title="Add a deadline">{dlOpen ? '×' : '+'}</button>
+            <button className="plus" onClick={() => setDlOpen(!dlOpen)} aria-label="Add a deadline" aria-expanded={dlOpen} title="Add a deadline"><svg className={`plus-ico ${dlOpen ? 'open' : ''}`} width="16" height="16" viewBox="0 0 16 16" aria-hidden><path d="M8 2.5v11M2.5 8h11" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none" /></svg></button>
           </div>
           {dlOpen && (
             <form className="dl-form" onSubmit={addDeadline}>

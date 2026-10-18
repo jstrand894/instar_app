@@ -425,3 +425,30 @@ main { scrollbar-gutter: stable; }
   .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .brand { gap: 0; }
   .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .brand-text { max-width: 0; }
 }
+
+/* toasts */
+.toasts { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); display: grid; gap: .5rem; z-index: 200; width: min(460px, calc(100% - 24px)); pointer-events: none; }
+.toast { pointer-events: auto; background: var(--ink); color: var(--bg); border-radius: 12px; padding: .6rem .8rem; box-shadow: 0 10px 30px rgba(0,0,0,.3); animation: toast-in .22s cubic-bezier(.3,.9,.3,1); }
+.toast.error { background: #6b1a14; color: #ffe3df; } .toast.success { background: var(--accent); color: var(--accent-ink); }
+.toast-main { display: flex; align-items: center; gap: .7rem; } .toast-main > span { flex: 1; font-size: .92rem; }
+.toast button { background: none; border: 0; color: inherit; min-height: 0; padding: .2rem .4rem; border-radius: 6px; }
+.toast-act { font-weight: 700; text-decoration: underline; } .toast-more { opacity: .8; font-size: .8rem; } .toast-x { font-size: 1.2rem; line-height: 1; opacity: .7; }
+.toast button:hover { background: rgba(255,255,255,.14); border-color: transparent; }
+.toast-detail { display: block; margin-top: .4rem; font-size: .75rem; opacity: .85; word-break: break-word; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (max-width: 760px) { .toasts { bottom: calc(76px + env(safe-area-inset-bottom)); } }
+
+/* sync indicator */
+.sync { display: flex; align-items: center; gap: .55rem; padding: .35rem 0 .35rem 27px; font-size: .78rem; color: var(--muted); white-space: nowrap; }
+.sync-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--t-field); flex: none; }
+.sync-saving .sync-dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+.sync-offline .sync-dot { background: var(--t-code); } .sync-error .sync-dot { background: var(--danger); } .sync-error { color: var(--danger); }
+.sync-idle .sync-dot { background: var(--line); }
+@keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
+@media (min-width: 761px) {
+  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .sync span { opacity: 0; }
+  .sync span { transition: opacity .15s; }
+}
+@media (max-width: 760px) { .sync { display: none; } }
+.plus { padding: 0; }
+.plus-ico { display: block; transition: transform .2s; } .plus-ico.open { transform: rotate(45deg); }

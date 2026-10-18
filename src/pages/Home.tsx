@@ -4,6 +4,8 @@ import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, us
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { store } from '../lib/store'
+import { notify } from '../lib/notify'
+import { friendlyError, UserError } from '../lib/errors'
 import { ago, fmtWhen, nextOccurrence } from '../lib/util'
 import type { Area, Project, ProjectEvent, ProjectImport, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
 
@@ -36,22 +38,23 @@ export default function Home() {
     setError(''); setNote('')
     try {
       const data = JSON.parse(await file.text()) as { projects?: ProjectImport[] }
-      if (!Array.isArray(data.projects)) throw new Error('That file is not a project history export.')
+      if (!Array.isArray(data.projects)) throw new UserError('That file is not a project history export.')
       const n = data.projects.reduce((a, p) => a + p.entries.length, 0)
       if (!confirm(`Import ${data.projects.length} projects with ${n} dated entries? Anything already in the app is skipped.`)) return
       const r = await store.importProjects(data.projects)
       setNote(`Added ${r.projects} projects and ${r.entries} timeline entries.`)
       refresh()
-    } catch (e) { setError((e as Error).message) }
+    } catch (e) { setError(friendlyError(e)) }
   }
 
   const refresh = useCallback(async () => {
     try {
       const [p, u, ev] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[])])
       setProjects(p); setUpdates(u); setEvents(ev)
-    } catch (e) { setError((e as Error).message) }
+    } catch (e) { setError(friendlyError(e)) }
   }, [])
   useEffect(() => { refresh() }, [refresh])
+  useEffect(() => { window.addEventListener('tm-data', refresh); return () => window.removeEventListener('tm-data', refresh) }, [refresh])
 
   const byProject = useMemo(() => {
     const m = new Map<string, ProjectUpdate[]>()
@@ -100,18 +103,18 @@ export default function Home() {
     if (from < 0 || to < 0) return
     const next = arrayMove(full, from, to)
     setProjects(ps => ps.map(p => { const i = next.findIndex(n => n.id === p.id); return i >= 0 ? { ...p, sort_order: i } : p }))
-    try { await store.reorderProjects(next.map(p => p.id)) } catch (er) { setError((er as Error).message); refresh() }
+    try { await store.reorderProjects(next.map(p => p.id)) } catch (er) { setError(friendlyError(er)); refresh() }
   }
 
   async function resetOrder() {
     const ids = inArea.map(p => p.id)
     setProjects(ps => ps.map(p => ids.includes(p.id) ? { ...p, sort_order: null } : p))
-    try { await store.reorderProjects(ids, true) } catch (er) { setError((er as Error).message); refresh() }
+    try { await store.reorderProjects(ids, true) } catch (er) { setError(friendlyError(er)); refresh() }
   }
 
   async function togglePin(p: Project) {
     setProjects(ps => ps.map(x => x.id === p.id ? { ...x, pinned: !p.pinned } : x))
-    try { await store.patchProject(p.id, { pinned: !p.pinned }) } catch (er) { setError((er as Error).message); refresh() }
+    try { await store.patchProject(p.id, { pinned: !p.pinned }) } catch (er) { setError(friendlyError(er)); refresh() }
   }
 
   const renderGrid = (list: Project[], kind: Kind) => (
@@ -235,7 +238,7 @@ function ProjectCard({ project, updates, upcoming, onChange, onPin }: { project:
   }
   async function setStatus(status: ProjectStatus) { await store.patchProject(project.id, { status }); onChange() }
   async function remove() {
-    if (confirm(`Delete "${project.name}" and all its updates?`)) { await store.deleteProject(project.id); onChange() }
+    notify.undoable(`Deleted "${project.name}"`, () => store.deleteProject(project.id), [project.id])
   }
 
   return (

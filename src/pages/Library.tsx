@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { store } from '../lib/store'
+import { notify } from '../lib/notify'
+import { friendlyError } from '../lib/errors'
 import { parseReadingList } from '../lib/readingList'
 import { firstSurname, isConfident, lookupDoi, searchByTitle } from '../lib/crossref'
 import ReadingDashboard from '../components/ReadingDashboard'
@@ -37,9 +39,10 @@ export default function Library() {
     try {
       const [pp, pr, ls] = await Promise.all([store.papers(), store.projects(), store.projectPapers().catch(() => [] as PaperLink[])])
       setPapers(pp); setProjects(pr); setLinks(ls)
-    } catch (e) { setError((e as Error).message) }
+    } catch (e) { setError(friendlyError(e)) }
   }, [])
   useEffect(() => { refresh() }, [refresh])
+  useEffect(() => { window.addEventListener('tm-data', refresh); return () => window.removeEventListener('tm-data', refresh) }, [refresh])
 
   async function uploadPdfs(files: FileList | File[]) {
     setBusy(true); setError(''); setNote('')
@@ -49,13 +52,13 @@ export default function Library() {
         await store.addPaper(f, { title: f.name.replace(/\.pdf$/i, '').replace(/[_-]+/g, ' ') })
       }
       await refresh()
-    } catch (e) { setError((e as Error).message) }
+    } catch (e) { setError(friendlyError(e)) }
     setBusy(false)
   }
 
   async function attach(id: string, file: File) {
     setBusy(true); setError('')
-    try { await store.attachPdf(id, file); await refresh() } catch (e) { setError((e as Error).message) }
+    try { await store.attachPdf(id, file); await refresh() } catch (e) { setError(friendlyError(e)) }
     setBusy(false)
   }
 
@@ -68,7 +71,7 @@ export default function Library() {
       const r = await store.importPapers(items)
       setNote(`Imported ${r.added} papers${r.skipped ? `, skipped ${r.skipped} already in your library` : ''}.`)
       await refresh()
-    } catch (e) { setError((e as Error).message) }
+    } catch (e) { setError(friendlyError(e)) }
     setBusy(false)
   }
 
@@ -82,7 +85,7 @@ export default function Library() {
         await store.addPaper(null, { title: m.title || m.doi, authors: m.authors, year: m.year, source: m.source, doi: m.doi })
         setNote(`Added "${m.title}". Attach the PDF from its card when you have it.`); setDoiText(''); setDoiOpen(false); await refresh()
       }
-    } catch (er) { setError((er as Error).message) }
+    } catch (er) { setError(friendlyError(er)) }
     setBusy(false)
   }
 
@@ -113,7 +116,7 @@ export default function Library() {
 
   async function setPaperStatus(p: Paper, s: PaperStatus) {
     setPapers(ps => ps.map(x => x.id === p.id ? { ...x, status: s } : x))
-    try { await store.patchPaper(p.id, { status: s }) } catch (e) { setError((e as Error).message) }
+    try { await store.patchPaper(p.id, { status: s }) } catch (e) { setError(friendlyError(e)) }
   }
 
   const categories = useMemo(() => [...new Set(papers.map(p => p.category).filter(Boolean))], [papers])
@@ -238,7 +241,7 @@ export default function Library() {
                     : <a className="link small" href={`https://scholar.google.com/scholar?q=${encodeURIComponent(p.title)}`} target="_blank" rel="noreferrer">Find online</a>}
                   <span className="spacer" />
                   <button className="link small danger" onClick={async () => {
-                    if (confirm(`Delete "${p.title}", including its notes and highlights?`)) { await store.deletePaper(p.id); refresh() }
+                    notify.undoable(`Deleted "${p.title}"`, () => store.deletePaper(p.id), [p.id])
                   }}>Delete</button>
                 </div>
               </div>

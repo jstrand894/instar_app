@@ -1,3 +1,4 @@
+import { UserError } from './errors'
 import { readSheet } from 'read-excel-file/browser'
 import type { PaperInput, PaperStatus } from '../types'
 
@@ -23,7 +24,7 @@ export async function parseReadingList(file: File): Promise<PaperInput[]> {
     read: col('read', 'status'), doi: col('doi'), category: col('category'), priority: col('priority'),
     authors: col('authors', 'author'), year: col('year'), title: col('title'), source: col('source'), why: col('why'),
   }
-  if (c.title < 0) throw new Error('Could not find a "Title" column in the first row.')
+  if (c.title < 0) throw new UserError('Could not find a "Title" column in the first row.')
   const get = (r: unknown[], i: number) => (i >= 0 ? text(r[i]) : '')
   return rows.slice(1).filter(r => get(r, c.title)).map(r => ({
     title: get(r, c.title),

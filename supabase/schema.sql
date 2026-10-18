@@ -112,6 +112,32 @@ create table if not exists project_deadlines (
 );
 alter table project_deadlines enable row level security;
 
+-- added later: tasks, focus-time entries and tags (safe to re-run)
+create table if not exists project_tasks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  project_id uuid not null references projects on delete cascade,
+  title text not null,
+  done boolean not null default false,
+  due_on date,
+  done_at timestamptz,
+  created_at timestamptz not null default now()
+);
+alter table project_tasks enable row level security;
+
+create table if not exists time_entries (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  project_id uuid references projects on delete set null,
+  minutes int not null,
+  started_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+alter table time_entries enable row level security;
+
+alter table projects add column if not exists tags text[] not null default '{}';
+alter table papers add column if not exists tags text[] not null default '{}';
+
 alter table projects enable row level security;
 alter table project_updates enable row level security;
 alter table papers enable row level security;
@@ -121,7 +147,7 @@ alter table ink enable row level security;
 do $$
 declare t text;
 begin
-  foreach t in array array['projects','project_updates','project_events','project_papers','project_deadlines','papers','highlights','ink'] loop
+  foreach t in array array['projects','project_updates','project_events','project_papers','project_deadlines','project_tasks','time_entries','papers','highlights','ink'] loop
     execute format('drop policy if exists "own rows" on %I', t);
     execute format('create policy "own rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
   end loop;

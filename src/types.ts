@@ -17,6 +17,7 @@ export interface Project {
   journal?: string
   coauthors?: string
   deadline?: string | null
+  tags?: string[]
   description: string
   notes: string
   created_at: string
@@ -50,6 +51,7 @@ export interface Paper {
   source: string
   why: string
   read_at?: string | null
+  tags?: string[]
   created_at: string
 }
 export interface Rect { x: number; y: number; w: number; h: number }
@@ -80,3 +82,6 @@ export interface ProjectImport {
 export interface PaperLink { project_id: string; paper_id: string; created_at: string }
 
 export interface Deadline { id: string; project_id: string; title: string; due_on: string; done: boolean; created_at: string }
+
+export interface ProjectTask { id: string; project_id: string; title: string; done: boolean; due_on: string | null; done_at?: string | null; created_at: string }
+export interface TimeEntry { id: string; project_id: string | null; minutes: number; started_at: string; created_at: string }

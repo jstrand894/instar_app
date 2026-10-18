@@ -4,6 +4,8 @@ import AuthGate from './components/Auth'
 import Pomodoro from './components/Pomodoro'
 import Account from './components/Account'
 import Logo from './components/Logo'
+import Toasts from './components/Toasts'
+import SyncStatus from './components/SyncStatus'
 import Today from './pages/Today'
 import Home from './pages/Home'
 import Manuscripts from './pages/Manuscripts'
@@ -45,6 +47,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
         <NavLink to="/manuscripts"><Icon d={ICONS.manuscripts} /><span>Manuscripts</span></NavLink>
         <NavLink to="/library"><Icon d={ICONS.papers} /><span>Reading</span></NavLink>
         <div className="spacer" />
+        <SyncStatus />
         {desktop && <Pomodoro />}
         <button className="nav-toggle" onClick={toggleNav} aria-pressed={navMode === 'pinned'}
           title={navMode === 'pinned' ? 'Let the sidebar slide away when not in use' : 'Keep the sidebar open'}>
@@ -68,6 +71,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
           <Route path="/read/:id" element={<Reader />} />
         </Routes>
       </main>
+      <Toasts />
     </div>
   )
 }

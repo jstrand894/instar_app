@@ -6,6 +6,8 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import 'pdfjs-dist/web/pdf_viewer.css'
 import PageView, { HL_COLORS, type Tool } from '../components/PageView'
 import { store } from '../lib/store'
+import { notify } from '../lib/notify'
+import { friendlyError } from '../lib/errors'
 import { cleanDoi, firstSurname, lookupDoi, searchByTitle, type Candidate } from '../lib/crossref'
 import type { Highlight, HighlightColor, Paper, PaperLink, PaperStatus, Project, Rect, Stroke } from '../types'
 
@@ -59,7 +61,7 @@ export default function Reader() {
         if (dead) return
         setDoc(d); setSizes(pages); setHighlights(hl)
         setInk(Object.fromEntries(inkRows.map(r => [r.page, r.strokes])))
-      } catch (e) { setError((e as Error).message) }
+      } catch (e) { setError(friendlyError(e)) }
     })()
     return () => { dead = true }
   }, [id])
@@ -135,22 +137,23 @@ export default function Reader() {
   async function linkProject(pid: string) {
     if (!paper || !pid) return
     setLinks(ls => [...ls, { project_id: pid, paper_id: paper.id, created_at: new Date().toISOString() }])
-    try { await store.linkPaper(pid, paper.id) } catch (e) { setError((e as Error).message) }
+    try { await store.linkPaper(pid, paper.id) } catch (e) { setError(friendlyError(e)) }
   }
   async function unlinkProject(pid: string) {
     if (!paper) return
     setLinks(ls => ls.filter(l => l.project_id !== pid))
-    try { await store.unlinkPaper(pid, paper.id) } catch (e) { setError((e as Error).message) }
+    try { await store.unlinkPaper(pid, paper.id) } catch (e) { setError(friendlyError(e)) }
   }
   async function attachPdf(file: File) {
     if (!paper) return
-    try { await store.attachPdf(paper.id, file); window.location.reload() } catch (e) { setError((e as Error).message) }
+    try { await store.attachPdf(paper.id, file); window.location.reload() } catch (e) { setError(friendlyError(e)) }
   }
   async function patchHL(hid: string, patch: Partial<Highlight>) {
     setHighlights(hs => hs.map(h => h.id === hid ? { ...h, ...patch } : h)); await store.patchHighlight(hid, patch)
   }
   async function delHL(hid: string) {
-    setHighlights(hs => hs.filter(h => h.id !== hid)); await store.deleteHighlight(hid)
+    setHighlights(hs => hs.filter(h => h.id !== hid))
+    notify.undoable('Highlight deleted', () => store.deleteHighlight(hid), [hid])
   }
   function jump(h: Highlight) {
     document.getElementById(`hl-${h.id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
