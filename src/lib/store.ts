@@ -88,6 +88,9 @@ const local = {
     d.updates = d.updates.filter(u => u.project_id !== id)
     d.events = d.events.filter(e => e.project_id !== id); save(d)
   },
+  async reorderProjects(ids: string[], reset = false) {
+    const d = load(); d.projects = d.projects.map(p => { const i = ids.indexOf(p.id); return i < 0 ? p : { ...p, sort_order: reset ? null : i } }); save(d)
+  },
   async events() { return load().events },
   async addEvent(project_id: string, title: string, starts_at: string, repeat: ProjectEvent['repeat']) {
     const d = load(); const row: ProjectEvent = { id: uid(), project_id, title, starts_at, repeat, created_at: now() }
@@ -183,6 +186,9 @@ const remote: typeof local = {
     return { projects, entries }
   },
   async deleteProject(id) { ok(await sb().from('projects').delete().eq('id', id)) },
+  async reorderProjects(ids, reset = false) {
+    await Promise.all(ids.map(async (id, i) => ok(await sb().from('projects').update({ sort_order: reset ? null : i }).eq('id', id))))
+  },
   async events() { return ok(await sb().from('project_events').select('*').order('starts_at')) },
   async addEvent(project_id, title, starts_at, repeat) { return ok(await sb().from('project_events').insert({ project_id, title, starts_at, repeat }).select().single()) },
   async deleteEvent(id) { ok(await sb().from('project_events').delete().eq('id', id)) },

@@ -10,6 +10,8 @@ export interface Project {
   type: ProjectType
   status: ProjectStatus
   area: Area
+  pinned?: boolean
+  sort_order?: number | null
   description: string
   notes: string
   created_at: string

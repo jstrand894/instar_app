@@ -73,6 +73,7 @@ export default function ProjectDetail() {
     <div className="page detail">
       <Link to="/" className="link back-link">← Projects</Link>
       <header className="detail-head">
+        <button className={`star big ${project.pinned ? 'on' : ''}`} onClick={() => patch({ pinned: !project.pinned })} aria-pressed={!!project.pinned} title={project.pinned ? 'Unpin' : 'Pin to top'}>{project.pinned ? '★' : '☆'}</button>
         <input className="title-input" defaultValue={project.name} aria-label="Project name"
           onBlur={e => e.target.value.trim() && e.target.value !== project.name && patch({ name: e.target.value.trim() })} />
         <div className="row wrap">

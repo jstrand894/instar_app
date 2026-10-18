@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { store } from '../lib/store'
 import { ago, fmtWhen, nextOccurrence } from '../lib/util'
 import type { Area, Project, ProjectEvent, ProjectImport, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
@@ -70,9 +73,54 @@ export default function Home() {
   const areaCount = (a: Area) => projects.filter(p => (p.area ?? 'work') === a && p.status !== 'done').length
   const lastActivity = (p: Project) => byProject.get(p.id)?.[0]?.created_at ?? p.created_at
 
-  const visible = inArea
-    .filter(p => (filter === 'all' || p.type === filter) && (showDone || p.status !== 'done'))
-    .sort((a, b) => lastActivity(b).localeCompare(lastActivity(a)))
+  const rank = (p: Project) => p.sort_order ?? Number.MAX_SAFE_INTEGER
+  const cmp = (a: Project, b: Project) => rank(a) - rank(b) || lastActivity(b).localeCompare(lastActivity(a))
+  const group = (pinned: boolean) => inArea.filter(p => !!p.pinned === pinned).sort(cmp)
+  const show = (p: Project) => (filter === 'all' || p.type === filter) && (showDone || p.status !== 'done')
+  const pinnedList = group(true).filter(show)
+  const otherList = group(false).filter(show)
+  const visible = [...pinnedList, ...otherList]
+  const hasManualOrder = inArea.some(p => p.sort_order != null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  async function onDragEnd(pinned: boolean, e: DragEndEvent) {
+    const { active, over } = e
+    if (!over || active.id === over.id) return
+    const full = group(pinned)
+    const from = full.findIndex(p => p.id === active.id), to = full.findIndex(p => p.id === over.id)
+    if (from < 0 || to < 0) return
+    const next = arrayMove(full, from, to)
+    setProjects(ps => ps.map(p => { const i = next.findIndex(n => n.id === p.id); return i >= 0 ? { ...p, sort_order: i } : p }))
+    try { await store.reorderProjects(next.map(p => p.id)) } catch (er) { setError((er as Error).message); refresh() }
+  }
+
+  async function resetOrder() {
+    const ids = inArea.map(p => p.id)
+    setProjects(ps => ps.map(p => ids.includes(p.id) ? { ...p, sort_order: null } : p))
+    try { await store.reorderProjects(ids, true) } catch (er) { setError((er as Error).message); refresh() }
+  }
+
+  async function togglePin(p: Project) {
+    setProjects(ps => ps.map(x => x.id === p.id ? { ...x, pinned: !p.pinned } : x))
+    try { await store.patchProject(p.id, { pinned: !p.pinned }) } catch (er) { setError((er as Error).message); refresh() }
+  }
+
+  const renderGrid = (list: Project[], pinned: boolean) => (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={e => onDragEnd(pinned, e)}>
+      <SortableContext items={list.map(p => p.id)} strategy={rectSortingStrategy}>
+        <div className="grid">
+          {list.map(p => (
+            <ProjectCard key={p.id} project={p} updates={byProject.get(p.id) ?? []} upcoming={upcomingByProject.get(p.id) ?? []}
+              onChange={refresh} onPin={() => togglePin(p)} />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  )
 
   return (
     <div className="page">
@@ -109,11 +157,21 @@ export default function Home() {
       {note && <p className="ok">{note}</p>}
       {adding && <NewProject area={area} onClose={() => setAdding(false)} onCreated={() => { setAdding(false); refresh() }} />}
 
-      <div className="grid">
-        {visible.map(p => (
-          <ProjectCard key={p.id} project={p} updates={byProject.get(p.id) ?? []} upcoming={upcomingByProject.get(p.id) ?? []} onChange={refresh} />
-        ))}
-      </div>
+      {pinnedList.length > 0 && (
+        <section className="sect">
+          <h2 className="sect-title"><span className="pin-ico">★</span> Pinned</h2>
+          {renderGrid(pinnedList, true)}
+        </section>
+      )}
+      {otherList.length > 0 && (
+        <section className="sect">
+          {pinnedList.length > 0 && <h2 className="sect-title">Everything else</h2>}
+          {renderGrid(otherList, false)}
+        </section>
+      )}
+      {hasManualOrder && visible.length > 1 && (
+        <button className="link small" onClick={resetOrder}>Reset to recent-activity order</button>
+      )}
       {!visible.length && !adding && (
         <div className="empty-box">
           <h2>{inArea.length ? 'Nothing matches this filter' : `No ${area} projects yet`}</h2>
@@ -150,8 +208,10 @@ function NewProject({ area, onClose, onCreated }: { area: Area; onClose: () => v
   )
 }
 
-function ProjectCard({ project, updates, upcoming, onChange }: { project: Project; updates: ProjectUpdate[]; upcoming: { id: string; title: string; when: Date; weekly: boolean }[]; onChange: () => void }) {
+function ProjectCard({ project, updates, upcoming, onChange, onPin }: { project: Project; updates: ProjectUpdate[]; upcoming: { id: string; title: string; when: Date; weekly: boolean }[]; onChange: () => void; onPin: () => void }) {
   const nav = useNavigate()
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: project.id })
+  const dragStyle = { transform: CSS.Transform.toString(transform), transition }
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)
   const shown = open ? updates : updates.slice(0, 3)
@@ -167,10 +227,14 @@ function ProjectCard({ project, updates, upcoming, onChange }: { project: Projec
   }
 
   return (
-    <article className={`card project clickable t-${project.type}`}
+    <article ref={setNodeRef} style={dragStyle} className={`card project clickable t-${project.type} ${isDragging ? 'dragging-card' : ''}`}
       onClick={e => { if (!(e.target as HTMLElement).closest('select, input, button, a, textarea, form')) nav(`/project/${project.id}`) }}>
       <div className="project-head">
         <span className="tag"><i className="dotc" />{TYPES.find(t => t.id === project.type)?.label}</span>
+        <span className="card-tools">
+          <button className={`star ${project.pinned ? 'on' : ''}`} onClick={onPin} aria-pressed={!!project.pinned} title={project.pinned ? 'Unpin' : 'Pin to top'} aria-label={project.pinned ? 'Unpin project' : 'Pin project to top'}>{project.pinned ? '★' : '☆'}</button>
+          <button className="grip" ref={setActivatorNodeRef} {...attributes} {...listeners} title="Drag to reorder" aria-label="Drag to reorder">⠿</button>
+        </span>
         <select className="status" value={project.status} onChange={e => setStatus(e.target.value as ProjectStatus)} aria-label="Status">
           {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>

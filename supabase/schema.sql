@@ -79,6 +79,10 @@ create table if not exists project_events (
 );
 alter table project_events enable row level security;
 
+-- added later: pinned projects and manual ordering (safe to re-run)
+alter table projects add column if not exists pinned boolean not null default false;
+alter table projects add column if not exists sort_order int;
+
 alter table projects enable row level security;
 alter table project_updates enable row level security;
 alter table papers enable row level security;
