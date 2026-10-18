@@ -406,3 +406,13 @@ main { scrollbar-gutter: stable; }
 }
 .nav svg { flex: none; }
 @media (max-width: 760px) { .nav-toggle { display: none; } }
+
+/* timer ring */
+.ring { position: relative; display: inline-grid; place-items: center; flex: none; }
+.ring svg { display: block; }
+.ring-arc { transition: stroke-dashoffset .5s linear; }
+.ring-time { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.pomo-ring { display: grid; place-items: center; padding: .2rem 0; }
+.pomo-mini { display: none; place-items: center; padding: .4rem 0; }
+.pomo-mini .ring-time { font-size: .62rem !important; }
+@media (min-width: 761px) { .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .pomo-mini { display: grid; } }

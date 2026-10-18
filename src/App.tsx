@@ -43,8 +43,8 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
         <NavLink to="/projects"><Icon d={ICONS.projects} /><span>Projects</span></NavLink>
         <NavLink to="/manuscripts"><Icon d={ICONS.manuscripts} /><span>Manuscripts</span></NavLink>
         <NavLink to="/library"><Icon d={ICONS.papers} /><span>Reading</span></NavLink>
-        {desktop && <Pomodoro />}
         <div className="spacer" />
+        {desktop && <Pomodoro />}
         <button className="nav-toggle" onClick={toggleNav} aria-pressed={navMode === 'pinned'}
           title={navMode === 'pinned' ? 'Let the sidebar slide away when not in use' : 'Keep the sidebar open'}>
           <Icon d={ICONS.pin} /><span>{navMode === 'pinned' ? 'Auto-hide sidebar' : 'Pin sidebar open'}</span>

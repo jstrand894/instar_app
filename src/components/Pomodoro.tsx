@@ -27,6 +27,22 @@ function chime() {
   } catch { /* ignore */ }
 }
 
+/** A circular progress ring that fills as the session runs, with the time inside. */
+function Ring({ pct, label, size, running, mode }: { pct: number; label: string; size: number; running: boolean; mode: Mode }) {
+  const r = 44, c = 2 * Math.PI * r
+  const color = mode === 'focus' ? 'var(--accent)' : 'var(--t-field)'
+  return (
+    <div className={`ring ${running ? 'run' : ''}`} style={{ width: size, height: size }}>
+      <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden>
+        <circle cx="50" cy="50" r={r} fill="none" stroke="var(--chip)" strokeWidth="9" />
+        <circle cx="50" cy="50" r={r} fill="none" stroke={color} strokeWidth="9" strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(1, Math.max(0, pct)))} transform="rotate(-90 50 50)" className="ring-arc" />
+      </svg>
+      <span className="ring-time" style={{ fontSize: size * 0.22 }}>{label}</span>
+    </div>
+  )
+}
+
 export default function Pomodoro() {
   const [s, setS] = useState<State>(read)
   const [, tick] = useState(0)
@@ -76,7 +92,7 @@ export default function Pomodoro() {
   return (
     <>
     <div className="pomo-mini" title={`${LABEL[s.mode]}${running ? ' (running)' : ''}`}>
-      <span className={running ? 'run' : ''}>{mm}:{ss}</span>
+      <Ring pct={pct} label={`${mm}:${ss}`} size={46} running={running} mode={s.mode} />
     </div>
     <div className="pomo">
       <div className="pomo-modes">
@@ -84,8 +100,7 @@ export default function Pomodoro() {
           <button key={m} className={m === s.mode ? 'on' : ''} onClick={() => setS(fresh(m, s.sessions))}>{LABEL[m]}</button>
         ))}
       </div>
-      <div className="pomo-time">{mm}:{ss}</div>
-      <div className="pomo-bar"><i style={{ width: `${pct * 100}%` }} /></div>
+      <div className="pomo-ring"><Ring pct={pct} label={`${mm}:${ss}`} size={132} running={running} mode={s.mode} /></div>
       <div className="pomo-actions">
         <button className="primary" onClick={toggle}>{running ? 'Pause' : 'Start'}</button>
         <button onClick={() => setS(fresh(s.mode, s.sessions))}>Reset</button>
