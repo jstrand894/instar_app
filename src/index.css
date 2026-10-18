@@ -392,17 +392,17 @@ main { scrollbar-gutter: stable; }
   .shell.nav-pinned { --nav-w: 220px; }
   .shell .nav { position: fixed; top: 0; left: 0; bottom: 0; width: var(--nav-w); z-index: 40; overflow-x: hidden; overflow-y: auto; white-space: nowrap; padding: 1rem 8px; transition: width .22s cubic-bezier(.3,.9,.3,1), box-shadow .22s; }
   .shell main { margin-left: var(--nav-w); height: 100%; transition: margin-left .22s cubic-bezier(.3,.9,.3,1); }
-  .shell.nav-auto .nav:hover, .shell.nav-auto .nav:focus-within { width: 220px; box-shadow: 10px 0 36px rgba(0,0,0,.2); }
+  .shell.nav-auto .nav:hover, .shell.nav-auto .nav:has(:focus-visible) { width: 220px; box-shadow: 10px 0 36px rgba(0,0,0,.2); }
   .nav a, .nav .account-btn, .nav-toggle { padding-left: 15px; padding-right: 12px; }
   .brand { padding-left: 2px; }
   .brand-text, .nav a span, .account-btn span, .nav-toggle span { transition: opacity .15s; }
   /* collapsed rail: icons only, a compact timer, no full timer card */
-  .shell.nav-auto .nav:not(:hover):not(:focus-within) .brand-text,
-  .shell.nav-auto .nav:not(:hover):not(:focus-within) a span,
-  .shell.nav-auto .nav:not(:hover):not(:focus-within) .account-btn span,
-  .shell.nav-auto .nav:not(:hover):not(:focus-within) .nav-toggle span { opacity: 0; }
-  .shell.nav-auto .nav:not(:hover):not(:focus-within) .pomo { display: none; }
-  .shell.nav-auto .nav:not(:hover):not(:focus-within) .pomo-mini { display: block; }
+  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .brand-text,
+  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) a span,
+  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .account-btn span,
+  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .nav-toggle span { opacity: 0; }
+  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .pomo { display: none; }
+  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .pomo-mini { display: block; }
 }
 .nav svg { flex: none; }
 @media (max-width: 760px) { .nav-toggle { display: none; } }
