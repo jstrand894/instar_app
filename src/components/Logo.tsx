@@ -3,6 +3,6 @@ const MARKUP = '<g transform="rotate(-7 256 256)">    <rect x="140" y="84" width
 
 export default function Logo({ size = 24, className = '' }: { size?: number; className?: string }) {
   return (
-    <svg className={`logo ${className}`} width={size} height={size} viewBox="0 0 512 512" role="img" aria-label="Instar" dangerouslySetInnerHTML={{ __html: MARKUP }} />
+    <svg className={`logo ${className}`} style={{ width: Math.round(size * 310 / 392), height: size }} viewBox="98 58 310 392" role="img" aria-label="Instar" dangerouslySetInnerHTML={{ __html: MARKUP }} />
   )
 }

@@ -1,13 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" color="#1d1d1f"><style>:root{color:#1d1d1f}@media (prefers-color-scheme:dark){:root{color:#ececee}}</style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" color="#1d1d1f">
+  <rect width="512" height="512" rx="104" fill="#f8f6ef"/>
+  <g transform="translate(256 256) scale(1.12) translate(-256 -256)">
   <g transform="rotate(-7 256 256)">
-    <rect x="112" y="64" width="288" height="384" rx="44" fill="none" stroke="currentColor" stroke-width="30"/>
-    <g transform="translate(256 288) rotate(14) scale(.84)">
-    <g fill="currentColor" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
-      <g fill="none"><path d="M-30 -62L-74 -78L-94 -56"/><path d="M-56 30L-74 26L-94 52"/><path d="M-56 88L-74 106L-94 134"/><path d="M30 -62L74 -78L94 -56"/><path d="M56 30L74 26L94 52"/><path d="M56 88L74 106L94 134"/><path d="M0 -134C3 -158 8 -184 10 -204" stroke-width="23"/></g>
+    <rect x="140" y="84" width="236" height="344" rx="32" fill="none" stroke="currentColor" stroke-width="16"/>
+    <g stroke="currentColor" stroke-width="15" stroke-linecap="round"><path d="M118 150H166M118 256H166M118 362H166"/></g>
+    <g transform="translate(270 284) rotate(14) scale(.64)">
+    <g fill="currentColor" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+      <g fill="none"><path d="M-30 -62L-74 -78L-94 -56"/><path d="M-56 30L-74 26L-94 52"/><path d="M-56 88L-74 106L-94 134"/><path d="M30 -62L74 -78L94 -56"/><path d="M56 30L74 26L94 52"/><path d="M56 88L74 106L94 134"/><path d="M-8 -176L-36 -188L-44 -214"/><ellipse cx="-45" cy="-221" rx="6.5" ry="10.5" transform="rotate(-12 -45 -221)" stroke="none"/><path d="M8 -176L36 -188L44 -214"/><ellipse cx="45" cy="-221" rx="6.5" ry="10.5" transform="rotate(12 45 -221)" stroke="none"/><path d="M0 -134C3 -158 8 -184 10 -204" stroke-width="19"/></g>
       <ellipse cx="0" cy="50" rx="62" ry="76" stroke="none"/>
       <ellipse cx="0" cy="-62" rx="34" ry="28" stroke="none"/>
       <circle cx="0" cy="-116" r="21" stroke="none"/>
     </g>
     </g>
+  </g>
   </g>
 </svg>

@@ -39,7 +39,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
   return (
     <div className={`shell nav-${navMode} ${reading ? 'in-reader' : ''}`}>
       <nav className="nav">
-        <div className="brand"><Logo size={60} /><span className="brand-text">Instar</span></div>
+        <div className="brand"><Logo size={92} /><span className="brand-text">Instar</span></div>
         <NavLink to="/" end><Icon d={ICONS.today} /><span>Today</span></NavLink>
         <NavLink to="/projects"><Icon d={ICONS.projects} /><span>Projects</span></NavLink>
         <NavLink to="/manuscripts"><Icon d={ICONS.manuscripts} /><span>Manuscripts</span></NavLink>
