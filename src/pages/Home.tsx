@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { store } from '../lib/store'
 import { ago } from '../lib/util'
 import type { Project, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
@@ -108,6 +108,7 @@ function NewProject({ onClose, onCreated }: { onClose: () => void; onCreated: ()
 }
 
 function ProjectCard({ project, updates, onChange }: { project: Project; updates: ProjectUpdate[]; onChange: () => void }) {
+  const nav = useNavigate()
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)
   const shown = open ? updates : updates.slice(0, 3)
@@ -123,7 +124,8 @@ function ProjectCard({ project, updates, onChange }: { project: Project; updates
   }
 
   return (
-    <article className={`card project t-${project.type}`}>
+    <article className={`card project clickable t-${project.type}`}
+      onClick={e => { if (!(e.target as HTMLElement).closest('select, input, button, a, textarea, form')) nav(`/project/${project.id}`) }}>
       <div className="project-head">
         <span className="tag"><i className="dotc" />{TYPES.find(t => t.id === project.type)?.label}</span>
         <select className="status" value={project.status} onChange={e => setStatus(e.target.value as ProjectStatus)} aria-label="Status">

@@ -188,3 +188,4 @@ h1 { font-size: 1.75rem; letter-spacing: -.02em; }
 @media (max-width: 860px) { .detail-cols { grid-template-columns: 1fr; } .notes-area { min-height: 220px; } }
 a.link { color: var(--accent); }
 @media (max-width: 760px) { .title-input { font-size: 1.25rem; } }
+.clickable { cursor: pointer; }
