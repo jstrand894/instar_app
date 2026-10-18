@@ -53,3 +53,8 @@ export interface Stroke {
 export interface InkPage { paper_id: string; page: number; strokes: Stroke[] }
 
 export type PaperInput = Partial<Omit<Paper, 'id' | 'created_at' | 'file_path'>> & { title: string }
+
+export interface ProjectImport {
+  name: string; type: ProjectType; status: ProjectStatus; description: string
+  entries: { kind: 'update' | 'note'; body: string; date: string }[]
+}

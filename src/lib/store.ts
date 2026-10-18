@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Highlight, InkPage, Paper, PaperInput, Project, ProjectUpdate, Stroke,
+  Highlight, InkPage, Paper, PaperInput, Project, ProjectImport, ProjectUpdate, Stroke,
 } from '../types'
 
 const blankPaper = { authors: '', year: '', status: 'to-read', notes: '', doi: '', category: '', priority: '', source: '', why: '' } as const
@@ -16,6 +16,8 @@ const fresh = (inputs: PaperInput[], existing: Paper[]) => {
 /* One API, two backends: Supabase when configured, otherwise a localStorage
    demo so the UI works before keys are added. */
 
+const sameDay = (a: string, b: string) => a.slice(0, 10) === b.slice(0, 10)
+const earliest = (p: ProjectImport) => p.entries.map(e => new Date(e.date).toISOString()).sort()[0] ?? new Date().toISOString()
 const uid = () => crypto.randomUUID()
 const now = () => new Date().toISOString()
 
@@ -64,6 +66,22 @@ const local = {
   },
   async patchProject(id: string, patch: Partial<Project>) {
     const d = load(); d.projects = d.projects.map(p => p.id === id ? { ...p, ...patch } : p); save(d)
+  },
+  async importProjects(items: ProjectImport[]) {
+    const d = load(); let projects = 0, entries = 0
+    for (const it of items) {
+      let proj = d.projects.find(p => p.name.toLowerCase() === it.name.toLowerCase())
+      if (!proj) {
+        proj = { id: uid(), name: it.name, type: it.type, status: it.status, description: it.description, notes: '', created_at: earliest(it) }
+        d.projects.push(proj); projects++
+      }
+      for (const e of it.entries) {
+        const at = new Date(e.date).toISOString()
+        if (d.updates.some(u => u.project_id === proj!.id && u.body === e.body && sameDay(u.created_at, at))) continue
+        d.updates.push({ id: uid(), project_id: proj.id, kind: e.kind, body: e.body, created_at: at }); entries++
+      }
+    }
+    save(d); return { projects, entries }
   },
   async deleteProject(id: string) {
     const d = load(); d.projects = d.projects.filter(p => p.id !== id)
@@ -140,6 +158,23 @@ const remote: typeof local = {
   async updates() { return ok(await sb().from('project_updates').select('*').order('created_at', { ascending: false }).limit(500)) },
   async addProject(p) { return ok(await sb().from('projects').insert(p).select().single()) },
   async patchProject(id, patch) { ok(await sb().from('projects').update(patch).eq('id', id)) },
+  async importProjects(items) {
+    const existing = ok(await sb().from('projects').select('id,name')) as Pick<Project, 'id' | 'name'>[]
+    const entries0 = ok(await sb().from('project_updates').select('project_id,body,created_at')) as ProjectUpdate[]
+    let projects = 0, entries = 0
+    for (const it of items) {
+      let id = existing.find(p => p.name.toLowerCase() === it.name.toLowerCase())?.id
+      if (!id) {
+        const row = ok(await sb().from('projects').insert({ name: it.name, type: it.type, status: it.status, description: it.description, created_at: earliest(it) }).select('id').single()) as { id: string }
+        id = row.id; projects++
+      }
+      const rows = it.entries
+        .map(e => ({ project_id: id!, kind: e.kind, body: e.body, created_at: new Date(e.date).toISOString() }))
+        .filter(r => !entries0.some(u => u.project_id === id && u.body === r.body && sameDay(u.created_at, r.created_at)))
+      if (rows.length) { ok(await sb().from('project_updates').insert(rows)); entries += rows.length }
+    }
+    return { projects, entries }
+  },
   async deleteProject(id) { ok(await sb().from('projects').delete().eq('id', id)) },
   async addUpdate(project_id, body, kind = 'update') { return ok(await sb().from('project_updates').insert({ project_id, body, kind }).select().single()) },
   async patchUpdate(id, patch) { ok(await sb().from('project_updates').update(patch).eq('id', id)) },

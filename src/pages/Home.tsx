@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { store } from '../lib/store'
 import { ago } from '../lib/util'
-import type { Project, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
+import type { Project, ProjectImport, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
   { id: 'manuscript', label: 'Manuscript' },
@@ -20,6 +20,21 @@ export default function Home() {
   const [showDone, setShowDone] = useState(false)
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
+  const [note, setNote] = useState('')
+  const importInput = useRef<HTMLInputElement>(null)
+
+  async function importHistory(file: File) {
+    setError(''); setNote('')
+    try {
+      const data = JSON.parse(await file.text()) as { projects?: ProjectImport[] }
+      if (!Array.isArray(data.projects)) throw new Error('That file is not a project history export.')
+      const n = data.projects.reduce((a, p) => a + p.entries.length, 0)
+      if (!confirm(`Import ${data.projects.length} projects with ${n} dated entries? Anything already in the app is skipped.`)) return
+      const r = await store.importProjects(data.projects)
+      setNote(`Added ${r.projects} projects and ${r.entries} timeline entries.`)
+      refresh()
+    } catch (e) { setError((e as Error).message) }
+  }
 
   const refresh = useCallback(async () => {
     try {
@@ -46,7 +61,11 @@ export default function Home() {
     <div className="page">
       <header className="page-head">
         <h1>Projects</h1>
-        <button className="primary" onClick={() => setAdding(true)}>New project</button>
+        <div className="row">
+          <button onClick={() => importInput.current?.click()}>Import history</button>
+          <button className="primary" onClick={() => setAdding(true)}>New project</button>
+        </div>
+        <input ref={importInput} type="file" accept="application/json,.json" hidden onChange={e => { const f = e.target.files?.[0]; if (f) importHistory(f); e.target.value = '' }} />
       </header>
 
       <div className="stats">
@@ -64,6 +83,7 @@ export default function Home() {
       </div>
 
       {error && <p className="error">{error}</p>}
+      {note && <p className="ok">{note}</p>}
       {adding && <NewProject onClose={() => setAdding(false)} onCreated={() => { setAdding(false); refresh() }} />}
 
       <div className="grid">
