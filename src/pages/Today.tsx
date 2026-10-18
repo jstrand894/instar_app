@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { store } from '../lib/store'
 import { ago, occurrencesBetween } from '../lib/util'
-import { deadlineInfo, stageLabel } from '../lib/manuscript'
-import type { Paper, Project, ProjectEvent, ProjectUpdate } from '../types'
+import { deadlineInfo } from '../lib/manuscript'
+import type { Deadline, Paper, Project, ProjectEvent, ProjectUpdate } from '../types'
 
 const DAY = 864e5
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -16,6 +16,11 @@ export default function Today() {
   const [updates, setUpdates] = useState<ProjectUpdate[]>([])
   const [events, setEvents] = useState<ProjectEvent[]>([])
   const [papers, setPapers] = useState<Paper[]>([])
+  const [deadlines, setDeadlines] = useState<Deadline[]>([])
+  const [dlOpen, setDlOpen] = useState(false)
+  const [dlTitle, setDlTitle] = useState('')
+  const [dlDate, setDlDate] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 7); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
+  const [dlProject, setDlProject] = useState('')
   const [target, setTarget] = useState('')
   const [text, setText] = useState('')
   const [saved, setSaved] = useState('')
@@ -23,8 +28,8 @@ export default function Today() {
 
   const load = useCallback(async () => {
     try {
-      const [p, u, e, pa] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers()])
-      setProjects(p); setUpdates(u); setEvents(e); setPapers(pa)
+      const [p, u, e, pa, dl] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.deadlines().catch(() => [] as Deadline[])])
+      setProjects(p); setUpdates(u); setEvents(e); setPapers(pa); setDeadlines(dl)
     } catch (er) { setError((er as Error).message) }
   }, [])
   useEffect(() => { load() }, [load])
@@ -45,9 +50,12 @@ export default function Today() {
   const todays = upcoming.filter(x => x.when < addDays(today, 1))
   const later = upcoming.filter(x => x.when >= addDays(today, 1))
 
-  const deadlines = projects
-    .filter(p => p.type === 'manuscript' && p.stage !== 'accepted' && p.deadline)
-    .map(p => ({ p, d: deadlineInfo(p.deadline)! })).filter(x => x.d.days <= 21).sort((a, b) => a.d.days - b.d.days)
+  // manuscript "next deadline" fields plus standalone deadlines, soonest first
+  const dueItems = [
+    ...projects.filter(p => p.type === 'manuscript' && p.stage !== 'accepted' && p.deadline)
+      .map(p => ({ key: 'm' + p.id, title: 'Next deadline', project: p, date: p.deadline!, id: null as string | null })),
+    ...deadlines.filter(d => !d.done).map(d => ({ key: d.id, title: d.title, project: byId.get(d.project_id), date: d.due_on, id: d.id as string | null })),
+  ].map(x => ({ ...x, info: deadlineInfo(x.date)! })).filter(x => x.project && x.info.days <= 21).sort((a, b) => a.info.days - b.info.days)
 
   const lastTouch = useMemo(() => {
     const m = new Map<string, string>()
@@ -60,6 +68,16 @@ export default function Today() {
   const reading = papers.filter(p => p.status === 'reading').slice(0, 6)
   const coreLeft = papers.filter(p => p.status === 'to-read' && p.priority === 'Core').length
   const recent = [...updates].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 8)
+
+  async function addDeadline(e: React.FormEvent) {
+    e.preventDefault()
+    if (!dlTitle.trim() || !dlDate || !dlProject) return
+    try { await store.addDeadline(dlProject, dlTitle.trim(), dlDate); setDlTitle(''); setDlOpen(false); load() } catch (er) { setError((er as Error).message) }
+  }
+  async function finish(id: string) {
+    setDeadlines(ds => ds.map(d => d.id === id ? { ...d, done: true } : d))
+    try { await store.patchDeadline(id, { done: true }) } catch (er) { setError((er as Error).message); load() }
+  }
 
   async function log(e: React.FormEvent) {
     e.preventDefault()
@@ -107,14 +125,35 @@ export default function Today() {
         </section>
 
         <section className="card">
-          <h2>Deadlines</h2>
-          {deadlines.map(({ p, d }) => (
-            <div className="trow" key={p.id}>
-              <span className={`pill dl-${d.tone}`}>{d.text}</span>
-              <Link to={link(p)}>{p.name}</Link><span className="muted small">{stageLabel(p.stage)}</span>
+          <div className="card-head">
+            <h2>Deadlines</h2>
+            <button className="plus" onClick={() => setDlOpen(!dlOpen)} aria-label="Add a deadline" aria-expanded={dlOpen} title="Add a deadline">{dlOpen ? '×' : '+'}</button>
+          </div>
+          {dlOpen && (
+            <form className="dl-form" onSubmit={addDeadline}>
+              <input autoFocus placeholder="What's due? e.g. Reviewer responses" value={dlTitle} onChange={e => setDlTitle(e.target.value)} />
+              <div className="row">
+                <input type="date" value={dlDate} onChange={e => setDlDate(e.target.value)} aria-label="Due date" />
+                <select value={dlProject} onChange={e => setDlProject(e.target.value)} aria-label="Project or manuscript">
+                  <option value="">For which project…</option>
+                  {group('Manuscripts', projects.filter(p => p.type === 'manuscript' && p.stage !== 'accepted'))}
+                  {group('Projects', projects.filter(p => p.type !== 'manuscript' && p.status !== 'done'))}
+                </select>
+              </div>
+              <button className="primary" disabled={!dlTitle.trim() || !dlProject || !dlDate}>Add deadline</button>
+            </form>
+          )}
+          {dueItems.map(x => (
+            <div className="trow" key={x.key}>
+              {x.id
+                ? <input type="checkbox" className="tick" aria-label={`Mark "${x.title}" done`} onChange={() => finish(x.id!)} />
+                : <span className="tick-gap" />}
+              <span className={`pill dl-${x.info.tone}`}>{x.info.text}</span>
+              <span>{x.title}</span>
+              <Link to={link(x.project!)} className="muted small">{x.project!.name}</Link>
             </div>
           ))}
-          {!deadlines.length && <p className="muted">No manuscript deadlines in the next three weeks.</p>}
+          {!dueItems.length && !dlOpen && <p className="muted">Nothing due in the next three weeks. Use + to add a deadline.</p>}
         </section>
 
         <section className="card">
@@ -130,7 +169,7 @@ export default function Today() {
           {reading.map(p => (
             <div className="trow" key={p.id}><Link to={`/read/${p.id}`}>{p.title}</Link><span className="muted small">{[p.authors.split(',')[0], p.year].filter(Boolean).join(' ')}</span></div>
           ))}
-          {!reading.length && <p className="muted">Nothing marked "Reading". Set a paper's status in the Papers tab.</p>}
+          {!reading.length && <p className="muted">Nothing marked "Reading". Set a paper's status in the Reading tab.</p>}
           {coreLeft > 0 && <Link to="/library" className="link small">{coreLeft} Core papers still to read →</Link>}
         </section>
 

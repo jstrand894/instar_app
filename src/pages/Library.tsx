@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { store } from '../lib/store'
 import { parseReadingList } from '../lib/readingList'
 import { firstSurname, isConfident, lookupDoi, searchByTitle } from '../lib/crossref'
+import ReadingDashboard from '../components/ReadingDashboard'
 import type { Paper, PaperLink, PaperStatus, Project } from '../types'
 
 const STATUS: { id: PaperStatus; label: string }[] = [
@@ -144,9 +145,9 @@ export default function Library() {
       onDragOver={e => { e.preventDefault(); setDrag(true) }} onDragLeave={e => { if (e.currentTarget === e.target) setDrag(false) }}
       onDrop={e => { e.preventDefault(); setDrag(false); uploadPdfs(e.dataTransfer.files) }}>
       <header className="page-head">
-        <h1>Papers</h1>
+        <h1>Reading</h1>
         <div className="row">
-          <button disabled={busy} onClick={() => setDoiOpen(!doiOpen)}>Add by DOI</button>
+          <button disabled={busy} onClick={() => setDoiOpen(!doiOpen)} className="with-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="wand"><path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8 19 13M17.8 6.2 19 5M3 21l9-9M12.2 6.2 11 5" /></svg>Add by DOI</button>
           <button disabled={busy} onClick={() => listInput.current?.click()}>Import reading list</button>
           <button className="primary" disabled={busy} onClick={() => { attachFor.current = null; pdfInput.current?.click() }}>{busy ? 'Working…' : 'Upload PDF'}</button>
         </div>
@@ -165,14 +166,7 @@ export default function Library() {
         </form>
       )}
 
-      {papers.length > 0 && (
-        <div className="stats">
-          <div><b>{papers.length}</b><span>papers</span></div>
-          <div><b>{count('read')}</b><span>read</span></div>
-          <div><b>{count('reading')}</b><span>reading</span></div>
-          <div><b>{papers.filter(p => p.file_path).length}</b><span>with PDF</span></div>
-        </div>
-      )}
+      <ReadingDashboard papers={papers} projects={projects} links={links} onChange={refresh} />
 
       <div className="chips">
         <button className={status === 'all' ? 'on' : ''} onClick={() => setStatus('all')}>All</button>

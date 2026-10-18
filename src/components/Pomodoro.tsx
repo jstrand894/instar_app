@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { getPrefs } from '../lib/prefs'
 
 type Mode = 'focus' | 'short' | 'long'
-const MINUTES: Record<Mode, number> = { focus: 25, short: 5, long: 15 }
+const minutes = (m: Mode) => getPrefs().pomo[m]
 const LABEL: Record<Mode, string> = { focus: 'Focus', short: 'Break', long: 'Long break' }
 const KEY = 'tm-pomodoro-v1'
 
 interface State { mode: Mode; endsAt: number | null; remaining: number; sessions: number }
-const fresh = (mode: Mode, sessions = 0): State => ({ mode, endsAt: null, remaining: MINUTES[mode] * 60_000, sessions })
+const fresh = (mode: Mode, sessions = 0): State => ({ mode, endsAt: null, remaining: minutes(mode) * 60_000, sessions })
 
 function read(): State {
   try { const s = localStorage.getItem(KEY); if (s) return JSON.parse(s) } catch { /* ignore */ }
@@ -31,6 +32,12 @@ export default function Pomodoro() {
   const [, tick] = useState(0)
   const sRef = useRef(s); sRef.current = s
 
+  // pick up changed durations from Account settings when the timer is idle
+  useEffect(() => {
+    const on = () => setS(cur => (cur.endsAt ? cur : fresh(cur.mode, cur.sessions)))
+    window.addEventListener('tm-prefs', on); return () => window.removeEventListener('tm-prefs', on)
+  }, [])
+
   useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(s)) } catch { /* ignore */ } }, [s])
 
   useEffect(() => {
@@ -54,7 +61,7 @@ export default function Pomodoro() {
   const mm = String(Math.floor(left / 60_000)).padStart(2, '0')
   const ss = String(Math.floor((left % 60_000) / 1000)).padStart(2, '0')
   const running = s.endsAt !== null
-  const pct = 1 - left / (MINUTES[s.mode] * 60_000)
+  const pct = 1 - left / (minutes(s.mode) * 60_000)
 
   function toggle() {
     if (running) setS({ ...s, endsAt: null, remaining: left })

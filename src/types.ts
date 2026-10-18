@@ -49,6 +49,7 @@ export interface Paper {
   priority: string
   source: string
   why: string
+  read_at?: string | null
   created_at: string
 }
 export interface Rect { x: number; y: number; w: number; h: number }
@@ -77,3 +78,5 @@ export interface ProjectImport {
 }
 
 export interface PaperLink { project_id: string; paper_id: string; created_at: string }
+
+export interface Deadline { id: string; project_id: string; title: string; due_on: string; done: boolean; created_at: string }

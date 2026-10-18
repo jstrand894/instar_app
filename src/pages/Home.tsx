@@ -25,7 +25,8 @@ export default function Home() {
   })
   const setArea = (a: Area) => { setAreaState(a); try { localStorage.setItem('tm-area', a) } catch { /* ignore */ } }
   const [filter, setFilter] = useState<ProjectType | 'all'>('all')
-  const [showDone, setShowDone] = useState(false)
+  const [doneOpen, setDoneOpenState] = useState(() => { try { return localStorage.getItem('tm-done-open') === '1' } catch { return false } })
+  const setDoneOpen = (v: boolean) => { setDoneOpenState(v); try { localStorage.setItem('tm-done-open', v ? '1' : '0') } catch { /* ignore */ } }
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
@@ -76,11 +77,14 @@ export default function Home() {
 
   const rank = (p: Project) => p.sort_order ?? Number.MAX_SAFE_INTEGER
   const cmp = (a: Project, b: Project) => rank(a) - rank(b) || lastActivity(b).localeCompare(lastActivity(a))
-  const group = (pinned: boolean) => inArea.filter(p => !!p.pinned === pinned).sort(cmp)
-  const show = (p: Project) => (filter === 'all' || p.type === filter) && (showDone || p.status !== 'done')
-  const pinnedList = group(true).filter(show)
-  const otherList = group(false).filter(show)
-  const visible = [...pinnedList, ...otherList]
+  type Kind = 'pinned' | 'active' | 'done'
+  const group = (kind: Kind) => inArea.filter(p =>
+    kind === 'done' ? p.status === 'done' : p.status !== 'done' && !!p.pinned === (kind === 'pinned')).sort(cmp)
+  const show = (p: Project) => filter === 'all' || p.type === filter
+  const pinnedList = group('pinned').filter(show)
+  const otherList = group('active').filter(show)
+  const doneList = group('done').filter(show)
+  const visible = [...pinnedList, ...otherList, ...doneList]
   const hasManualOrder = inArea.some(p => p.sort_order != null)
 
   const sensors = useSensors(
@@ -88,10 +92,10 @@ export default function Home() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
-  async function onDragEnd(pinned: boolean, e: DragEndEvent) {
+  async function onDragEnd(kind: Kind, e: DragEndEvent) {
     const { active, over } = e
     if (!over || active.id === over.id) return
-    const full = group(pinned)
+    const full = group(kind)
     const from = full.findIndex(p => p.id === active.id), to = full.findIndex(p => p.id === over.id)
     if (from < 0 || to < 0) return
     const next = arrayMove(full, from, to)
@@ -110,8 +114,8 @@ export default function Home() {
     try { await store.patchProject(p.id, { pinned: !p.pinned }) } catch (er) { setError((er as Error).message); refresh() }
   }
 
-  const renderGrid = (list: Project[], pinned: boolean) => (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={e => onDragEnd(pinned, e)}>
+  const renderGrid = (list: Project[], kind: Kind) => (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={e => onDragEnd(kind, e)}>
       <SortableContext items={list.map(p => p.id)} strategy={rectSortingStrategy}>
         <div className="grid">
           {list.map(p => (
@@ -151,7 +155,6 @@ export default function Home() {
         {TYPES.filter(t => t.id !== 'manuscript').map(t => (
           <button key={t.id} className={filter === t.id ? 'on' : ''} onClick={() => setFilter(t.id)}>{t.label}</button>
         ))}
-        <label className="check"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Show done</label>
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -161,13 +164,21 @@ export default function Home() {
       {pinnedList.length > 0 && (
         <section className="sect">
           <h2 className="sect-title"><span className="pin-ico">★</span> Pinned</h2>
-          {renderGrid(pinnedList, true)}
+          {renderGrid(pinnedList, 'pinned')}
         </section>
       )}
       {otherList.length > 0 && (
         <section className="sect">
           {pinnedList.length > 0 && <h2 className="sect-title">Everything else</h2>}
-          {renderGrid(otherList, false)}
+          {renderGrid(otherList, 'active')}
+        </section>
+      )}
+      {doneList.length > 0 && (
+        <section className="sect">
+          <button className="sect-toggle" onClick={() => setDoneOpen(!doneOpen)} aria-expanded={doneOpen}>
+            <span className="chev">{doneOpen ? '▾' : '▸'}</span> Completed <span className="count-pill">{doneList.length}</span>
+          </button>
+          {doneOpen && renderGrid(doneList, 'done')}
         </section>
       )}
       {hasManualOrder && visible.length > 1 && (
@@ -176,7 +187,7 @@ export default function Home() {
       {!visible.length && !adding && (
         <div className="empty-box">
           <h2>{inArea.length ? 'Nothing matches this filter' : `No ${area} projects yet`}</h2>
-          <p className="muted">{inArea.length ? 'Try another type or show finished projects.' : `Create a project, or move one here from the other side using the project page.`}</p>
+          <p className="muted">{inArea.length ? 'Try another type.' : `Create a project, or move one here from the other side using the project page.`}</p>
           {!inArea.length && <button className="primary" onClick={() => setAdding(true)}>New project</button>}
         </div>
       )}

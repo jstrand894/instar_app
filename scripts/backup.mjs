@@ -13,7 +13,7 @@ const tag = id => `[${id.slice(0, 8)}]`
 
 const STAGE_LABEL = { planning: 'Planning', drafting: 'Drafting', internal: 'Internal review', submitted: 'Under review', revision: 'Revision', accepted: 'Accepted / published' }
 
-export function renderProject(p, entries, events = [], papers = []) {
+export function renderProject(p, entries, events = [], papers = [], deadlines = []) {
   const lines = [`# ${p.name}`, '', `- Type: ${TYPE_LABEL[p.type] ?? p.type}`, `- Area: ${p.area ?? 'work'}`, `- Status: ${p.status}`, `- Created: ${day(p.created_at)}`]
   if (p.type === 'manuscript') {
     lines.push(`- Stage: ${STAGE_LABEL[p.stage ?? 'drafting']}`)
@@ -23,6 +23,10 @@ export function renderProject(p, entries, events = [], papers = []) {
   }
   if (p.description) lines.push('', p.description)
   if (papers.length) { lines.push('', '## Reading', ''); for (const x of papers) lines.push(`- ${x.title}${x.authors ? ` (${x.authors}${x.year ? `, ${x.year}` : ''})` : ''}`) }
+  if (deadlines.length) {
+    lines.push('', '## Deadlines', '')
+    for (const d of [...deadlines].sort((a, b) => a.due_on.localeCompare(b.due_on))) lines.push(`- [${d.done ? 'x' : ' '}] ${d.due_on}: ${d.title}`)
+  }
   if (events.length) {
     lines.push('', '## Schedule', '')
     for (const e of [...events].sort((a, b) => a.starts_at.localeCompare(b.starts_at))) lines.push(`- ${day(e.starts_at)}${e.repeat === 'weekly' ? ' (repeats weekly)' : ''}: ${e.title}`)
@@ -42,7 +46,7 @@ export function renderPaper(p, pdfName, highlights) {
   if (p.priority) lines.push(`- Priority: ${p.priority}`)
   if (p.source) lines.push(`- Source: ${p.source}`)
   if (p.doi) lines.push(`- DOI: https://doi.org/${p.doi}`)
-  lines.push(`- Status: ${p.status}`, `- Added: ${day(p.created_at)}`, pdfName ? `- PDF: [Open PDF](<${pdfName}>)` : '- PDF: not attached', '')
+  lines.push(`- Status: ${p.status}${p.read_at ? ` (read ${day(p.read_at)})` : ''}`, `- Added: ${day(p.created_at)}`, pdfName ? `- PDF: [Open PDF](<${pdfName}>)` : '- PDF: not attached', '')
   if (p.why) lines.push('## Why it matters', '', p.why, '')
   if (p.notes) lines.push('## Notes', '', p.notes, '')
   lines.push('## Highlights', '')
@@ -93,6 +97,7 @@ async function main() {
     ['projects', 'project_updates', 'papers', 'highlights', 'ink'].map(t => all(t)))
   const events = await all('project_events', true)
   const links = await all('project_papers', true)
+  const deadlines = await all('project_deadlines', true)
 
   const dirs = { projects: join(out, 'Projects'), papers: join(out, 'Papers'), raw: join(out, '_raw-data') }
   await Promise.all(Object.values(dirs).map(d => mkdir(d, { recursive: true })))
@@ -100,7 +105,8 @@ async function main() {
   for (const p of projects) {
     const file = await placeFile(dirs.projects, p.id, `${safe(p.name)} ${tag(p.id)}.md`)
     await writeFile(file, renderProject(p, updates.filter(u => u.project_id === p.id), events.filter(e => e.project_id === p.id),
-      links.filter(l => l.project_id === p.id).map(l => papers.find(x => x.id === l.paper_id)).filter(Boolean)))
+      links.filter(l => l.project_id === p.id).map(l => papers.find(x => x.id === l.paper_id)).filter(Boolean),
+      deadlines.filter(d => d.project_id === p.id)))
   }
 
   let newPdfs = 0
@@ -122,7 +128,7 @@ async function main() {
   await writeFile(join(out, 'Reading List.csv'), readingListCsv(papers))
 
   // Full-fidelity copy (includes pen strokes) for restoring or migrating later.
-  await writeFile(join(dirs.raw, 'data.json'), JSON.stringify({ exported_at: new Date().toISOString(), projects, project_updates: updates, project_events: events, project_papers: links, papers, highlights, ink }, null, 2))
+  await writeFile(join(dirs.raw, 'data.json'), JSON.stringify({ exported_at: new Date().toISOString(), projects, project_updates: updates, project_events: events, project_papers: links, project_deadlines: deadlines, papers, highlights, ink }, null, 2))
 
   console.log(`Backed up ${projects.length} projects, ${updates.length} timeline entries, ${papers.length} papers (${newPdfs} new PDFs), ${highlights.length} highlights.`)
   console.log(`Folder: ${out}`)

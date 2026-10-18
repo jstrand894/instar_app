@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Highlight, InkPage, Paper, PaperInput, PaperLink, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
+  Deadline, Highlight, InkPage, Paper, PaperInput, PaperLink, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
 } from '../types'
 
 const blankPaper = { authors: '', year: '', status: 'to-read', notes: '', doi: '', category: '', priority: '', source: '', why: '' } as const
@@ -18,19 +18,22 @@ const fresh = (inputs: PaperInput[], existing: Paper[]) => {
 
 const sameDay = (a: string, b: string) => a.slice(0, 10) === b.slice(0, 10)
 const earliest = (p: ProjectImport) => p.entries.map(e => new Date(e.date).toISOString()).sort()[0] ?? new Date().toISOString()
+/** Marking a paper read stamps the date; moving it back clears it. */
+const withReadAt = <T extends { status?: string; read_at?: string | null }>(patch: T): T =>
+  patch.status === undefined ? patch : { ...patch, read_at: patch.status === 'read' ? patch.read_at ?? new Date().toISOString() : null }
 const uid = () => crypto.randomUUID()
 const now = () => new Date().toISOString()
 
 // ---------- local demo backend ----------
 const LS = 'tm-demo-v1'
 interface Db {
-  projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; links: PaperLink[]; papers: Paper[]
+  projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; links: PaperLink[]; deadlines: Deadline[]; papers: Paper[]
   highlights: Highlight[]; ink: InkPage[]
 }
 function load(): Db {
   try {
     const raw = localStorage.getItem(LS)
-    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.links ??= []; return d }
+    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.links ??= []; d.deadlines ??= []; return d }
   } catch { /* ignore */ }
   const d = seed()
   localStorage.setItem(LS, JSON.stringify(d))
@@ -53,7 +56,7 @@ function seed(): Db {
     { id: 'u4', kind: 'update', project_id: 'p3', body: 'Added gap-filling step, tests passing', created_at: t(0.2) },
     { id: 'u5', kind: 'update', project_id: 'p4', body: 'Waiting on calibration files', created_at: t(9) },
   ]
-  return { projects, updates, events: [], links: [], papers: [], highlights: [], ink: [] }
+  return { projects, updates, events: [], links: [], deadlines: [], papers: [], highlights: [], ink: [] }
 }
 const demoFiles = new Map<string, string>() // path -> blob url (session only)
 
@@ -87,8 +90,18 @@ const local = {
     const d = load(); d.projects = d.projects.filter(p => p.id !== id)
     d.updates = d.updates.filter(u => u.project_id !== id)
     d.events = d.events.filter(e => e.project_id !== id)
-    d.links = d.links.filter(l => l.project_id !== id); save(d)
+    d.links = d.links.filter(l => l.project_id !== id)
+    d.deadlines = d.deadlines.filter(x => x.project_id !== id); save(d)
   },
+  async deadlines() { return load().deadlines },
+  async addDeadline(project_id: string, title: string, due_on: string) {
+    const d = load(); const row: Deadline = { id: uid(), project_id, title, due_on, done: false, created_at: now() }
+    d.deadlines.push(row); save(d); return row
+  },
+  async patchDeadline(id: string, patch: Partial<Deadline>) {
+    const d = load(); d.deadlines = d.deadlines.map(x => x.id === id ? { ...x, ...patch } : x); save(d)
+  },
+  async deleteDeadline(id: string) { const d = load(); d.deadlines = d.deadlines.filter(x => x.id !== id); save(d) },
   async projectPapers() { return load().links },
   async linkPaper(project_id: string, paper_id: string) {
     const d = load(); if (!d.links.some(l => l.project_id === project_id && l.paper_id === paper_id)) d.links.push({ project_id, paper_id, created_at: now() }); save(d)
@@ -132,7 +145,7 @@ const local = {
     save(d); return { added: add.length, skipped: items.length - add.length }
   },
   async patchPaper(id: string, patch: Partial<Paper>) {
-    const d = load(); d.papers = d.papers.map(p => p.id === id ? { ...p, ...patch } : p); save(d)
+    const d = load(); d.papers = d.papers.map(p => p.id === id ? { ...p, ...withReadAt(patch) } : p); save(d)
   },
   async deletePaper(id: string) {
     const d = load(); d.papers = d.papers.filter(p => p.id !== id)
@@ -198,6 +211,10 @@ const remote: typeof local = {
   async reorderProjects(ids, reset = false) {
     await Promise.all(ids.map(async (id, i) => ok(await sb().from('projects').update({ sort_order: reset ? null : i }).eq('id', id))))
   },
+  async deadlines() { return ok(await sb().from('project_deadlines').select('*').order('due_on')) },
+  async addDeadline(project_id, title, due_on) { return ok(await sb().from('project_deadlines').insert({ project_id, title, due_on }).select().single()) },
+  async patchDeadline(id, patch) { ok(await sb().from('project_deadlines').update(patch).eq('id', id)) },
+  async deleteDeadline(id) { ok(await sb().from('project_deadlines').delete().eq('id', id)) },
   async projectPapers() { return ok(await sb().from('project_papers').select('*')) },
   async linkPaper(project_id, paper_id) { ok(await sb().from('project_papers').upsert({ project_id, paper_id }, { onConflict: 'project_id,paper_id' })) },
   async unlinkPaper(project_id, paper_id) { ok(await sb().from('project_papers').delete().eq('project_id', project_id).eq('paper_id', paper_id)) },
@@ -222,7 +239,15 @@ const remote: typeof local = {
     for (let i = 0; i < add.length; i += 100) ok(await sb().from('papers').insert(add.slice(i, i + 100)))
     return { added: add.length, skipped: items.length - add.length }
   },
-  async patchPaper(id, patch) { ok(await sb().from('papers').update(patch).eq('id', id)) },
+  async patchPaper(id, patch) {
+    const full = withReadAt(patch)
+    const r = await sb().from('papers').update(full).eq('id', id)
+    if (r.error && /read_at/.test(r.error.message)) { // column not added yet: still save the rest
+      const { read_at: _ignored, ...rest } = full; void _ignored
+      ok(await sb().from('papers').update(rest).eq('id', id)); return
+    }
+    ok(r)
+  },
   async deletePaper(id) {
     const { data } = await sb().from('papers').select('file_path').eq('id', id).single()
     if (data?.file_path) await sb().storage.from('papers').remove([data.file_path])

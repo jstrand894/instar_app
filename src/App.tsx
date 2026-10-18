@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, Route, Routes, HashRouter, useLocation } from 'react-router-dom'
 import AuthGate from './components/Auth'
 import Pomodoro from './components/Pomodoro'
+import Account from './components/Account'
 import Today from './pages/Today'
 import Home from './pages/Home'
 import Manuscripts from './pages/Manuscripts'
@@ -34,10 +35,10 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
         <NavLink to="/" end><Icon d={ICONS.today} /><span>Today</span></NavLink>
         <NavLink to="/projects"><Icon d={ICONS.projects} /><span>Projects</span></NavLink>
         <NavLink to="/manuscripts"><Icon d={ICONS.manuscripts} /><span>Manuscripts</span></NavLink>
-        <NavLink to="/library"><Icon d={ICONS.papers} /><span>Papers</span></NavLink>
+        <NavLink to="/library"><Icon d={ICONS.papers} /><span>Reading</span></NavLink>
         <div className="spacer" />
         {desktop && <Pomodoro />}
-        {signOut && <button className="link small" onClick={signOut}>Sign out</button>}
+        <Account signOut={signOut} />
       </nav>
       <main>
         {demoMode && !bannerOff && (

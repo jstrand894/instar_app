@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { store } from '../lib/store'
 import { ago, fmtWhen, nextOccurrence } from '../lib/util'
 import { STAGES, deadlineInfo, stageLabel } from '../lib/manuscript'
-import type { Area, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
+import type { Area, Deadline, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
   { id: 'manuscript', label: 'Manuscript' }, { id: 'data', label: 'Data' },
@@ -23,6 +23,9 @@ export default function ProjectDetail() {
   const [papers, setPapers] = useState<Paper[]>([])
   const [links, setLinks] = useState<PaperLink[]>([])
   const [paperQ, setPaperQ] = useState('')
+  const [deadlines, setDeadlines] = useState<Deadline[]>([])
+  const [dlTitle, setDlTitle] = useState('')
+  const [dlDate, setDlDate] = useState('')
   const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
   const [evTitle, setEvTitle] = useState('')
   const [evDate, setEvDate] = useState(todayStr)
@@ -34,8 +37,8 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     try {
-      const [ps, us, evs, pp, ls] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[])])
-      setEvents(evs.filter(e => e.project_id === id)); setPapers(pp); setLinks(ls.filter(l => l.project_id === id))
+      const [ps, us, evs, pp, ls, dls] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[]), store.deadlines().catch(() => [] as Deadline[])])
+      setEvents(evs.filter(e => e.project_id === id)); setPapers(pp); setLinks(ls.filter(l => l.project_id === id)); setDeadlines(dls.filter(d => d.project_id === id))
       const p = ps.find(x => x.id === id) ?? null
       setProject(p)
       setEntries(us.filter(u => u.project_id === id).sort((a, b) => b.created_at.localeCompare(a.created_at)))
@@ -48,6 +51,12 @@ export default function ProjectDetail() {
     if (!project) return
     setProject({ ...project, ...p })
     try { await store.patchProject(project.id, p) } catch (e) { setError((e as Error).message) }
+  }
+
+  async function addDeadline(e: React.FormEvent) {
+    e.preventDefault()
+    if (!project || !dlTitle.trim() || !dlDate) return
+    try { await store.addDeadline(project.id, dlTitle.trim(), dlDate); setDlTitle(''); load() } catch (er) { setError((er as Error).message) }
   }
 
   async function setStage(next: Stage) {
@@ -152,6 +161,28 @@ export default function ProjectDetail() {
             </li>
           ))}
           {!events.some(e => nextOccurrence(e)) && <li className="muted">Nothing scheduled.</li>}
+        </ul>
+      </section>
+
+      <section className="card deadlines">
+        <h2>Deadlines</h2>
+        <form className="sched-form dl-row" onSubmit={addDeadline}>
+          <input placeholder="What's due? e.g. Submit revision" value={dlTitle} onChange={e => setDlTitle(e.target.value)} />
+          <input type="date" value={dlDate} onChange={e => setDlDate(e.target.value)} aria-label="Due date" />
+          <button className="primary" disabled={!dlTitle.trim() || !dlDate}>Add</button>
+        </form>
+        <ul className="sched-list dl-list">
+          {[...deadlines].sort((a, b) => Number(a.done) - Number(b.done) || a.due_on.localeCompare(b.due_on)).map(d => {
+            const info = deadlineInfo(d.due_on)
+            return (
+              <li key={d.id} className={d.done ? 'done-row' : ''}>
+                <label className="dl-check"><input type="checkbox" checked={d.done} onChange={async e => { await store.patchDeadline(d.id, { done: e.target.checked }); load() }} /> <span>{d.title}</span></label>
+                {info && !d.done ? <span className={`pill dl-${info.tone}`}>{info.text}</span> : <span className="muted small">{d.done ? 'Done' : ''}</span>}
+                <button className="link small danger" onClick={async () => { await store.deleteDeadline(d.id); load() }}>Remove</button>
+              </li>
+            )
+          })}
+          {!deadlines.length && <li className="muted">No deadlines yet.</li>}
         </ul>
       </section>
 
