@@ -602,3 +602,17 @@ kbd { background: var(--chip); border: 1px solid var(--line); border-bottom-widt
 .col-main, .col-side { display: grid; gap: 1rem; align-content: start; min-width: 0; }
 @media (min-width: 1100px) { .detail-cols { grid-template-columns: minmax(0, 1.55fr) minmax(360px, 1fr); gap: 1.4rem; } }
 @media (max-width: 1099px) { .col-side { order: -1; } }
+
+/* weekly routine + to-dos */
+.routine-card { display: grid; gap: .7rem; margin-bottom: 1rem; border-left: 4px solid var(--t-field); } .routine-card h2 { margin: 0; }
+.routine-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.2rem; }
+.rt-list, .rt-soon { list-style: none; margin: .3rem 0 0; padding: 0; display: grid; gap: .5rem; }
+.rt-list li { display: flex; gap: .6rem; align-items: flex-start; } .rt-list li.done .rt-title { text-decoration: line-through; color: var(--muted); }
+.rt-list a { color: inherit; } .rt-soon li { font-size: .9rem; } .rt-soon b { color: var(--accent); min-width: 2.4rem; display: inline-block; }
+.rt-foot { margin: 0; }
+.routine-modal { width: min(560px, 100%); } .routine-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.routine-list li { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; padding: .55rem .7rem; background: var(--bg); border-radius: 10px; }
+.routine-form { display: grid; gap: .6rem; }
+.day-chips { display: flex; gap: .35rem; flex-wrap: wrap; } .day-chips button { min-width: 48px; border-radius: 999px; padding: .3rem .7rem; }
+.todo-add { display: grid; grid-template-columns: 1fr 150px auto; gap: .5rem; }
+@media (max-width: 760px) { .todo-add { grid-template-columns: 1fr 1fr; } .todo-add input:first-child { grid-column: 1 / -1; } }

@@ -58,7 +58,7 @@ export default function QuickCapture() {
     home: projects.filter(p => p.type !== 'manuscript' && p.area === 'home'),
   }), [projects])
 
-  const needsProject = tab !== 'paper'
+  const needsProject = tab !== 'paper' && tab !== 'task' // a task can be a general to-do, with no project
   const ready = !!text.trim() && (!needsProject || !!projectId) && (tab !== 'deadline' || !!date)
   const close = () => setOpen(false)
 
@@ -70,7 +70,7 @@ export default function QuickCapture() {
       const pr = projects.find(p => p.id === projectId)
       let undo: () => Promise<unknown>, what: string
       if (tab === 'update' || tab === 'note') { const r = await store.addUpdate(projectId, text.trim(), tab); undo = () => store.deleteUpdate(r.id); what = tab === 'note' ? 'Note' : 'Update' }
-      else if (tab === 'task') { const r = await store.addTask(projectId, text.trim(), date || null); undo = () => store.deleteTask(r.id); what = 'Task' }
+      else if (tab === 'task') { const r = await store.addTask(projectId || null, text.trim(), date || null); undo = () => store.deleteTask(r.id); what = 'Task' }
       else if (tab === 'deadline') { const r = await store.addDeadline(projectId, text.trim(), date); undo = () => store.deleteDeadline(r.id); what = 'Deadline' }
       else {
         const { lookupDoi } = await import('../lib/crossref')
@@ -80,7 +80,7 @@ export default function QuickCapture() {
         const r = await store.addPaper(null, { title: m.title || m.doi, authors: m.authors, year: m.year, source: m.source, doi: m.doi })
         undo = () => store.deletePaper(r.id); what = 'Paper'
       }
-      if (needsProject) { try { localStorage.setItem(LAST, projectId) } catch { /* ignore */ } }
+      if (projectId && tab !== 'paper') { try { localStorage.setItem(LAST, projectId) } catch { /* ignore */ } }
       close()
       notify.action(`${what} added${pr ? ` to ${pr.name}` : ''}`, 'Undo', () => { undo().catch(er => notify.error(er)) })
     } catch (er) { setErr(friendlyError(er)) }
@@ -105,9 +105,9 @@ export default function QuickCapture() {
               <div className="seg" role="tablist">
                 {TABS.map(t => <button type="button" key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'on' : ''} onClick={() => { setTab(t.id); setErr(''); if (t.id === 'deadline' && !date) { const d = new Date(); d.setDate(d.getDate() + 7); setDate(iso(d)) } }}>{t.label}</button>)}
               </div>
-              {needsProject && (
+              {tab !== 'paper' && (
                 <select value={projectId} onChange={e => setProjectId(e.target.value)} aria-label="Project">
-                  <option value="">Which project or manuscript?</option>
+                  <option value="">{tab === 'task' ? 'No project (general to-do)' : 'Which project or manuscript?'}</option>
                   {groups.ms.length > 0 && <optgroup label="Manuscripts">{opt(groups.ms)}</optgroup>}
                   {groups.work.length > 0 && <optgroup label="Work">{opt(groups.work)}</optgroup>}
                   {groups.home.length > 0 && <optgroup label="Home">{opt(groups.home)}</optgroup>}

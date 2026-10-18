@@ -7,7 +7,9 @@ import { firstName } from '../lib/user'
 import { deadlineInfo } from '../lib/manuscript'
 import ProgressChart from '../components/ProgressChart'
 import GettingStarted from '../components/GettingStarted'
-import type { Deadline, Paper, Project, ProjectEvent, ProjectTask, ProjectUpdate, TimeEntry } from '../types'
+import RoutineCard from '../components/RoutineCard'
+import RoutineManager from '../components/RoutineManager'
+import type { Deadline, Paper, Project, ProjectEvent, ProjectTask, ProjectUpdate, Routine, RoutineCheck, TimeEntry } from '../types'
 
 const DAY = 864e5
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -23,6 +25,12 @@ export default function Today() {
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
   const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [time, setTime] = useState<TimeEntry[]>([])
+  const [routines, setRoutines] = useState<Routine[]>([])
+  const [checks, setChecks] = useState<RoutineCheck[]>([])
+  const [manage, setManage] = useState(false)
+  const [todo, setTodo] = useState('')
+  const [todoDue, setTodoDue] = useState('')
+  useEffect(() => { const on = () => setManage(true); window.addEventListener('tm-routines', on); return () => window.removeEventListener('tm-routines', on) }, [])
   const [dlOpen, setDlOpen] = useState(false)
   const [dlTitle, setDlTitle] = useState('')
   const [dlDate, setDlDate] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 7); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
@@ -36,8 +44,8 @@ export default function Today() {
 
   const load = useCallback(async () => {
     try {
-      const [p, u, e, pa, dl, tk, te] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[]), store.timeEntries().catch(() => [] as TimeEntry[])])
-      setProjects(p); setUpdates(u); setEvents(e); setPapers(pa); setDeadlines(dl); setTasks(tk); setTime(te)
+      const [p, u, e, pa, dl, tk, te, ro, rc] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[]), store.timeEntries().catch(() => [] as TimeEntry[]), store.routines().catch(() => [] as Routine[]), store.routineChecks().catch(() => [] as RoutineCheck[])])
+      setProjects(p); setUpdates(u); setEvents(e); setPapers(pa); setDeadlines(dl); setTasks(tk); setTime(te); setRoutines(ro); setChecks(rc)
     } catch (er) { setError(friendlyError(er)) }
   }, [])
   useEffect(() => { load() }, [load])
@@ -109,6 +117,11 @@ export default function Today() {
     if (!dlTitle.trim() || !dlDate || !dlProject) return
     try { await store.addDeadline(dlProject, dlTitle.trim(), dlDate); setDlTitle(''); setDlOpen(false); load() } catch (er) { setError(friendlyError(er)) }
   }
+  async function addTodo(e: React.FormEvent) {
+    e.preventDefault()
+    if (!todo.trim()) return
+    try { await store.addTask(null, todo.trim(), todoDue || null); setTodo(''); setTodoDue(''); load() } catch (er) { setError(friendlyError(er)) }
+  }
   async function checkOff(id: string) {
     setTasks(ts => ts.map(t => t.id === id ? { ...t, done: true } : t))
     try { await store.patchTask(id, { done: true }) } catch (er) { setError(friendlyError(er)); load() }
@@ -156,6 +169,9 @@ export default function Today() {
       </form>
 
       <GettingStarted projects={projects} updates={updates} papers={papers} />
+
+      <RoutineCard routines={routines} checks={checks} projects={projects} onManage={() => setManage(true)} onChange={load} />
+      {manage && <RoutineManager routines={routines} projects={projects} onClose={() => { setManage(false); load() }} />}
 
       <ProgressChart updates={updates} projects={projects} papers={papers} tasks={tasks} />
 
@@ -206,7 +222,12 @@ export default function Today() {
         </section>
 
         <section className="card">
-          <div className="card-head"><h2>Tasks {openTasks.length > 0 && <span className="count-pill">{openTasks.length}</span>}</h2></div>
+          <div className="card-head"><h2>To-dos {openTasks.length > 0 && <span className="count-pill">{openTasks.length}</span>}</h2></div>
+          <form className="todo-add" onSubmit={addTodo}>
+            <input placeholder="Add a to-do (not tied to a project)…" value={todo} onChange={e => setTodo(e.target.value)} />
+            <input type="date" value={todoDue} onChange={e => setTodoDue(e.target.value)} aria-label="Due date (optional)" />
+            <button className="primary" disabled={!todo.trim()}>Add</button>
+          </form>
           {openTasks.slice(0, 8).map(t => {
             const info = deadlineInfo(t.due_on); const pr = t.project_id ? byId.get(t.project_id) : undefined
             return (
@@ -219,7 +240,7 @@ export default function Today() {
             )
           })}
           {openTasks.length > 8 && <p className="muted small">+{openTasks.length - 8} more inside your projects</p>}
-          {!openTasks.length && <p className="muted">No open tasks. Add steps inside any project, or use the + button to capture one.</p>}
+          {!openTasks.length && <p className="muted">Nothing to do right now. Add a to-do above, or add tasks inside a project.</p>}
         </section>
 
         <section className="card">
