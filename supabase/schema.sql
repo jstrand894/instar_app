@@ -65,6 +65,20 @@ alter table papers add column if not exists priority text not null default '';
 alter table papers add column if not exists source text not null default '';
 alter table papers add column if not exists why text not null default '';
 
+-- added later: work vs home projects, and scheduled events (safe to re-run)
+alter table projects add column if not exists area text not null default 'work';
+
+create table if not exists project_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  project_id uuid not null references projects on delete cascade,
+  title text not null,
+  starts_at timestamptz not null,
+  repeat text not null default 'none',   -- 'none' or 'weekly'
+  created_at timestamptz not null default now()
+);
+alter table project_events enable row level security;
+
 alter table projects enable row level security;
 alter table project_updates enable row level security;
 alter table papers enable row level security;
@@ -74,7 +88,7 @@ alter table ink enable row level security;
 do $$
 declare t text;
 begin
-  foreach t in array array['projects','project_updates','papers','highlights','ink'] loop
+  foreach t in array array['projects','project_updates','project_events','papers','highlights','ink'] loop
     execute format('drop policy if exists "own rows" on %I', t);
     execute format('create policy "own rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
   end loop;

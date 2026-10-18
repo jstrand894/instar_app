@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type {
-  Highlight, InkPage, Paper, PaperInput, Project, ProjectImport, ProjectUpdate, Stroke,
+  Highlight, InkPage, Paper, PaperInput, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
 } from '../types'
 
 const blankPaper = { authors: '', year: '', status: 'to-read', notes: '', doi: '', category: '', priority: '', source: '', why: '' } as const
@@ -24,13 +24,13 @@ const now = () => new Date().toISOString()
 // ---------- local demo backend ----------
 const LS = 'tm-demo-v1'
 interface Db {
-  projects: Project[]; updates: ProjectUpdate[]; papers: Paper[]
+  projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; papers: Paper[]
   highlights: Highlight[]; ink: InkPage[]
 }
 function load(): Db {
   try {
     const raw = localStorage.getItem(LS)
-    if (raw) return JSON.parse(raw)
+    if (raw) { const d = JSON.parse(raw); d.events ??= []; return d }
   } catch { /* ignore */ }
   const d = seed()
   localStorage.setItem(LS, JSON.stringify(d))
@@ -41,10 +41,10 @@ function seed(): Db {
   const day = 864e5
   const t = (ago: number) => new Date(Date.now() - ago * day).toISOString()
   const projects: Project[] = [
-    { id: 'p1', name: 'Soil carbon manuscript', type: 'manuscript', status: 'active', description: 'Submitted to Ecology Letters', notes: '', created_at: t(40) },
-    { id: 'p2', name: 'Transect survey 2026', type: 'field', status: 'active', description: 'Summer field season', notes: '', created_at: t(30) },
-    { id: 'p3', name: 'Flux data pipeline', type: 'code', status: 'active', description: 'R + Python cleaning scripts', notes: '', created_at: t(20) },
-    { id: 'p4', name: 'Sensor dataset QA', type: 'data', status: 'paused', description: '', notes: '', created_at: t(10) },
+    { id: 'p1', name: 'Soil carbon manuscript', type: 'manuscript', status: 'active', area: 'work', description: 'Submitted to Ecology Letters', notes: '', created_at: t(40) },
+    { id: 'p2', name: 'Transect survey 2026', type: 'field', status: 'active', area: 'work', description: 'Summer field season', notes: '', created_at: t(30) },
+    { id: 'p3', name: 'Flux data pipeline', type: 'code', status: 'active', area: 'work', description: 'R + Python cleaning scripts', notes: '', created_at: t(20) },
+    { id: 'p4', name: 'Sensor dataset QA', type: 'data', status: 'paused', area: 'work', description: '', notes: '', created_at: t(10) },
   ]
   const updates: ProjectUpdate[] = [
     { id: 'u1', kind: 'update', project_id: 'p1', body: 'Reviewer 2 comments addressed in Discussion', created_at: t(1) },
@@ -53,15 +53,15 @@ function seed(): Db {
     { id: 'u4', kind: 'update', project_id: 'p3', body: 'Added gap-filling step, tests passing', created_at: t(0.2) },
     { id: 'u5', kind: 'update', project_id: 'p4', body: 'Waiting on calibration files', created_at: t(9) },
   ]
-  return { projects, updates, papers: [], highlights: [], ink: [] }
+  return { projects, updates, events: [], papers: [], highlights: [], ink: [] }
 }
 const demoFiles = new Map<string, string>() // path -> blob url (session only)
 
 const local = {
   async projects() { return load().projects },
   async updates() { return load().updates },
-  async addProject(p: Pick<Project, 'name' | 'type' | 'description'>) {
-    const d = load(); const row: Project = { id: uid(), status: 'active', notes: '', created_at: now(), ...p }
+  async addProject(p: Pick<Project, 'name' | 'type' | 'description'> & { area?: Project['area'] }) {
+    const d = load(); const row: Project = { id: uid(), status: 'active', area: 'work', notes: '', created_at: now(), ...p }
     d.projects.push(row); save(d); return row
   },
   async patchProject(id: string, patch: Partial<Project>) {
@@ -72,7 +72,7 @@ const local = {
     for (const it of items) {
       let proj = d.projects.find(p => p.name.toLowerCase() === it.name.toLowerCase())
       if (!proj) {
-        proj = { id: uid(), name: it.name, type: it.type, status: it.status, description: it.description, notes: '', created_at: earliest(it) }
+        proj = { id: uid(), name: it.name, type: it.type, status: it.status, area: it.area ?? 'work', description: it.description, notes: '', created_at: earliest(it) }
         d.projects.push(proj); projects++
       }
       for (const e of it.entries) {
@@ -85,8 +85,15 @@ const local = {
   },
   async deleteProject(id: string) {
     const d = load(); d.projects = d.projects.filter(p => p.id !== id)
-    d.updates = d.updates.filter(u => u.project_id !== id); save(d)
+    d.updates = d.updates.filter(u => u.project_id !== id)
+    d.events = d.events.filter(e => e.project_id !== id); save(d)
   },
+  async events() { return load().events },
+  async addEvent(project_id: string, title: string, starts_at: string, repeat: ProjectEvent['repeat']) {
+    const d = load(); const row: ProjectEvent = { id: uid(), project_id, title, starts_at, repeat, created_at: now() }
+    d.events.push(row); save(d); return row
+  },
+  async deleteEvent(id: string) { const d = load(); d.events = d.events.filter(e => e.id !== id); save(d) },
   async addUpdate(project_id: string, body: string, kind: ProjectUpdate['kind'] = 'update') {
     const d = load(); const row: ProjectUpdate = { id: uid(), project_id, kind, body, created_at: now() }
     d.updates.push(row); save(d); return row
@@ -165,7 +172,7 @@ const remote: typeof local = {
     for (const it of items) {
       let id = existing.find(p => p.name.toLowerCase() === it.name.toLowerCase())?.id
       if (!id) {
-        const row = ok(await sb().from('projects').insert({ name: it.name, type: it.type, status: it.status, description: it.description, created_at: earliest(it) }).select('id').single()) as { id: string }
+        const row = ok(await sb().from('projects').insert({ name: it.name, type: it.type, status: it.status, area: it.area ?? 'work', description: it.description, created_at: earliest(it) }).select('id').single()) as { id: string }
         id = row.id; projects++
       }
       const rows = it.entries
@@ -176,6 +183,9 @@ const remote: typeof local = {
     return { projects, entries }
   },
   async deleteProject(id) { ok(await sb().from('projects').delete().eq('id', id)) },
+  async events() { return ok(await sb().from('project_events').select('*').order('starts_at')) },
+  async addEvent(project_id, title, starts_at, repeat) { return ok(await sb().from('project_events').insert({ project_id, title, starts_at, repeat }).select().single()) },
+  async deleteEvent(id) { ok(await sb().from('project_events').delete().eq('id', id)) },
   async addUpdate(project_id, body, kind = 'update') { return ok(await sb().from('project_updates').insert({ project_id, body, kind }).select().single()) },
   async patchUpdate(id, patch) { ok(await sb().from('project_updates').update(patch).eq('id', id)) },
   async deleteUpdate(id) { ok(await sb().from('project_updates').delete().eq('id', id)) },

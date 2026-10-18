@@ -11,9 +11,13 @@ const safe = s => (s || 'Untitled').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').r
 const day = iso => new Date(iso).toLocaleString('en-CA', { hour12: false, dateStyle: 'short', timeStyle: 'short' })
 const tag = id => `[${id.slice(0, 8)}]`
 
-export function renderProject(p, entries) {
-  const lines = [`# ${p.name}`, '', `- Type: ${TYPE_LABEL[p.type] ?? p.type}`, `- Status: ${p.status}`, `- Created: ${day(p.created_at)}`]
+export function renderProject(p, entries, events = []) {
+  const lines = [`# ${p.name}`, '', `- Type: ${TYPE_LABEL[p.type] ?? p.type}`, `- Area: ${p.area ?? 'work'}`, `- Status: ${p.status}`, `- Created: ${day(p.created_at)}`]
   if (p.description) lines.push('', p.description)
+  if (events.length) {
+    lines.push('', '## Schedule', '')
+    for (const e of [...events].sort((a, b) => a.starts_at.localeCompare(b.starts_at))) lines.push(`- ${day(e.starts_at)}${e.repeat === 'weekly' ? ' (repeats weekly)' : ''}: ${e.title}`)
+  }
   lines.push('', '## Timeline', '')
   const sorted = [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at))
   if (!sorted.length) lines.push('_Nothing logged._')
@@ -71,20 +75,21 @@ async function main() {
     process.exit(1)
   }
   const sb = createClient(url, key, { auth: { persistSession: false } })
-  const all = async t => {
+  const all = async (t, optional = false) => {
     const { data, error } = await sb.from(t).select('*').range(0, 49999)
-    if (error) throw new Error(`${t}: ${error.message}`)
+    if (error) { if (optional) return []; throw new Error(`${t}: ${error.message}`) }
     return data
   }
   const [projects, updates, papers, highlights, ink] = await Promise.all(
-    ['projects', 'project_updates', 'papers', 'highlights', 'ink'].map(all))
+    ['projects', 'project_updates', 'papers', 'highlights', 'ink'].map(t => all(t)))
+  const events = await all('project_events', true)
 
   const dirs = { projects: join(out, 'Projects'), papers: join(out, 'Papers'), raw: join(out, '_raw-data') }
   await Promise.all(Object.values(dirs).map(d => mkdir(d, { recursive: true })))
 
   for (const p of projects) {
     const file = await placeFile(dirs.projects, p.id, `${safe(p.name)} ${tag(p.id)}.md`)
-    await writeFile(file, renderProject(p, updates.filter(u => u.project_id === p.id)))
+    await writeFile(file, renderProject(p, updates.filter(u => u.project_id === p.id), events.filter(e => e.project_id === p.id)))
   }
 
   let newPdfs = 0
@@ -106,7 +111,7 @@ async function main() {
   await writeFile(join(out, 'Reading List.csv'), readingListCsv(papers))
 
   // Full-fidelity copy (includes pen strokes) for restoring or migrating later.
-  await writeFile(join(dirs.raw, 'data.json'), JSON.stringify({ exported_at: new Date().toISOString(), projects, project_updates: updates, papers, highlights, ink }, null, 2))
+  await writeFile(join(dirs.raw, 'data.json'), JSON.stringify({ exported_at: new Date().toISOString(), projects, project_updates: updates, project_events: events, papers, highlights, ink }, null, 2))
 
   console.log(`Backed up ${projects.length} projects, ${updates.length} timeline entries, ${papers.length} papers (${newPdfs} new PDFs), ${highlights.length} highlights.`)
   console.log(`Folder: ${out}`)

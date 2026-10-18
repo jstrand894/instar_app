@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { store } from '../lib/store'
-import { ago } from '../lib/util'
-import type { Project, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
+import { ago, fmtWhen, nextOccurrence } from '../lib/util'
+import type { Area, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
   { id: 'manuscript', label: 'Manuscript' }, { id: 'data', label: 'Data' },
@@ -18,13 +18,20 @@ export default function ProjectDetail() {
   const nav = useNavigate()
   const [project, setProject] = useState<Project | null>(null)
   const [entries, setEntries] = useState<ProjectUpdate[]>([])
+  const [events, setEvents] = useState<ProjectEvent[]>([])
+  const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+  const [evTitle, setEvTitle] = useState('')
+  const [evDate, setEvDate] = useState(todayStr)
+  const [evTime, setEvTime] = useState('10:00')
+  const [evWeekly, setEvWeekly] = useState(false)
   const [kind, setKind] = useState<'update' | 'note'>('update')
   const [text, setText] = useState('')
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
     try {
-      const [ps, us] = await Promise.all([store.projects(), store.updates()])
+      const [ps, us, evs] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[])])
+      setEvents(evs.filter(e => e.project_id === id))
       const p = ps.find(x => x.id === id) ?? null
       setProject(p)
       setEntries(us.filter(u => u.project_id === id).sort((a, b) => b.created_at.localeCompare(a.created_at)))
@@ -45,6 +52,14 @@ export default function ProjectDetail() {
     try { await store.addUpdate(project.id, text.trim(), kind); setText(''); load() } catch (er) { setError((er as Error).message) }
   }
 
+  async function addEvent(e: React.FormEvent) {
+    e.preventDefault()
+    if (!evTitle.trim() || !evDate || !evTime || !project) return
+    const starts = new Date(`${evDate}T${evTime}`)
+    if (isNaN(starts.getTime())) return
+    try { await store.addEvent(project.id, evTitle.trim(), starts.toISOString(), evWeekly ? 'weekly' : 'none'); setEvTitle(''); load() } catch (er) { setError((er as Error).message) }
+  }
+
   async function saveEntry(u: ProjectUpdate, body: string) {
     if (body === u.body) return
     if (!body.trim()) { setError('An entry can’t be empty. Use Delete to remove it.'); load(); return }
@@ -61,6 +76,9 @@ export default function ProjectDetail() {
         <input className="title-input" defaultValue={project.name} aria-label="Project name"
           onBlur={e => e.target.value.trim() && e.target.value !== project.name && patch({ name: e.target.value.trim() })} />
         <div className="row wrap">
+          <select value={project.area ?? 'work'} onChange={e => patch({ area: e.target.value as Area })} aria-label="Work or home">
+            <option value="work">Work</option><option value="home">Home</option>
+          </select>
           <select value={project.type} onChange={e => patch({ type: e.target.value as ProjectType })} aria-label="Type">
             {TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
@@ -72,6 +90,27 @@ export default function ProjectDetail() {
       <input className="desc-input" placeholder="Short description" defaultValue={project.description}
         onBlur={e => e.target.value !== project.description && patch({ description: e.target.value })} />
       {error && <p className="error">{error}</p>}
+
+      <section className="card schedule">
+        <h2>Schedule</h2>
+        <form className="sched-form" onSubmit={addEvent}>
+          <input placeholder="What? e.g. Team meeting" value={evTitle} onChange={e => setEvTitle(e.target.value)} />
+          <input type="date" value={evDate} onChange={e => setEvDate(e.target.value)} aria-label="Date" />
+          <input type="time" value={evTime} onChange={e => setEvTime(e.target.value)} aria-label="Time" />
+          <label className="check"><input type="checkbox" checked={evWeekly} onChange={e => setEvWeekly(e.target.checked)} />
+            Repeats weekly{evWeekly && evDate ? ` on ${new Date(`${evDate}T00:00`).toLocaleDateString(undefined, { weekday: 'long' })}s` : ''}</label>
+          <button className="primary" disabled={!evTitle.trim()}>Schedule</button>
+        </form>
+        <ul className="sched-list">
+          {events.map(e => ({ e, when: nextOccurrence(e) })).filter(x => x.when).sort((a, b) => a.when!.getTime() - b.when!.getTime()).map(({ e, when }) => (
+            <li key={e.id}>
+              <b>{fmtWhen(when!)}</b><span>{e.title}{e.repeat === 'weekly' && <i className="rep"> ↻ weekly</i>}</span>
+              <button className="link small danger" onClick={async () => { await store.deleteEvent(e.id); load() }}>Remove</button>
+            </li>
+          ))}
+          {!events.some(e => nextOccurrence(e)) && <li className="muted">Nothing scheduled.</li>}
+        </ul>
+      </section>
 
       <form className="card composer" onSubmit={add}>
         <div className="seg" role="tablist">

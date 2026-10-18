@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { store } from '../lib/store'
-import { ago } from '../lib/util'
-import type { Project, ProjectImport, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
+import { ago, fmtWhen, nextOccurrence } from '../lib/util'
+import type { Area, Project, ProjectEvent, ProjectImport, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
   { id: 'manuscript', label: 'Manuscript' },
@@ -16,6 +16,11 @@ const STATUSES: ProjectStatus[] = ['active', 'paused', 'done']
 export default function Home() {
   const [projects, setProjects] = useState<Project[]>([])
   const [updates, setUpdates] = useState<ProjectUpdate[]>([])
+  const [events, setEvents] = useState<ProjectEvent[]>([])
+  const [area, setAreaState] = useState<Area>(() => {
+    try { return localStorage.getItem('tm-area') === 'home' ? 'home' : 'work' } catch { return 'work' }
+  })
+  const setArea = (a: Area) => { setAreaState(a); try { localStorage.setItem('tm-area', a) } catch { /* ignore */ } }
   const [filter, setFilter] = useState<ProjectType | 'all'>('all')
   const [showDone, setShowDone] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -38,8 +43,8 @@ export default function Home() {
 
   const refresh = useCallback(async () => {
     try {
-      const [p, u] = await Promise.all([store.projects(), store.updates()])
-      setProjects(p); setUpdates(u)
+      const [p, u, ev] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[])])
+      setProjects(p); setUpdates(u); setEvents(ev)
     } catch (e) { setError((e as Error).message) }
   }, [])
   useEffect(() => { refresh() }, [refresh])
@@ -51,9 +56,21 @@ export default function Home() {
     return m
   }, [updates])
 
+  const upcomingByProject = useMemo(() => {
+    const now = new Date(); const m = new Map<string, { id: string; title: string; when: Date; weekly: boolean }[]>()
+    for (const e of events) {
+      const when = nextOccurrence(e, now); if (!when) continue
+      ;(m.get(e.project_id) ?? m.set(e.project_id, []).get(e.project_id)!).push({ id: e.id, title: e.title, when, weekly: e.repeat === 'weekly' })
+    }
+    for (const l of m.values()) l.sort((a, b) => a.when.getTime() - b.when.getTime())
+    return m
+  }, [events])
+
+  const inArea = projects.filter(p => (p.area ?? 'work') === area)
+  const areaCount = (a: Area) => projects.filter(p => (p.area ?? 'work') === a && p.status !== 'done').length
   const lastActivity = (p: Project) => byProject.get(p.id)?.[0]?.created_at ?? p.created_at
 
-  const visible = projects
+  const visible = inArea
     .filter(p => (filter === 'all' || p.type === filter) && (showDone || p.status !== 'done'))
     .sort((a, b) => lastActivity(b).localeCompare(lastActivity(a)))
 
@@ -61,6 +78,11 @@ export default function Home() {
     <div className="page">
       <header className="page-head">
         <h1>Projects</h1>
+        <div className="rocker" data-area={area} role="group" aria-label="Work or home projects">
+          <i className="thumb" />
+          <button className={area === 'work' ? 'on' : ''} onClick={() => setArea('work')} aria-pressed={area === 'work'}>Work <small>{areaCount('work')}</small></button>
+          <button className={area === 'home' ? 'on' : ''} onClick={() => setArea('home')} aria-pressed={area === 'home'}>Home <small>{areaCount('home')}</small></button>
+        </div>
         <div className="row">
           <button onClick={() => importInput.current?.click()}>Import history</button>
           <button className="primary" onClick={() => setAdding(true)}>New project</button>
@@ -69,9 +91,10 @@ export default function Home() {
       </header>
 
       <div className="stats">
-        <div><b>{projects.filter(p => p.status === 'active').length}</b><span>active</span></div>
-        <div><b>{updates.filter(u => Date.now() - new Date(u.created_at).getTime() < 7 * 864e5).length}</b><span>updates this week</span></div>
-        <div><b>{projects.filter(p => p.status === 'paused').length}</b><span>paused</span></div>
+        <div><b>{inArea.filter(p => p.status === 'active').length}</b><span>active</span></div>
+        <div><b>{updates.filter(u => inArea.some(p => p.id === u.project_id) && Date.now() - new Date(u.created_at).getTime() < 7 * 864e5).length}</b><span>updates this week</span></div>
+        <div><b>{inArea.reduce((n, p) => n + (upcomingByProject.get(p.id) ?? []).filter(e => e.when.getTime() - Date.now() < 7 * 864e5).length, 0)}</b><span>scheduled this week</span></div>
+        <div><b>{inArea.filter(p => p.status === 'paused').length}</b><span>paused</span></div>
       </div>
 
       <div className="chips">
@@ -84,32 +107,32 @@ export default function Home() {
 
       {error && <p className="error">{error}</p>}
       {note && <p className="ok">{note}</p>}
-      {adding && <NewProject onClose={() => setAdding(false)} onCreated={() => { setAdding(false); refresh() }} />}
+      {adding && <NewProject area={area} onClose={() => setAdding(false)} onCreated={() => { setAdding(false); refresh() }} />}
 
       <div className="grid">
         {visible.map(p => (
-          <ProjectCard key={p.id} project={p} updates={byProject.get(p.id) ?? []} onChange={refresh} />
+          <ProjectCard key={p.id} project={p} updates={byProject.get(p.id) ?? []} upcoming={upcomingByProject.get(p.id) ?? []} onChange={refresh} />
         ))}
       </div>
       {!visible.length && !adding && (
         <div className="empty-box">
-          <h2>{projects.length ? 'Nothing matches this filter' : 'No projects yet'}</h2>
-          <p className="muted">{projects.length ? 'Try another type or show finished projects.' : 'Add a manuscript, dataset, field season or code project to track its updates here.'}</p>
-          {!projects.length && <button className="primary" onClick={() => setAdding(true)}>New project</button>}
+          <h2>{inArea.length ? 'Nothing matches this filter' : `No ${area} projects yet`}</h2>
+          <p className="muted">{inArea.length ? 'Try another type or show finished projects.' : `Create a project, or move one here from the other side using the project page.`}</p>
+          {!inArea.length && <button className="primary" onClick={() => setAdding(true)}>New project</button>}
         </div>
       )}
     </div>
   )
 }
 
-function NewProject({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function NewProject({ area, onClose, onCreated }: { area: Area; onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState('')
   const [type, setType] = useState<ProjectType>('manuscript')
   const [description, setDescription] = useState('')
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
-    await store.addProject({ name: name.trim(), type, description: description.trim() })
+    await store.addProject({ name: name.trim(), type, description: description.trim(), area })
     onCreated()
   }
   return (
@@ -127,7 +150,7 @@ function NewProject({ onClose, onCreated }: { onClose: () => void; onCreated: ()
   )
 }
 
-function ProjectCard({ project, updates, onChange }: { project: Project; updates: ProjectUpdate[]; onChange: () => void }) {
+function ProjectCard({ project, updates, upcoming, onChange }: { project: Project; updates: ProjectUpdate[]; upcoming: { id: string; title: string; when: Date; weekly: boolean }[]; onChange: () => void }) {
   const nav = useNavigate()
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)
@@ -154,6 +177,15 @@ function ProjectCard({ project, updates, onChange }: { project: Project; updates
       </div>
       <h2><Link to={`/project/${project.id}`} className="plink">{project.name}</Link></h2>
       {project.description && <p className="muted">{project.description}</p>}
+
+      {upcoming.length > 0 && (
+        <ul className="sched">
+          {upcoming.slice(0, 2).map(e => (
+            <li key={e.id}><b>{fmtWhen(e.when)}</b><span>{e.title}{e.weekly && <i className="rep" title="Repeats weekly"> ↻</i>}</span></li>
+          ))}
+          {upcoming.length > 2 && <li className="muted small">+{upcoming.length - 2} more</li>}
+        </ul>
+      )}
 
       <ul className="updates">
         {shown.map(u => (

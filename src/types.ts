@@ -1,5 +1,6 @@
 export type ProjectType = 'manuscript' | 'data' | 'field' | 'code' | 'other'
 export type ProjectStatus = 'active' | 'paused' | 'done'
+export type Area = 'work' | 'home'
 export type PaperStatus = 'to-read' | 'reading' | 'read' | 'unavailable'
 export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink'
 
@@ -8,8 +9,17 @@ export interface Project {
   name: string
   type: ProjectType
   status: ProjectStatus
+  area: Area
   description: string
   notes: string
+  created_at: string
+}
+export interface ProjectEvent {
+  id: string
+  project_id: string
+  title: string
+  starts_at: string
+  repeat: 'none' | 'weekly'
   created_at: string
 }
 export interface ProjectUpdate {
@@ -55,6 +65,6 @@ export interface InkPage { paper_id: string; page: number; strokes: Stroke[] }
 export type PaperInput = Partial<Omit<Paper, 'id' | 'created_at' | 'file_path'>> & { title: string }
 
 export interface ProjectImport {
-  name: string; type: ProjectType; status: ProjectStatus; description: string
+  name: string; type: ProjectType; status: ProjectStatus; area?: Area; description: string
   entries: { kind: 'update' | 'note'; body: string; date: string }[]
 }

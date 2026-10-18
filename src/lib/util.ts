@@ -8,3 +8,29 @@ export function ago(iso: string): string {
 }
 export const isDesktop = () =>
   typeof matchMedia !== 'undefined' && matchMedia('(hover: hover) and (pointer: fine)').matches
+
+import type { ProjectEvent } from '../types'
+
+/** The next time this event happens (weekly events roll forward), or null once a one-off is over. */
+export function nextOccurrence(e: ProjectEvent, from = new Date()): Date | null {
+  const start = new Date(e.starts_at)
+  const grace = 60 * 60 * 1000 // keep showing for an hour after it starts
+  if (e.repeat === 'weekly') {
+    const week = 7 * 864e5
+    if (start.getTime() + grace >= from.getTime()) return start
+    const weeks = Math.ceil((from.getTime() - grace - start.getTime()) / week)
+    const d = new Date(start); d.setDate(d.getDate() + weeks * 7) // setDate keeps wall-clock time across DST
+    return d
+  }
+  return start.getTime() + grace >= from.getTime() ? start : null
+}
+
+export function fmtWhen(d: Date, now = new Date()): string {
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  const midnight = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const days = Math.round((midnight(d) - midnight(now)) / 864e5)
+  if (days === 0) return `Today ${time}`
+  if (days === 1) return `Tomorrow ${time}`
+  if (days > 1 && days < 7) return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${time}`
+  return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`
+}
