@@ -193,7 +193,8 @@ function ManageCalendars({ cals, errors, onChange }: { cals: Calendar[]; errors:
           <li key={c.id}>
             <i className="cdot" style={{ background: c.color }} />
             <div><b>{c.name}</b> <span className="muted small">{host(c.url)}</span>
-              {errors[c.id] && <div className="error small">{errors[c.id]}</div>}</div>
+              {errors[c.id] && <div className="error small">{errors[c.id]}
+                {/404/.test(errors[c.id]) && ' Tip: open the link in a browser tab. A working feed downloads a .ics file; a "not found" page means the link is wrong, was reset, or is the Public address instead of the Secret one.'}</div>}</div>
             <button className="link small danger" onClick={async () => { if (confirm(`Remove "${c.name}" from the app? Your actual calendar is not changed.`)) { await store.deleteCalendar(c.id); onChange() } }}>Remove</button>
           </li>
         ))}

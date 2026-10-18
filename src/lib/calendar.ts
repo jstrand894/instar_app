@@ -22,6 +22,12 @@ export function checkFeedUrl(raw: string): string | null {
   if (!/^https:\/\//i.test(url)) return 'The link must start with https:// or webcal://'
   if (/calendar\.google\.com\/calendar\/(embed|u\/\d+\/r|r\?)|[?&]cid=/i.test(url))
     return 'That is a sharing link, not the calendar feed. In Google Calendar use "Secret address in iCal format" (it ends in .ics).'
+  if (/calendar\.google\.com\/calendar\/ical\//i.test(url)) {
+    if (/\/public\//i.test(url))
+      return 'That is the Public address, which returns "not found" unless the calendar is made public. Use "Secret address in iCal format" instead (its link contains /private-).'
+    if (!/\/private-/i.test(url))
+      return 'That does not look like the secret address. Google\'s secret link contains /private- followed by a long code and ends in basic.ics.'
+  }
   return null
 }
 export { normalize as normalizeFeedUrl }
