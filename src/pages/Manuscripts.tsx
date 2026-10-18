@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { DndContext, DragOverlay, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { store } from '../lib/store'
 import { friendlyError } from '../lib/errors'
 import { ago, fmtWhen, nextOccurrence } from '../lib/util'
@@ -17,6 +18,13 @@ export default function Manuscripts() {
   const [filter, setFilter] = useState<Stage | 'all'>('all')
   const [showDone, setShowDone] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [view, setViewState] = useState<'board' | 'list'>(() => { try { const v = localStorage.getItem('tm-ms-view'); if (v === 'board' || v === 'list') return v } catch { /* ignore */ } return window.innerWidth > 900 ? 'board' : 'list' })
+  const setView = (v: 'board' | 'list') => { setViewState(v); try { localStorage.setItem('tm-ms-view', v) } catch { /* ignore */ } }
+  const [dragId, setDragId] = useState<string | null>(null)
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+  )
   const [error, setError] = useState('')
 
   const refresh = useCallback(async () => {
@@ -66,10 +74,26 @@ export default function Manuscripts() {
     try { await store.patchProject(p.id, { pinned: !p.pinned }) } catch (e) { setError(friendlyError(e)); refresh() }
   }
 
+  function onDragEnd(e: DragEndEvent) {
+    setDragId(null)
+    const p = ms.find(x => x.id === e.active.id); const to = e.over?.id as Stage | undefined
+    if (p && to && STAGES.some(s => s.id === to) && to !== stageOf(p)) setStage(p, to)
+  }
+  const dragged = ms.find(p => p.id === dragId)
+  const cardFor = (p: Project) => (
+    <ManuscriptCard p={p} last={latest.get(p.id)} next={nextEvent(p.id)}
+      papers={links.filter(l => l.project_id === p.id).length} openTasks={tasks.filter(t => t.project_id === p.id && !t.done).length}
+      onStage={s => setStage(p, s)} onPin={() => togglePin(p)} />
+  )
+
   return (
-    <div className="page">
+    <div className="page wide-page">
       <header className="page-head">
         <h1>Manuscripts</h1>
+        <div className="seg" role="group" aria-label="View">
+          <button className={view === 'board' ? 'on' : ''} onClick={() => setView('board')}>Board</button>
+          <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>List</button>
+        </div>
         <button className="primary" onClick={() => setAdding(true)}>New manuscript</button>
       </header>
 
@@ -80,18 +104,33 @@ export default function Manuscripts() {
         <div><b>{dueSoon}</b><span>due within 30 days</span></div>
       </div>
 
-      <div className="chips">
+      {view === 'list' && <div className="chips">
         <button className={filter === 'all' ? 'on' : ''} onClick={() => setFilter('all')}>All</button>
         {STAGES.map(s => (
           <button key={s.id} className={filter === s.id ? 'on' : ''} onClick={() => setFilter(s.id)}>{s.label} <small>{counts(s.id)}</small></button>
         ))}
         <label className="check"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Show accepted</label>
-      </div>
+      </div>}
 
       {error && <p className="error">{error}</p>}
       {adding && <NewManuscript onClose={() => setAdding(false)} onCreated={() => { setAdding(false); refresh() }} />}
 
-      {groups.map(g => (
+      {view === 'board' && ms.length > 0 && (
+        <DndContext sensors={sensors} onDragStart={(e: DragStartEvent) => setDragId(String(e.active.id))} onDragEnd={onDragEnd} onDragCancel={() => setDragId(null)}>
+          <div className="board">
+            {STAGES.map(s => (
+              <BoardColumn key={s.id} stage={s.id} label={s.label} hint={s.hint} count={ms.filter(p => stageOf(p) === s.id).length}>
+                {ms.filter(p => stageOf(p) === s.id)
+                  .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || (deadlineInfo(a.deadline)?.days ?? 1e6) - (deadlineInfo(b.deadline)?.days ?? 1e6))
+                  .map(p => <BoardCard key={p.id} id={p.id} dim={dragId === p.id}>{cardFor(p)}</BoardCard>)}
+              </BoardColumn>
+            ))}
+          </div>
+          <DragOverlay dropAnimation={{ duration: 180 }}>{dragged ? <div className="board-overlay">{cardFor(dragged)}</div> : null}</DragOverlay>
+        </DndContext>
+      )}
+
+      {view === 'list' && groups.map(g => (
         <section key={g.stage.id} className="group">
           <h2 className="group-title">{g.stage.label} <span className="muted small">{g.items.length} · {g.stage.hint}</span></h2>
           <div className="grid">
@@ -104,7 +143,7 @@ export default function Manuscripts() {
         </section>
       ))}
 
-      {!groups.length && !adding && (
+      {view === 'list' && !groups.length && !adding && (
         <div className="empty-box dashed">
           <h2>{ms.length ? 'Nothing here' : 'No manuscripts yet'}</h2>
           <p className="muted">{ms.length ? 'Try another stage, or show accepted manuscripts.' : 'Track each paper from first draft through review and revision to publication.'}</p>
@@ -113,6 +152,23 @@ export default function Manuscripts() {
       )}
     </div>
   )
+}
+
+function BoardColumn({ stage, label, hint, count, children }: { stage: Stage; label: string; hint: string; count: number; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: stage })
+  return (
+    <section ref={setNodeRef} className={`bcol ${isOver ? 'over' : ''}`} aria-label={`${label}, ${count} manuscripts`}>
+      <header><h2>{label} <span className="count-pill">{count}</span></h2><span className="muted small">{hint}</span></header>
+      {children}
+      {count === 0 && <p className="bcol-empty">Drop a manuscript here</p>}
+    </section>
+  )
+}
+
+function BoardCard({ id, dim, children }: { id: string; dim: boolean; children: React.ReactNode }) {
+  const { setNodeRef, attributes, listeners } = useDraggable({ id })
+  // the card is draggable by its body; buttons, links and the stage menu keep working
+  return <div ref={setNodeRef} className={`bcard ${dim ? 'dim' : ''}`} {...attributes} {...listeners} tabIndex={-1} role="group">{children}</div>
 }
 
 function NewManuscript({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
