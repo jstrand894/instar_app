@@ -44,7 +44,7 @@ textarea { resize: vertical; min-height: 64px; }
 
 .shell { display: grid; grid-template-columns: 220px 1fr; height: 100%; }
 .nav { display: flex; flex-direction: column; gap: .25rem; padding: 1rem .8rem; border-right: 1px solid var(--line); background: var(--panel); overflow-y: auto; }
-.brand { display: flex; align-items: center; gap: .7rem; font-size: 1.45rem; font-weight: 800; letter-spacing: -.02em; padding: .1rem .5rem 1.2rem; }
+.brand { display: flex; align-items: center; gap: .7rem; font-size: 1.6rem; padding: .1rem .5rem 1.2rem; }
 .nav a { padding: .55rem .7rem; border-radius: 8px; color: inherit; text-decoration: none; }
 .nav a.active { background: var(--chip); font-weight: 600; }
 main { overflow-y: auto; min-width: 0; display: flex; flex-direction: column; }
@@ -416,3 +416,8 @@ main { scrollbar-gutter: stable; }
 .pomo-mini { display: none; place-items: center; padding: .4rem 0; }
 .pomo-mini .ring-time { font-size: .62rem !important; }
 @media (min-width: 761px) { .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .pomo-mini { display: grid; } }
+
+/* the Instar wordmark */
+.brand-text, .auth h1, .about h2 { font-family: 'Fredoka', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif; font-weight: 600; letter-spacing: .01em; }
+.brand-text { font-size: 1.7rem; line-height: 1; }
+.auth h1 { font-size: 2rem; } .about h2 { font-size: 1.9rem; }
