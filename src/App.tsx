@@ -1,21 +1,22 @@
-import { useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { NavLink, Route, Routes, HashRouter, useLocation } from 'react-router-dom'
 import AuthGate from './components/Auth'
 import Pomodoro from './components/Pomodoro'
 import Account from './components/Account'
 import Logo from './components/Logo'
+import PageSkeleton from './components/PageSkeleton'
 import Toasts from './components/Toasts'
 import SyncStatus from './components/SyncStatus'
-import CommandPalette from './components/CommandPalette'
+const CommandPalette = lazy(() => import('./components/CommandPalette'))
 import QuickCapture from './components/QuickCapture'
-import Tour from './components/Tour'
+const Tour = lazy(() => import('./components/Tour'))
 import { LinksProvider } from './lib/links'
 import Today from './pages/Today'
-import Home from './pages/Home'
-import Manuscripts from './pages/Manuscripts'
-import Library from './pages/Library'
-import Reader from './pages/Reader'
-import ProjectDetail from './pages/ProjectDetail'
+const Home = lazy(() => import('./pages/Home'))
+const Manuscripts = lazy(() => import('./pages/Manuscripts'))
+const Library = lazy(() => import('./pages/Library'))
+const Reader = lazy(() => import('./pages/Reader'))
+const ProjectDetail = lazy(() => import('./pages/ProjectDetail'))
 import { demoMode } from './lib/supabase'
 import { isDesktop } from './lib/util'
 
@@ -42,6 +43,10 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
     try { const v = localStorage.getItem('tm-nav'); if (v === 'auto' || v === 'pinned') return v } catch { /* ignore */ }
     return desktop ? 'auto' : 'pinned'
   })
+  useEffect(() => {
+    const idle: (cb: () => void) => void = (window as unknown as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback ?? (cb => setTimeout(cb, 1800))
+    idle(() => { import('./pages/Home'); import('./pages/Manuscripts'); import('./pages/ProjectDetail'); import('./pages/Library') })
+  }, [])
   const toggleNav = () => setNavMode(m => { const n = m === 'auto' ? 'pinned' : 'auto'; try { localStorage.setItem('tm-nav', n) } catch { /* ignore */ } return n })
   return (
     <div className={`shell nav-${navMode} ${reading ? 'in-reader' : ''}`}>
@@ -70,6 +75,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
             <button className="link" onClick={() => { sessionStorage.setItem('tm-banner', '1'); setBannerOff(true) }} aria-label="Dismiss">×</button>
           </div>
         )}
+        <Suspense fallback={<PageSkeleton />}>
         <Routes>
           <Route path="/" element={<Today />} />
           <Route path="/projects" element={<Home />} />
@@ -78,9 +84,9 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
           <Route path="/library" element={<Library />} />
           <Route path="/read/:id" element={<Reader />} />
         </Routes>
+        </Suspense>
       </main>
-      <Tour />
-      <CommandPalette />
+      <Suspense fallback={null}><Tour /><CommandPalette /></Suspense>
       <QuickCapture />
       <Toasts />
     </div>

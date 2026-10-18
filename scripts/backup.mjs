@@ -13,7 +13,7 @@ const tag = id => `[${id.slice(0, 8)}]`
 
 const STAGE_LABEL = { planning: 'Planning', drafting: 'Drafting', internal: 'Internal review', submitted: 'Under review', revision: 'Revision', accepted: 'Accepted / published' }
 
-export function renderProject(p, entries, events = [], papers = [], deadlines = []) {
+export function renderProject(p, entries, events = [], papers = [], deadlines = [], tasks = [], time = []) {
   const lines = [`# ${p.name}`, '', `- Type: ${TYPE_LABEL[p.type] ?? p.type}`, `- Area: ${p.area ?? 'work'}`, `- Status: ${p.status}`, `- Created: ${day(p.created_at)}`]
   if (p.type === 'manuscript') {
     lines.push(`- Stage: ${STAGE_LABEL[p.stage ?? 'drafting']}`)
@@ -21,8 +21,17 @@ export function renderProject(p, entries, events = [], papers = [], deadlines = 
     if (p.coauthors) lines.push(`- Co-authors: ${p.coauthors}`)
     if (p.deadline) lines.push(`- Deadline: ${p.deadline}`)
   }
+  if ((p.tags ?? []).length) lines.push(`- Tags: ${p.tags.map(t => '#' + t).join(' ')}`)
   if (p.description) lines.push('', p.description)
   if (papers.length) { lines.push('', '## Reading', ''); for (const x of papers) lines.push(`- ${x.title}${x.authors ? ` (${x.authors}${x.year ? `, ${x.year}` : ''})` : ''}`) }
+  if (tasks.length) {
+    lines.push('', '## Tasks', '')
+    for (const t of [...tasks].sort((a, b) => Number(a.done) - Number(b.done) || (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999'))) lines.push(`- [${t.done ? 'x' : ' '}] ${t.title}${t.due_on ? ` (due ${t.due_on})` : ''}`)
+  }
+  if (time.length) {
+    const total = time.reduce((a, t) => a + t.minutes, 0)
+    lines.push('', '## Focus time', '', `- Total: ${Math.floor(total / 60)}h ${total % 60}m over ${time.length} sessions`)
+  }
   if (deadlines.length) {
     lines.push('', '## Deadlines', '')
     for (const d of [...deadlines].sort((a, b) => a.due_on.localeCompare(b.due_on))) lines.push(`- [${d.done ? 'x' : ' '}] ${d.due_on}: ${d.title}`)
@@ -44,6 +53,7 @@ export function renderPaper(p, pdfName, highlights) {
   if (p.year) lines.push(`- Year: ${p.year}`)
   if (p.category) lines.push(`- Category: ${p.category}`)
   if (p.priority) lines.push(`- Priority: ${p.priority}`)
+  if ((p.tags ?? []).length) lines.push(`- Tags: ${p.tags.map(t => '#' + t).join(' ')}`)
   if (p.source) lines.push(`- Source: ${p.source}`)
   if (p.doi) lines.push(`- DOI: https://doi.org/${p.doi}`)
   lines.push(`- Status: ${p.status}${p.read_at ? ` (read ${day(p.read_at)})` : ''}`, `- Added: ${day(p.created_at)}`, pdfName ? `- PDF: [Open PDF](<${pdfName}>)` : '- PDF: not attached', '')
@@ -98,6 +108,8 @@ async function main() {
   const events = await all('project_events', true)
   const links = await all('project_papers', true)
   const deadlines = await all('project_deadlines', true)
+  const tasks = await all('project_tasks', true)
+  const time = await all('time_entries', true)
 
   const dirs = { projects: join(out, 'Projects'), papers: join(out, 'Papers'), raw: join(out, '_raw-data') }
   await Promise.all(Object.values(dirs).map(d => mkdir(d, { recursive: true })))
@@ -106,7 +118,7 @@ async function main() {
     const file = await placeFile(dirs.projects, p.id, `${safe(p.name)} ${tag(p.id)}.md`)
     await writeFile(file, renderProject(p, updates.filter(u => u.project_id === p.id), events.filter(e => e.project_id === p.id),
       links.filter(l => l.project_id === p.id).map(l => papers.find(x => x.id === l.paper_id)).filter(Boolean),
-      deadlines.filter(d => d.project_id === p.id)))
+      deadlines.filter(d => d.project_id === p.id), tasks.filter(t => t.project_id === p.id), time.filter(t => t.project_id === p.id)))
   }
 
   let newPdfs = 0
@@ -128,7 +140,7 @@ async function main() {
   await writeFile(join(out, 'Reading List.csv'), readingListCsv(papers))
 
   // Full-fidelity copy (includes pen strokes) for restoring or migrating later.
-  await writeFile(join(dirs.raw, 'data.json'), JSON.stringify({ exported_at: new Date().toISOString(), projects, project_updates: updates, project_events: events, project_papers: links, project_deadlines: deadlines, papers, highlights, ink }, null, 2))
+  await writeFile(join(dirs.raw, 'data.json'), JSON.stringify({ exported_at: new Date().toISOString(), projects, project_updates: updates, project_events: events, project_papers: links, project_deadlines: deadlines, project_tasks: tasks, time_entries: time, papers, highlights, ink }, null, 2))
 
   console.log(`Backed up ${projects.length} projects, ${updates.length} timeline entries, ${papers.length} papers (${newPdfs} new PDFs), ${highlights.length} highlights.`)
   console.log(`Folder: ${out}`)

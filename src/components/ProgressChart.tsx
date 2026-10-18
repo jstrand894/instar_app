@@ -110,7 +110,7 @@ export default function ProgressChart({ updates, projects, papers, tasks }: {
                   return <rect key={s.id} x={gx + k * barW} y={T + ih - h} width={barW - 2} height={Math.max(h, v ? 2 : 0)} rx="3" fill={s.color} opacity={isNow ? 1 : 0.8} />
                 })}
                 {((W < 420 ? i % 3 === (WEEKS - 1) % 3 : i % 2 === (WEEKS - 1) % 2) || isNow) && (
-                  <text x={L + i * groupW + groupW / 2} y={H - 8} textAnchor="middle" className={`axis ${isNow ? 'now' : ''}`}>{isNow ? 'This week' : label(w.start)}</text>
+                  <text x={isNow ? W - R : L + i * groupW + groupW / 2} y={H - 8} textAnchor={isNow ? 'end' : 'middle'} className={`axis ${isNow ? 'now' : ''}`}>{isNow ? 'This week' : label(w.start)}</text>
                 )}
               </g>
             )

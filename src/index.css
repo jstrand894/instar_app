@@ -588,3 +588,10 @@ kbd { background: var(--chip); border: 1px solid var(--line); border-bottom-widt
 .started-tick { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: .8rem; font-weight: 700; flex: none; }
 .started-list li.done .started-tick { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); } .started-list li.done b { color: var(--muted); text-decoration: line-through; }
 .tl-empty { margin-left: -1.4rem; display: grid; gap: .2rem; }
+
+/* loading skeleton */
+.sk { background: linear-gradient(90deg, var(--chip) 25%, color-mix(in srgb, var(--chip) 60%, var(--panel)) 50%, var(--chip) 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; border-radius: 12px; }
+.sk-title { height: 34px; width: 220px; margin-bottom: 1rem; } .sk-row { height: 56px; margin-bottom: 1rem; }
+.sk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem; } .sk-card { height: 200px; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@media (max-width: 760px) { .cap-hint { visibility: hidden; } }

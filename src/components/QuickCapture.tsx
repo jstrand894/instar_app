@@ -125,7 +125,7 @@ export default function QuickCapture() {
               )}
               {err && <p className="error small">{err}</p>}
               <div className="row between">
-                <span className="muted small"><kbd>⌘</kbd><kbd>↵</kbd> to save</span>
+                <span className="muted small cap-hint"><kbd>⌘</kbd><kbd>↵</kbd> to save</span>
                 <button className="primary" disabled={!ready || busy}>{busy ? 'Saving…' : 'Add'}</button>
               </div>
             </div>

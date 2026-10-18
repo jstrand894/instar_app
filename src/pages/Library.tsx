@@ -4,7 +4,6 @@ import Empty from '../components/Empty'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
-import { parseReadingList } from '../lib/readingList'
 import { firstSurname, isConfident, lookupDoi, searchByTitle } from '../lib/crossref'
 import ReadingDashboard from '../components/ReadingDashboard'
 import type { Paper, PaperLink, PaperStatus, Project } from '../types'
@@ -44,6 +43,7 @@ export default function Library() {
     } catch (e) { setError(friendlyError(e)) }
   }, [])
   useEffect(() => { refresh() }, [refresh])
+  useEffect(() => { const t = setTimeout(() => { import('./Reader') }, 1500); return () => clearTimeout(t) }, [])
   useEffect(() => { window.addEventListener('tm-data', refresh); return () => window.removeEventListener('tm-data', refresh) }, [refresh])
 
   async function uploadPdfs(files: FileList | File[]) {
@@ -67,6 +67,7 @@ export default function Library() {
   async function importList(file: File) {
     setBusy(true); setError(''); setNote('')
     try {
+      const { parseReadingList } = await import('../lib/readingList') // only loaded when you import a list
       const items = await parseReadingList(file)
       if (!items.length) { setError('No papers found in that spreadsheet.'); setBusy(false); return }
       if (!confirm(`Import ${items.length} papers from "${file.name}"? Ones already in your library are skipped.`)) { setBusy(false); return }

@@ -10,7 +10,10 @@ Built by Jackson Strand.
 **Today** (the landing page)
 - A time-of-day greeting, plus a one-line summary of what is coming up
 - Quick "log an update" box for any project or manuscript
+- **Your progress**: a weekly chart (last 10 weeks) of papers read, project activity and manuscript activity, with meters for Core papers read, tasks done and manuscripts by stage
 - Your schedule for today and the next week
+- **Tasks** from every project, soonest first, with check boxes
+- **Focus time** from the Pomodoro timer: this week's total, a 7-day chart and a per-project breakdown
 - Deadlines (manuscript deadlines and standalone ones; use **+** to add one for any project or manuscript)
 - Needs attention: active projects with no update in two weeks
 - Papers you are reading now, and recent activity across everything
@@ -19,10 +22,10 @@ Built by Jackson Strand.
 - Cards for data, field work, code and other projects, each with its latest updates
 - **Work / Home** switch at the top; each project belongs to one side
 - Pin projects to the top, drag the handle to reorder, collapsible **Completed** section
-- Each project opens to a **timeline** of dated updates and editable note boxes, a **schedule** (one-off or weekly meetings that also show on the card), **deadlines**, and a **Reading** list of linked papers
+- Each project opens to a **timeline** of dated updates and editable note boxes, a **task list** (add, check off, edit, delete with undo), **tags**, **focus time**, a **schedule** (one-off or weekly meetings that also show on the card), **deadlines**, and a **Reading** list of linked papers
 
 **Manuscripts** (separate from projects)
-- Stage tracker: Planning, Drafting, Internal review, Under review, Revision, Accepted
+- Stage tracker: Planning, Drafting, Internal review, Under review, Revision, Accepted, as a **drag-and-drop board** (drag a card to a new stage; the move is logged to its timeline) or a grouped list
 - Journal, co-authors and a deadline with an overdue / due-soon chip; stage changes are logged to the timeline automatically
 - Shows linked papers and the next scheduled meeting on each card
 
@@ -32,7 +35,15 @@ Built by Jackson Strand.
 - Stats (read this week / month / year / all time, Core papers progress) and a **word cloud** of the titles you have read
 - Import a reading list from an Excel file, add papers **by DOI** (autofill from Crossref), or bulk **find missing DOIs**
 - Papers can exist before you have the PDF; attach it later
-- Link papers to projects and manuscripts, and filter the library by project
+- Link papers to projects and manuscripts, tag them, and filter the library by project or tag
+
+**Everywhere in the app**
+- **Search and jump**: press `⌘K` (or `/`) to search projects, manuscripts, papers, tasks, deadlines, notes and highlights, or to run commands (new update, toggle dark mode, go to a section). Results are grouped and you can use the arrow keys
+- **Floating + button** (or press `N`) on every screen: add an update, note, task, deadline or a paper by DOI without leaving what you are doing. It remembers your last project and, on a project page, defaults to that project
+- **Undo instead of "Are you sure?"**: deleting hides the item right away and offers **Undo** for a few seconds before it is really removed
+- **Tags and links between notes**: type `#tag` in a note, or add tags to projects and papers, and filter by them. Type `[[` to link another project or paper, with suggestions as you type. Linked items show a **Mentioned in** list
+- **Sync indicator** in the sidebar: Saving, Saved, Offline or "Couldn't save", with calm, plain-language error messages (technical details are one click away)
+- **Welcome tour** the first time you open it (replay it from Account), and friendly empty states with a get-started checklist
 
 **Account menu**
 - Theme (system / light / dark), accent color, your name, Pomodoro lengths, About, Sign out
@@ -109,7 +120,7 @@ Any other static host (Vercel, Cloudflare Pages, Netlify) works too: build with 
 
 ## Backup to a OneDrive (or any) folder
 
-A one-way mirror of everything in readable files: a Markdown file per project (timeline, schedule, deadlines, linked papers), each paper as a PDF plus a Markdown file with its notes and highlights, a `Reading List.csv`, and a full raw JSON copy.
+A one-way mirror of everything in readable files: a Markdown file per project (timeline, tasks, focus time, schedule, deadlines, tags, linked papers), each paper as a PDF plus a Markdown file with its notes and highlights, a `Reading List.csv`, and a full raw JSON copy.
 
 1. `cp scripts/backup.env.example .env.backup`
 2. In it, set `SUPABASE_SECRET_KEY` (*Project Settings → API Keys → secret key*) and `BACKUP_DIR` (a folder inside your OneDrive, Dropbox, iCloud Drive or similar). The sync app on your computer does the uploading; the script never talks to those services.
@@ -117,20 +128,31 @@ A one-way mirror of everything in readable files: a Markdown file per project (t
 
 The secret key bypasses row-level security. Keep it only in `.env.backup` (git-ignored) on your own computer and never in `.env` or the app. The script reads **all** rows, so it is meant for a single-user setup.
 
+## Keyboard shortcuts
+
+| Keys | What it does |
+|---|---|
+| `⌘K` or `/` | Search and jump (Ctrl+K on Windows) |
+| `N` | Quick add (update, note, task, deadline or paper) |
+| `⌘↵` | Save in the quick-add sheet and in the note box |
+| `Esc` | Close a sheet, the search or the tour |
+
 ## Project layout
 
 ```
 src/
   pages/        Today, Projects (Home), Manuscripts, ProjectDetail, Library (Reading), Reader
-  components/   Account, Auth, Logo, Pomodoro, ReadingDashboard, PageView (PDF page + ink)
-  lib/          store (Supabase or demo storage), crossref, reading (stats, recommendations,
-                word cloud), manuscript (stages, deadlines), readingList (Excel import), prefs, util
+                (all but Today load on demand, so the first screen is fast)
+  components/   CommandPalette, QuickCapture, TaskList, ProgressChart, Tour, Toasts, SyncStatus,
+                Account, Auth, Logo, Pomodoro, ReadingDashboard, PageView (PDF page + ink), ...
+  lib/          store (Supabase or demo storage), notify (toasts and undo), sync, errors,
+                links (tags and [[links]]), crossref, reading, manuscript, readingList, prefs, util
 supabase/schema.sql      tables, security rules, storage bucket
 scripts/backup.mjs       the backup script
 public/                  icons and web app manifest
 ```
 
-Data lives in these tables: `projects`, `project_updates` (updates and notes), `project_events` (schedule), `project_deadlines`, `project_papers` (links), `papers`, `highlights` and `ink`. PDFs are in the private `papers` storage bucket under a folder named for your user id.
+Data lives in these tables: `projects`, `project_updates` (updates and notes), `project_events` (schedule), `project_deadlines`, `project_tasks`, `time_entries` (focus time), `project_papers` (links), `papers`, `highlights` and `ink`. PDFs are in the private `papers` storage bucket under a folder named for your user id.
 
 ## Scripts
 
