@@ -45,6 +45,12 @@ export function occurrencesBetween(e: ProjectEvent, from: Date, to: Date): Date[
   return out
 }
 
+/** 95 -> "1h 35m", 25 -> "25m". */
+export function fmtMinutes(m: number): string {
+  const h = Math.floor(m / 60), r = Math.round(m % 60)
+  return h ? `${h}h${r ? ` ${r}m` : ''}` : `${r}m`
+}
+
 /** "Good morning" / "Good afternoon" / "Good evening" for an hour (0-23). */
 export function greeting(hour: number): string {
   if (hour >= 5 && hour < 12) return 'Good morning'

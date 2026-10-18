@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { store } from '../lib/store'
 import { friendlyError } from '../lib/errors'
-import { ago, greeting, occurrencesBetween } from '../lib/util'
+import { ago, fmtMinutes, greeting, occurrencesBetween } from '../lib/util'
 import { firstName } from '../lib/user'
 import { deadlineInfo } from '../lib/manuscript'
 import ProgressChart from '../components/ProgressChart'
-import type { Deadline, Paper, Project, ProjectEvent, ProjectTask, ProjectUpdate } from '../types'
+import type { Deadline, Paper, Project, ProjectEvent, ProjectTask, ProjectUpdate, TimeEntry } from '../types'
 
 const DAY = 864e5
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -21,6 +21,7 @@ export default function Today() {
   const [papers, setPapers] = useState<Paper[]>([])
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
   const [tasks, setTasks] = useState<ProjectTask[]>([])
+  const [time, setTime] = useState<TimeEntry[]>([])
   const [dlOpen, setDlOpen] = useState(false)
   const [dlTitle, setDlTitle] = useState('')
   const [dlDate, setDlDate] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 7); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
@@ -34,8 +35,8 @@ export default function Today() {
 
   const load = useCallback(async () => {
     try {
-      const [p, u, e, pa, dl, tk] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[])])
-      setProjects(p); setUpdates(u); setEvents(e); setPapers(pa); setDeadlines(dl); setTasks(tk)
+      const [p, u, e, pa, dl, tk, te] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[]), store.timeEntries().catch(() => [] as TimeEntry[])])
+      setProjects(p); setUpdates(u); setEvents(e); setPapers(pa); setDeadlines(dl); setTasks(tk); setTime(te)
     } catch (er) { setError(friendlyError(er)) }
   }, [])
   useEffect(() => { load() }, [load])
@@ -82,6 +83,18 @@ export default function Today() {
   const openTasks = tasks.filter(t => !t.done && byId.has(t.project_id))
     .sort((a, b) => (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999') || a.created_at.localeCompare(b.created_at))
   const tasksDueNow = openTasks.filter(t => t.due_on && t.due_on <= todayIso).length
+
+  // focus time from the timer: this week, by day and by project
+  const monday = new Date(today); monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
+  const weekTime = time.filter(t => new Date(t.started_at) >= monday)
+  const weekMinutes = weekTime.reduce((a, t) => a + t.minutes, 0)
+  const perProject = [...weekTime.reduce((m, t) => m.set(t.project_id ?? '', (m.get(t.project_id ?? '') ?? 0) + t.minutes), new Map<string, number>())]
+    .sort((a, b) => b[1] - a[1]).slice(0, 4)
+  const perDay = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(monday, i)
+    return { d, m: time.filter(t => { const x = new Date(t.started_at); return x >= d && x < addDays(d, 1) }).reduce((a, t) => a + t.minutes, 0) }
+  })
+  const dayMax = Math.max(30, ...perDay.map(x => x.m))
 
   const dueThisWeek = dueItems.filter(x => x.info.days <= 7).length
   const summary = [
@@ -212,6 +225,28 @@ export default function Today() {
             <div className="trow" key={p.id}><Link to={link(p)}>{p.name}</Link><span className="muted small">no update in {days} days</span></div>
           ))}
           {!stale.length && <p className="muted">Every active project has been touched in the last two weeks.</p>}
+        </section>
+
+        <section className="card">
+          <h2>Focus time</h2>
+          {weekMinutes > 0 ? (
+            <>
+              <p className="focus-total"><b>{fmtMinutes(weekMinutes)}</b> <span className="muted">this week · {weekTime.length} session{weekTime.length === 1 ? '' : 's'}</span></p>
+              <div className="focus-days" role="img" aria-label={perDay.map(x => `${x.d.toLocaleDateString(undefined, { weekday: 'long' })} ${fmtMinutes(x.m)}`).join(', ')}>
+                {perDay.map(x => (
+                  <div key={+x.d} className={`fd ${+x.d === +today ? 'today' : ''}`} title={`${x.d.toLocaleDateString(undefined, { weekday: 'long' })}: ${fmtMinutes(x.m)}`}>
+                    <i style={{ height: `${Math.max(x.m ? 6 : 0, (x.m / dayMax) * 100)}%` }} /><span>{x.d.toLocaleDateString(undefined, { weekday: 'narrow' })}</span>
+                  </div>
+                ))}
+              </div>
+              {perProject.map(([id, m]) => (
+                <div className="trow" key={id || 'none'}>
+                  <span className="muted small fp-time">{fmtMinutes(m)}</span>
+                  {id && byId.get(id) ? <Link to={link(byId.get(id)!)} className="small">{byId.get(id)!.name}</Link> : <span className="muted small">No project</span>}
+                </div>
+              ))}
+            </>
+          ) : <p className="muted">No focus time yet this week. Start the timer in the sidebar (on a Mac), pick a project, and your focused time adds up here.</p>}
         </section>
 
         <section className="card">

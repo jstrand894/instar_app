@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { getPrefs } from '../lib/prefs'
+import { store } from '../lib/store'
+import { notify } from '../lib/notify'
+import { fmtMinutes } from '../lib/util'
+import type { Project } from '../types'
 
 type Mode = 'focus' | 'short' | 'long'
 const minutes = (m: Mode) => getPrefs().pomo[m]
@@ -48,6 +52,34 @@ export default function Pomodoro() {
   const [, tick] = useState(0)
   const sRef = useRef(s); sRef.current = s
 
+  // which project this focus time counts toward (kept across reloads)
+  const [projectId, setProjectIdState] = useState(() => { try { return localStorage.getItem('tm-pomo-project') ?? '' } catch { return '' } })
+  const projRef = useRef(projectId); projRef.current = projectId
+  const setProjectId = (id: string) => { setProjectIdState(id); try { localStorage.setItem('tm-pomo-project', id) } catch { /* ignore */ } }
+  const [projects, setProjects] = useState<Project[]>([])
+  useEffect(() => {
+    const load = () => store.projects().then(ps => setProjects(ps.filter(p => p.status === 'active' && p.stage !== 'accepted'))).catch(() => {})
+    load(); window.addEventListener('tm-data', load); return () => window.removeEventListener('tm-data', load)
+  }, [])
+
+  /** Saves focused minutes to the chosen project and says so. */
+  const logFocus = (mins: number) => {
+    if (mins < 1) return
+    const pid = projRef.current || null
+    store.addTimeEntry(pid, mins, new Date(Date.now() - mins * 60_000).toISOString())
+      .then(() => notify.success(`Logged ${fmtMinutes(mins)} of focus${pid ? ` to ${projects.find(p => p.id === pid)?.name ?? 'your project'}` : ''}`))
+      .catch(e => notify.error(e))
+  }
+  /** Time already spent in a focus session that is being cut short (reset or switched away). */
+  const partialMinutes = (cur: State) => {
+    if (cur.mode !== 'focus') return 0
+    const total = minutes('focus') * 60_000
+    const leftNow = cur.endsAt ? Math.max(0, cur.endsAt - Date.now()) : cur.remaining
+    return Math.floor((total - leftNow) / 60_000)
+  }
+  const logRef = useRef(logFocus); logRef.current = logFocus
+  const restart = (mode: Mode) => { logFocus(partialMinutes(sRef.current)); setS(fresh(mode, sRef.current.sessions)) }
+
   // pick up changed durations from Account settings when the timer is idle
   useEffect(() => {
     const on = () => setS(cur => (cur.endsAt ? cur : fresh(cur.mode, cur.sessions)))
@@ -62,6 +94,7 @@ export default function Pomodoro() {
       if (cur.endsAt && Date.now() >= cur.endsAt) {
         chime()
         const done = cur.mode === 'focus'
+        if (done && Date.now() - cur.endsAt < 5 * 60_000) logRef.current(minutes('focus')) // skip if the app was closed and this is long stale
         const sessions = cur.sessions + (done ? 1 : 0)
         const next: Mode = done ? (sessions % 4 === 0 ? 'long' : 'short') : 'focus'
         if ('Notification' in window && Notification.permission === 'granted') {
@@ -97,13 +130,18 @@ export default function Pomodoro() {
     <div className="pomo">
       <div className="pomo-modes">
         {(['focus', 'short', 'long'] as Mode[]).map(m => (
-          <button key={m} className={m === s.mode ? 'on' : ''} onClick={() => setS(fresh(m, s.sessions))}>{LABEL[m]}</button>
+          <button key={m} className={m === s.mode ? 'on' : ''} onClick={() => restart(m)}>{LABEL[m]}</button>
         ))}
       </div>
+      <select className="pomo-project" value={projectId} onChange={e => setProjectId(e.target.value)} aria-label="Project this time counts toward">
+        <option value="">No project</option>
+        {projects.filter(p => p.type === 'manuscript').length > 0 && <optgroup label="Manuscripts">{projects.filter(p => p.type === 'manuscript').map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>}
+        {projects.filter(p => p.type !== 'manuscript').length > 0 && <optgroup label="Projects">{projects.filter(p => p.type !== 'manuscript').map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>}
+      </select>
       <div className="pomo-ring"><Ring pct={pct} label={`${mm}:${ss}`} size={132} running={running} mode={s.mode} /></div>
       <div className="pomo-actions">
         <button className="primary" onClick={toggle}>{running ? 'Pause' : 'Start'}</button>
-        <button onClick={() => setS(fresh(s.mode, s.sessions))}>Reset</button>
+        <button onClick={() => restart(s.mode)}>Reset</button>
       </div>
       <div className="muted small">{s.sessions} session{s.sessions === 1 ? '' : 's'} today</div>
     </div>

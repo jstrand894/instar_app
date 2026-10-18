@@ -3,10 +3,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
-import { ago, fmtWhen, nextOccurrence } from '../lib/util'
+import { ago, fmtMinutes, fmtWhen, nextOccurrence } from '../lib/util'
 import { STAGES, deadlineInfo, stageLabel } from '../lib/manuscript'
 import TaskList from '../components/TaskList'
-import type { Area, Deadline, ProjectTask, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
+import type { Area, Deadline, ProjectTask, TimeEntry, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
   { id: 'manuscript', label: 'Manuscript' }, { id: 'data', label: 'Data' },
@@ -28,6 +28,7 @@ export default function ProjectDetail() {
   const [paperQ, setPaperQ] = useState('')
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
   const [tasks, setTasks] = useState<ProjectTask[]>([])
+  const [time, setTime] = useState<TimeEntry[]>([])
   const [dlTitle, setDlTitle] = useState('')
   const [dlDate, setDlDate] = useState('')
   const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
@@ -41,8 +42,8 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     try {
-      const [ps, us, evs, pp, ls, dls, tks] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[]), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[])])
-      setEvents(evs.filter(e => e.project_id === id)); setPapers(pp); setLinks(ls.filter(l => l.project_id === id)); setDeadlines(dls.filter(d => d.project_id === id)); setTasks(tks.filter(t => t.project_id === id))
+      const [ps, us, evs, pp, ls, dls, tks, tes] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[]), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[]), store.timeEntries().catch(() => [] as TimeEntry[])])
+      setEvents(evs.filter(e => e.project_id === id)); setPapers(pp); setLinks(ls.filter(l => l.project_id === id)); setDeadlines(dls.filter(d => d.project_id === id)); setTasks(tks.filter(t => t.project_id === id)); setTime(tes.filter(t => t.project_id === id))
       const p = ps.find(x => x.id === id) ?? null
       setProject(p)
       setEntries(us.filter(u => u.project_id === id).sort((a, b) => b.created_at.localeCompare(a.created_at)))
@@ -191,6 +192,27 @@ export default function ProjectDetail() {
           })}
           {!deadlines.length && <li className="muted">No deadlines yet.</li>}
         </ul>
+      </section>
+
+      <section className="card time-card">
+        <h2>Focus time</h2>
+        {time.length ? (() => {
+          const now = Date.now(); const sum = (days: number) => time.filter(t => now - new Date(t.started_at).getTime() < days * 864e5).reduce((a, t) => a + t.minutes, 0)
+          return (
+            <>
+              <div className="time-totals">
+                <div><b>{fmtMinutes(sum(7))}</b><span>last 7 days</span></div>
+                <div><b>{fmtMinutes(sum(30))}</b><span>last 30 days</span></div>
+                <div><b>{fmtMinutes(time.reduce((a, t) => a + t.minutes, 0))}</b><span>all time</span></div>
+              </div>
+              <ul className="time-list">
+                {[...time].sort((a, b) => b.started_at.localeCompare(a.started_at)).slice(0, 5).map(t => (
+                  <li key={t.id}><span>{new Date(t.started_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · {new Date(t.started_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span><b>{fmtMinutes(t.minutes)}</b></li>
+                ))}
+              </ul>
+            </>
+          )
+        })() : <p className="muted">No focus time logged here yet. Pick this project in the sidebar timer and your sessions will be added.</p>}
       </section>
 
       <section className="card reading">
