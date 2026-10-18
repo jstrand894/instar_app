@@ -9,6 +9,7 @@ export interface Project {
   type: ProjectType
   status: ProjectStatus
   description: string
+  notes: string
   created_at: string
 }
 export interface ProjectUpdate {

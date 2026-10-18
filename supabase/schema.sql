@@ -51,6 +51,9 @@ create table if not exists ink (
   unique (paper_id, page)
 );
 
+-- added later: free-form project notes (safe to re-run)
+alter table projects add column if not exists notes text not null default '';
+
 alter table projects enable row level security;
 alter table project_updates enable row level security;
 alter table papers enable row level security;

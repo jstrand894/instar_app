@@ -5,6 +5,7 @@ import Pomodoro from './components/Pomodoro'
 import Home from './pages/Home'
 import Library from './pages/Library'
 import Reader from './pages/Reader'
+import ProjectDetail from './pages/ProjectDetail'
 import { demoMode } from './lib/supabase'
 import { isDesktop } from './lib/util'
 
@@ -41,6 +42,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
         )}
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/project/:id" element={<ProjectDetail />} />
           <Route path="/library" element={<Library />} />
           <Route path="/read/:id" element={<Reader />} />
         </Routes>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { store } from '../lib/store'
 import { ago } from '../lib/util'
 import type { Project, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
@@ -129,7 +130,7 @@ function ProjectCard({ project, updates, onChange }: { project: Project; updates
           {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
-      <h2>{project.name}</h2>
+      <h2><Link to={`/project/${project.id}`} className="plink">{project.name}</Link></h2>
       {project.description && <p className="muted">{project.description}</p>}
 
       <ul className="updates">
@@ -145,6 +146,7 @@ function ProjectCard({ project, updates, onChange }: { project: Project; updates
         <button className="link small" onClick={() => setOpen(!open)}>{open ? 'Show less' : `Show all ${updates.length}`}</button>
       )}
 
+      <Link to={`/project/${project.id}`} className="link small open">Open notes and full history →</Link>
       <form className="row" onSubmit={add}>
         <input placeholder="Add an update…" value={text} onChange={e => setText(e.target.value)} />
         <button disabled={!text.trim()}>Add</button>

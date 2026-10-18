@@ -29,10 +29,10 @@ function seed(): Db {
   const day = 864e5
   const t = (ago: number) => new Date(Date.now() - ago * day).toISOString()
   const projects: Project[] = [
-    { id: 'p1', name: 'Soil carbon manuscript', type: 'manuscript', status: 'active', description: 'Submitted to Ecology Letters', created_at: t(40) },
-    { id: 'p2', name: 'Transect survey 2026', type: 'field', status: 'active', description: 'Summer field season', created_at: t(30) },
-    { id: 'p3', name: 'Flux data pipeline', type: 'code', status: 'active', description: 'R + Python cleaning scripts', created_at: t(20) },
-    { id: 'p4', name: 'Sensor dataset QA', type: 'data', status: 'paused', description: '', created_at: t(10) },
+    { id: 'p1', name: 'Soil carbon manuscript', type: 'manuscript', status: 'active', description: 'Submitted to Ecology Letters', notes: '', created_at: t(40) },
+    { id: 'p2', name: 'Transect survey 2026', type: 'field', status: 'active', description: 'Summer field season', notes: '', created_at: t(30) },
+    { id: 'p3', name: 'Flux data pipeline', type: 'code', status: 'active', description: 'R + Python cleaning scripts', notes: '', created_at: t(20) },
+    { id: 'p4', name: 'Sensor dataset QA', type: 'data', status: 'paused', description: '', notes: '', created_at: t(10) },
   ]
   const updates: ProjectUpdate[] = [
     { id: 'u1', project_id: 'p1', body: 'Reviewer 2 comments addressed in Discussion', created_at: t(1) },
@@ -49,7 +49,7 @@ const local = {
   async projects() { return load().projects },
   async updates() { return load().updates },
   async addProject(p: Pick<Project, 'name' | 'type' | 'description'>) {
-    const d = load(); const row: Project = { id: uid(), status: 'active', created_at: now(), ...p }
+    const d = load(); const row: Project = { id: uid(), status: 'active', notes: '', created_at: now(), ...p }
     d.projects.push(row); save(d); return row
   },
   async patchProject(id: string, patch: Partial<Project>) {
