@@ -8,6 +8,7 @@ import Toasts from './components/Toasts'
 import SyncStatus from './components/SyncStatus'
 import CommandPalette from './components/CommandPalette'
 import QuickCapture from './components/QuickCapture'
+import { LinksProvider } from './lib/links'
 import Today from './pages/Today'
 import Home from './pages/Home'
 import Manuscripts from './pages/Manuscripts'
@@ -87,7 +88,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
 export default function App() {
   return (
     <AuthGate>
-      {signOut => <HashRouter><Shell signOut={signOut} /></HashRouter>}
+      {signOut => <HashRouter><LinksProvider><Shell signOut={signOut} /></LinksProvider></HashRouter>}
     </AuthGate>
   )
 }

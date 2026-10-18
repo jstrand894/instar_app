@@ -18,6 +18,7 @@ export default function Library() {
   const [projects, setProjects] = useState<Project[]>([])
   const [links, setLinks] = useState<PaperLink[]>([])
   const [projFilter, setProjFilter] = useState('all')
+  const [tag, setTag] = useState('')
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<PaperStatus | 'all'>('all')
   const [category, setCategory] = useState('all')
@@ -122,6 +123,7 @@ export default function Library() {
   const categories = useMemo(() => [...new Set(papers.map(p => p.category).filter(Boolean))], [papers])
   const priorities = useMemo(() => [...new Set(papers.map(p => p.priority).filter(Boolean))], [papers])
 
+  const allTags = [...new Set(papers.flatMap(p => p.tags ?? []))].sort()
   const needle = q.toLowerCase()
   const list = papers.filter(p =>
     (status === 'all' || p.status === status) &&
@@ -129,6 +131,7 @@ export default function Library() {
     (priority === 'all' || p.priority === priority) &&
     (!pdfOnly || p.file_path) &&
     (projFilter === 'all' || links.some(l => l.paper_id === p.id && l.project_id === projFilter)) &&
+    (!tag || (p.tags ?? []).includes(tag)) &&
     (!needle || `${p.title} ${p.authors} ${p.year} ${p.source} ${p.why} ${p.category}`.toLowerCase().includes(needle)))
 
   const groups = useMemo(() => {
@@ -179,6 +182,12 @@ export default function Library() {
         <label className="check"><input type="checkbox" checked={pdfOnly} onChange={e => setPdfOnly(e.target.checked)} /> Has PDF</label>
       </div>
       <div className="filters">
+        {allTags.length > 0 && (
+          <select value={tag} onChange={e => setTag(e.target.value)} aria-label="Filter by tag">
+            <option value="">All tags</option>
+            {allTags.map(t => <option key={t} value={t}>#{t}</option>)}
+          </select>
+        )}
         {categories.length > 0 && (
           <select value={category} onChange={e => setCategory(e.target.value)} aria-label="Category">
             <option value="all">All categories</option>
@@ -224,6 +233,7 @@ export default function Library() {
                 </div>
                 <div className="muted small">{[p.authors, p.year, p.source].filter(Boolean).join(' · ')}</div>
                 {p.why && <div className="why">{p.why}</div>}
+                {(p.tags?.length ?? 0) > 0 && <div className="card-tags">{p.tags!.map(t => <a key={t} href="#search" onClick={e => { e.preventDefault(); window.dispatchEvent(new CustomEvent('tm-search', { detail: '#' + t })) }}>#{t}</a>)}</div>}
                 {links.some(l => l.paper_id === p.id) && (
                   <div className="paper-foot">
                     {links.filter(l => l.paper_id === p.id).map(l => projects.find(pr => pr.id === l.project_id)).filter((x): x is Project => !!x).map(pr => (

@@ -5,6 +5,9 @@ import type { PDFDocumentProxy } from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import 'pdfjs-dist/web/pdf_viewer.css'
 import PageView, { HL_COLORS, type Tool } from '../components/PageView'
+import TagEditor from '../components/TagEditor'
+import LinkedText from '../components/LinkedText'
+import { parsePieces, useLinks } from '../lib/links'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
@@ -25,6 +28,9 @@ export default function Reader() {
   const [highlights, setHighlights] = useState<Highlight[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [links, setLinks] = useState<PaperLink[]>([])
+  const [allUpdates, setAllUpdates] = useState<{ id: string; project_id: string; body: string }[]>([])
+  const [projectNames, setProjectNames] = useState<Map<string, string>>(new Map())
+  const { resolve } = useLinks()
   const [ink, setInk] = useState<Record<number, Stroke[]>>({})
   const [error, setError] = useState('')
   const [zoom, setZoom] = useState(1)
@@ -50,7 +56,7 @@ export default function Reader() {
         const p = papers.find(x => x.id === id)
         if (!p) { setError('Paper not found.'); return }
         setPaper(p)
-        Promise.all([store.projects(), store.projectPapers().catch(() => [] as PaperLink[])]).then(([pr, ls]) => { if (!dead) { setProjects(pr); setLinks(ls.filter(l => l.paper_id === id)) } })
+        Promise.all([store.projects(), store.projectPapers().catch(() => [] as PaperLink[]), store.updates().catch(() => [])]).then(([pr, ls, ups]) => { if (!dead) { setProjects(pr); setLinks(ls.filter(l => l.paper_id === id)); setAllUpdates(ups); setProjectNames(new Map(pr.map(p => [p.id, p.name]))) } })
         const [url, hl, inkRows] = await Promise.all([store.fileUrl(p.file_path), store.highlights(id), store.ink(id)])
         if (!p.file_path) { setHighlights(hl); setTab('notes'); return }
         if (!url) { setError('PDF file is not available on this device. (Demo mode only keeps uploads until you reload; add Supabase keys to keep them.)'); setHighlights(hl); return }
@@ -262,11 +268,20 @@ export default function Reader() {
                       .map(pr => <option key={pr.id} value={pr.id}>{pr.type === 'manuscript' ? '📄 ' : ''}{pr.name}</option>)}
                   </select>
                 </div>
+                <div className="linked-projects"><span className="muted small">Tags</span><TagEditor tags={paper.tags ?? []} onChange={t => patchPaper({ tags: t })} /></div>
                 <DoiTools paper={paper} onApply={patchPaper} />
                 <label>Why it matters<textarea defaultValue={paper.why} onBlur={e => patchPaper({ why: e.target.value })} /></label>
                 <label>Notes
                   <textarea className="big" placeholder="Summary, questions, ideas…" defaultValue={paper.notes} onBlur={e => e.target.value !== paper.notes && patchPaper({ notes: e.target.value })} />
                 </label>
+                {(() => {
+                  const hits = allUpdates.filter(u => parsePieces(u.body).some(pc => pc.t === 'link' && (() => { const t = resolve(pc.s); return t?.kind === 'paper' && t.id === paper.id })()))
+                  return hits.length > 0 && (
+                    <div className="linked-projects"><span className="muted small">Mentioned in</span>
+                      <ul className="backlinks">{hits.map(u => <li key={u.id}><Link to={`/project/${u.project_id}`} className="small"><b>{projectNames.get(u.project_id) ?? 'A project'}</b></Link><span><LinkedText text={u.body.length > 140 ? u.body.slice(0, 140) + '…' : u.body} /></span></li>)}</ul>
+                    </div>
+                  )
+                })()}
               </div>
             )}
           </aside>

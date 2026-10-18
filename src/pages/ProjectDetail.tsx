@@ -6,6 +6,11 @@ import { friendlyError } from '../lib/errors'
 import { ago, fmtMinutes, fmtWhen, nextOccurrence } from '../lib/util'
 import { STAGES, deadlineInfo, stageLabel } from '../lib/manuscript'
 import TaskList from '../components/TaskList'
+import TagEditor from '../components/TagEditor'
+import EntryBody from '../components/EntryBody'
+import LinkTextarea from '../components/LinkTextarea'
+import LinkedText from '../components/LinkedText'
+import { parsePieces, useLinks } from '../lib/links'
 import type { Area, Deadline, ProjectTask, TimeEntry, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
@@ -29,6 +34,8 @@ export default function ProjectDetail() {
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
   const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [time, setTime] = useState<TimeEntry[]>([])
+  const [allUpdates, setAllUpdates] = useState<ProjectUpdate[]>([])
+  const { resolve } = useLinks()
   const [dlTitle, setDlTitle] = useState('')
   const [dlDate, setDlDate] = useState('')
   const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
@@ -45,7 +52,7 @@ export default function ProjectDetail() {
       const [ps, us, evs, pp, ls, dls, tks, tes] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[]), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[]), store.timeEntries().catch(() => [] as TimeEntry[])])
       setEvents(evs.filter(e => e.project_id === id)); setPapers(pp); setLinks(ls.filter(l => l.project_id === id)); setDeadlines(dls.filter(d => d.project_id === id)); setTasks(tks.filter(t => t.project_id === id)); setTime(tes.filter(t => t.project_id === id))
       const p = ps.find(x => x.id === id) ?? null
-      setProject(p)
+      setProject(p); setAllUpdates(us)
       setEntries(us.filter(u => u.project_id === id).sort((a, b) => b.created_at.localeCompare(a.created_at)))
       if (!p) setError('Project not found.')
     } catch (e) { setError(friendlyError(e)) }
@@ -71,6 +78,11 @@ export default function ProjectDetail() {
     await patch({ stage: next })
     try { await store.addUpdate(project.id, `Stage: ${stageLabel(prev)} → ${stageLabel(next)}`); load() } catch (e) { setError(friendlyError(e)) }
   }
+
+  // other projects' notes that link here with [[this name]]
+  const [mentionNames, setMentionNames] = useState<Map<string, string>>(new Map())
+  useEffect(() => { store.projects().then(ps => setMentionNames(new Map(ps.map(p => [p.id, p.name])))).catch(() => {}) }, [allUpdates])
+  const mentions = project ? allUpdates.filter(u => u.project_id !== project.id && parsePieces(u.body).some(pc => pc.t === 'link' && (() => { const t = resolve(pc.s); return t?.kind === 'project' && t.id === project.id })())) : []
 
   const linkedIds = new Set(links.map(l => l.paper_id))
   const linked = papers.filter(p => linkedIds.has(p.id))
@@ -119,6 +131,7 @@ export default function ProjectDetail() {
           </select>
         </div>
       </header>
+      <TagEditor tags={project.tags ?? []} onChange={t => patch({ tags: t })} />
       <input className="desc-input" placeholder="Short description" defaultValue={project.description}
         onBlur={e => e.target.value !== project.description && patch({ description: e.target.value })} />
       {error && <p className="error">{error}</p>}
@@ -239,15 +252,29 @@ export default function ProjectDetail() {
         {needle && !matches.length && <p className="muted small">No unlinked papers match. <Link to="/library" className="link">Add papers in the library</Link>.</p>}
       </section>
 
+      {mentions.length > 0 && (
+        <section className="card">
+          <h2>Mentioned in</h2>
+          <ul className="backlinks">
+            {mentions.map(u => (
+              <li key={u.id}>
+                <Link to={`/project/${u.project_id}`} className="small"><b>{mentionNames.get(u.project_id) ?? 'Another project'}</b></Link>
+                <span><LinkedText text={u.body.length > 160 ? u.body.slice(0, 160) + '…' : u.body} /></span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <form className="card composer" onSubmit={add}>
         <div className="seg" role="tablist">
           <button type="button" className={kind === 'update' ? 'on' : ''} onClick={() => setKind('update')}>Update</button>
           <button type="button" className={kind === 'note' ? 'on' : ''} onClick={() => setKind('note')}>Note</button>
         </div>
-        <textarea
-          placeholder={kind === 'update' ? 'What happened? e.g. “Resubmitted with revisions”' : 'Write a longer note: plans, to-dos, reviewer comments, methods, links…'}
+        <LinkTextarea
+          placeholder={kind === 'update' ? 'What happened? e.g. “Resubmitted with revisions”' : 'Write a longer note. Type [[ to link a project or paper, # to tag.'}
           rows={kind === 'note' ? 5 : 2}
-          value={text} onChange={e => setText(e.target.value)}
+          value={text} onChange={setText}
           onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') add(e) }} />
         <div className="row between">
           <span className="muted small">⌘↵ to add</span>
@@ -268,14 +295,10 @@ export default function ProjectDetail() {
             {u.kind === 'note' ? (
               <div className="note-box">
                 <span className="tag">Note</span>
-                <textarea className="note-text" defaultValue={u.body}
-                  ref={el => { if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px` } }}
-                  onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = `${t.scrollHeight}px` }}
-                  onBlur={e => saveEntry(u, e.target.value)} />
+                <EntryBody note body={u.body} onSave={v => saveEntry(u, v)} />
               </div>
             ) : (
-              <div className="tl-body" contentEditable suppressContentEditableWarning spellCheck
-                onBlur={e => saveEntry(u, e.currentTarget.innerText.trim())}>{u.body}</div>
+              <EntryBody body={u.body} onSave={v => saveEntry(u, v)} />
             )}
           </li>
         ))}

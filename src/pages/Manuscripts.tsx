@@ -16,6 +16,7 @@ export default function Manuscripts() {
   const [links, setLinks] = useState<PaperLink[]>([])
   const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [filter, setFilter] = useState<Stage | 'all'>('all')
+  const [tag, setTag] = useState('')
   const [showDone, setShowDone] = useState(false)
   const [adding, setAdding] = useState(false)
   const [view, setViewState] = useState<'board' | 'list'>(() => { try { const v = localStorage.getItem('tm-ms-view'); if (v === 'board' || v === 'list') return v } catch { /* ignore */ } return window.innerWidth > 900 ? 'board' : 'list' })
@@ -51,7 +52,8 @@ export default function Manuscripts() {
   const counts = (s: Stage) => ms.filter(p => stageOf(p) === s).length
   const dueSoon = ms.filter(p => stageOf(p) !== 'accepted' && (deadlineInfo(p.deadline)?.days ?? 99) <= 30).length
 
-  const shown = ms.filter(p => (filter === 'all' || stageOf(p) === filter) && (showDone || filter === 'accepted' || stageOf(p) !== 'accepted'))
+  const allTags = [...new Set(ms.flatMap(p => p.tags ?? []))].sort()
+  const shown = ms.filter(p => (!tag || (p.tags ?? []).includes(tag)) && (filter === 'all' || stageOf(p) === filter) && (showDone || filter === 'accepted' || stageOf(p) !== 'accepted'))
   const groups = STAGES.map(s => ({
     stage: s,
     items: shown.filter(p => stageOf(p) === s.id).sort((a, b) =>
@@ -104,12 +106,23 @@ export default function Manuscripts() {
         <div><b>{dueSoon}</b><span>due within 30 days</span></div>
       </div>
 
-      {view === 'list' && <div className="chips">
+      {view === 'list' ? <div className="chips">
         <button className={filter === 'all' ? 'on' : ''} onClick={() => setFilter('all')}>All</button>
         {STAGES.map(s => (
           <button key={s.id} className={filter === s.id ? 'on' : ''} onClick={() => setFilter(s.id)}>{s.label} <small>{counts(s.id)}</small></button>
         ))}
+        {allTags.length > 0 && (
+          <select className="tag-filter" value={tag} onChange={e => setTag(e.target.value)} aria-label="Filter by tag">
+            <option value="">All tags</option>
+            {allTags.map(t => <option key={t} value={t}>#{t}</option>)}
+          </select>
+        )}
         <label className="check"><input type="checkbox" checked={showDone} onChange={e => setShowDone(e.target.checked)} /> Show accepted</label>
+      </div> : allTags.length > 0 && <div className="chips">
+        <select className="tag-filter" value={tag} onChange={e => setTag(e.target.value)} aria-label="Filter by tag">
+          <option value="">All tags</option>
+          {allTags.map(t => <option key={t} value={t}>#{t}</option>)}
+        </select>
       </div>}
 
       {error && <p className="error">{error}</p>}
@@ -120,7 +133,7 @@ export default function Manuscripts() {
           <div className="board">
             {STAGES.map(s => (
               <BoardColumn key={s.id} stage={s.id} label={s.label} hint={s.hint} count={ms.filter(p => stageOf(p) === s.id).length}>
-                {ms.filter(p => stageOf(p) === s.id)
+                {ms.filter(p => stageOf(p) === s.id && (!tag || (p.tags ?? []).includes(tag)))
                   .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || (deadlineInfo(a.deadline)?.days ?? 1e6) - (deadlineInfo(b.deadline)?.days ?? 1e6))
                   .map(p => <BoardCard key={p.id} id={p.id} dim={dragId === p.id}>{cardFor(p)}</BoardCard>)}
               </BoardColumn>
@@ -207,6 +220,7 @@ function ManuscriptCard({ p, last, next, papers, openTasks, onStage, onPin }: {
         </select>
       </div>
       <h2><Link to={`/project/${p.id}`} className="plink">{p.name}</Link></h2>
+      {(p.tags?.length ?? 0) > 0 && <div className="card-tags">{p.tags!.map(t => <a key={t} href="#search" onClick={e => { e.preventDefault(); window.dispatchEvent(new CustomEvent('tm-search', { detail: '#' + t })) }}>#{t}</a>)}</div>}
       <p className="muted small ms-sub">{p.journal || 'No journal yet'}{p.coauthors ? ` · with ${p.coauthors}` : ''}</p>
       <div className="ms-meta">
         {dl && <span className={`pill dl-${dl.tone}`}>{dl.text}</span>}

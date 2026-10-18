@@ -28,6 +28,7 @@ export default function Home() {
   })
   const setArea = (a: Area) => { setAreaState(a); try { localStorage.setItem('tm-area', a) } catch { /* ignore */ } }
   const [filter, setFilter] = useState<ProjectType | 'all'>('all')
+  const [tag, setTag] = useState('')
   const [doneOpen, setDoneOpenState] = useState(() => { try { return localStorage.getItem('tm-done-open') === '1' } catch { return false } })
   const setDoneOpen = (v: boolean) => { setDoneOpenState(v); try { localStorage.setItem('tm-done-open', v ? '1' : '0') } catch { /* ignore */ } }
   const [adding, setAdding] = useState(false)
@@ -84,7 +85,8 @@ export default function Home() {
   type Kind = 'pinned' | 'active' | 'done'
   const group = (kind: Kind) => inArea.filter(p =>
     kind === 'done' ? p.status === 'done' : p.status !== 'done' && !!p.pinned === (kind === 'pinned')).sort(cmp)
-  const show = (p: Project) => filter === 'all' || p.type === filter
+  const allTags = [...new Set(notMs.flatMap(p => p.tags ?? []))].sort()
+  const show = (p: Project) => (filter === 'all' || p.type === filter) && (!tag || (p.tags ?? []).includes(tag))
   const pinnedList = group('pinned').filter(show)
   const otherList = group('active').filter(show)
   const doneList = group('done').filter(show)
@@ -159,6 +161,12 @@ export default function Home() {
         {TYPES.filter(t => t.id !== 'manuscript').map(t => (
           <button key={t.id} className={filter === t.id ? 'on' : ''} onClick={() => setFilter(t.id)}>{t.label}</button>
         ))}
+        {allTags.length > 0 && (
+          <select className="tag-filter" value={tag} onChange={e => setTag(e.target.value)} aria-label="Filter by tag">
+            <option value="">All tags</option>
+            {allTags.map(t => <option key={t} value={t}>#{t}</option>)}
+          </select>
+        )}
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -261,6 +269,9 @@ function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks }:
       </div>
       <h2><Link to={`/project/${project.id}`} className="plink">{project.name}</Link></h2>
       {project.description && <p className="muted">{project.description}</p>}
+      {(project.tags?.length ?? 0) > 0 && (
+        <div className="card-tags">{project.tags!.map(t => <a key={t} href="#search" onClick={e => { e.preventDefault(); window.dispatchEvent(new CustomEvent('tm-search', { detail: '#' + t })) }}>#{t}</a>)}</div>
+      )}
 
       {upcoming.length > 0 && (
         <ul className="sched">
