@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import Empty from '../components/Empty'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
@@ -261,11 +262,10 @@ export default function Library() {
       ))}
 
       {!list.length && (
-        <div className="empty-box dashed">
-          <h2>{papers.length ? 'No matches' : 'Your reading library is empty'}</h2>
-          <p className="muted">{papers.length ? 'Try different filters or search.' : 'Import your reading-list spreadsheet, or drop PDFs anywhere on this page.'}</p>
-          {!papers.length && <div className="row"><button onClick={() => listInput.current?.click()}>Import reading list</button><button className="primary" onClick={() => pdfInput.current?.click()}>Upload PDF</button></div>}
-        </div>
+        <Empty icon="book" dashed title={papers.length ? 'No matches' : 'Your reading library is empty'}
+          actions={!papers.length && <><button onClick={() => listInput.current?.click()}>Import reading list</button><button onClick={() => setDoiOpen(true)}>Add by DOI</button><button className="primary" onClick={() => pdfInput.current?.click()}>Upload PDF</button></>}>
+          {papers.length ? 'Try different filters or search.' : 'Bring in your Excel reading list, paste a DOI, or drop PDFs anywhere on this page. Highlights, notes and Apple Pencil ink live right in the reader.'}
+        </Empty>
       )}
     </div>
   )

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import Empty from '../components/Empty'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError, UserError } from '../lib/errors'
@@ -32,6 +33,8 @@ export default function Home() {
   const [doneOpen, setDoneOpenState] = useState(() => { try { return localStorage.getItem('tm-done-open') === '1' } catch { return false } })
   const setDoneOpen = (v: boolean) => { setDoneOpenState(v); try { localStorage.setItem('tm-done-open', v ? '1' : '0') } catch { /* ignore */ } }
   const [adding, setAdding] = useState(false)
+  const [params, setParams] = useSearchParams()
+  useEffect(() => { if (params.get('new')) { setAdding(true); setParams({}, { replace: true }) } }, [params, setParams])
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
   const importInput = useRef<HTMLInputElement>(null)
@@ -197,11 +200,10 @@ export default function Home() {
         <button className="link small" onClick={resetOrder}>Reset to recent-activity order</button>
       )}
       {!visible.length && !adding && (
-        <div className="empty-box">
-          <h2>{inArea.length ? 'Nothing matches this filter' : `No ${area} projects yet`}</h2>
-          <p className="muted">{inArea.length ? 'Try another type.' : `Create a project, or move one here from the other side using the project page.`}</p>
-          {!inArea.length && <button className="primary" onClick={() => setAdding(true)}>New project</button>}
-        </div>
+        <Empty icon="folder" dashed title={inArea.length ? 'Nothing matches this filter' : `No ${area} projects yet`}
+          actions={!inArea.length && <button className="primary" onClick={() => setAdding(true)}>Create a project</button>}>
+          {inArea.length ? 'Try another type or tag.' : 'A project is anything with updates over time: a dataset, a field season, a code repo, an app. Each one keeps a dated timeline, tasks, deadlines and a schedule.'}
+        </Empty>
       )}
     </div>
   )

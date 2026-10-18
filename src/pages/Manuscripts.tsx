@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { DndContext, DragOverlay, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
+import Empty from '../components/Empty'
 import { store } from '../lib/store'
 import { friendlyError } from '../lib/errors'
 import { ago, fmtWhen, nextOccurrence } from '../lib/util'
@@ -19,6 +20,8 @@ export default function Manuscripts() {
   const [tag, setTag] = useState('')
   const [showDone, setShowDone] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [params, setParams] = useSearchParams()
+  useEffect(() => { if (params.get('new')) { setAdding(true); setParams({}, { replace: true }) } }, [params, setParams])
   const [view, setViewState] = useState<'board' | 'list'>(() => { try { const v = localStorage.getItem('tm-ms-view'); if (v === 'board' || v === 'list') return v } catch { /* ignore */ } return window.innerWidth > 900 ? 'board' : 'list' })
   const setView = (v: 'board' | 'list') => { setViewState(v); try { localStorage.setItem('tm-ms-view', v) } catch { /* ignore */ } }
   const [dragId, setDragId] = useState<string | null>(null)
@@ -156,12 +159,11 @@ export default function Manuscripts() {
         </section>
       ))}
 
-      {view === 'list' && !groups.length && !adding && (
-        <div className="empty-box dashed">
-          <h2>{ms.length ? 'Nothing here' : 'No manuscripts yet'}</h2>
-          <p className="muted">{ms.length ? 'Try another stage, or show accepted manuscripts.' : 'Track each paper from first draft through review and revision to publication.'}</p>
-          {!ms.length && <button className="primary" onClick={() => setAdding(true)}>New manuscript</button>}
-        </div>
+      {(view === 'list' ? !groups.length : !ms.length) && !adding && (
+        <Empty icon="pen" dashed title={ms.length ? 'Nothing here' : 'No manuscripts yet'}
+          actions={!ms.length && <button className="primary" onClick={() => setAdding(true)}>New manuscript</button>}>
+          {ms.length ? 'Try another stage or tag, or show accepted manuscripts.' : 'Follow each paper from planning through drafting, review and revision to publication. Drag cards between stages as they move.'}
+        </Empty>
       )}
     </div>
   )

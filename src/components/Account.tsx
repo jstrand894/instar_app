@@ -93,6 +93,7 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
 
             <section className="acct-actions">
               <button onClick={() => setView('about')}>About this app</button>
+              <button onClick={() => { onClose(); setTimeout(() => window.dispatchEvent(new Event('tm-tour')), 50) }}>Replay tour</button>
               {signOut && <button className="danger-btn" onClick={signOut}>Sign out</button>}
             </section>
           </div>

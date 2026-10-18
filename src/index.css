@@ -567,3 +567,24 @@ kbd { background: var(--chip); border: 1px solid var(--line); border-bottom-widt
 .lt-menu li { display: flex; justify-content: space-between; gap: .8rem; padding: .35rem .55rem; border-radius: 7px; cursor: pointer; font-size: .9rem; } .lt-menu li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lt-menu li.sel { background: color-mix(in srgb, var(--accent) 16%, var(--chip)); }
 .backlinks { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; } .backlinks li { font-size: .9rem; display: grid; gap: .1rem; }
+
+/* welcome tour */
+.tour { position: fixed; inset: 0; z-index: 300; }
+.tour-block { position: absolute; inset: 0; }
+.tour-dim { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+.tour-ring { position: absolute; border-radius: 14px; box-shadow: 0 0 0 9999px rgba(0,0,0,.55), 0 0 0 3px var(--accent); transition: all .25s cubic-bezier(.3,.9,.3,1); pointer-events: none; }
+.tour-card { position: absolute; background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 16px; padding: 1rem 1.1rem; box-shadow: 0 20px 60px rgba(0,0,0,.45); display: grid; gap: .5rem; transition: left .25s, top .25s; }
+.tour-card h3 { margin: 0; font-size: 1.1rem; } .tour-card p { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.45; }
+.tour-step { font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); font-weight: 700; }
+.tour-dots { display: flex; gap: 5px; margin: .2rem 0; } .tour-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); } .tour-dots i.on { background: var(--accent); width: 16px; border-radius: 3px; }
+.acct-actions { flex-wrap: wrap; }
+
+/* empty states + getting started */
+.empty-ico { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 14%, var(--chip)); color: var(--accent); }
+.empty-box h2 { margin: .1rem 0 0; font-size: 1.15rem; } .empty-actions { justify-content: center; margin-top: .3rem; }
+.started { display: grid; gap: .7rem; margin-bottom: 1rem; border-left: 4px solid var(--accent); } .started h2 { margin: 0; }
+.started-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.started-list li { display: flex; align-items: center; gap: .8rem; } .started-list li > div { flex: 1; }
+.started-tick { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: .8rem; font-weight: 700; flex: none; }
+.started-list li.done .started-tick { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); } .started-list li.done b { color: var(--muted); text-decoration: line-through; }
+.tl-empty { margin-left: -1.4rem; display: grid; gap: .2rem; }

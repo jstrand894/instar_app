@@ -8,6 +8,7 @@ import Toasts from './components/Toasts'
 import SyncStatus from './components/SyncStatus'
 import CommandPalette from './components/CommandPalette'
 import QuickCapture from './components/QuickCapture'
+import Tour from './components/Tour'
 import { LinksProvider } from './lib/links'
 import Today from './pages/Today'
 import Home from './pages/Home'
@@ -78,6 +79,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
           <Route path="/read/:id" element={<Reader />} />
         </Routes>
       </main>
+      <Tour />
       <CommandPalette />
       <QuickCapture />
       <Toasts />

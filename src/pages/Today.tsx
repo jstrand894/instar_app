@@ -6,6 +6,7 @@ import { ago, fmtMinutes, greeting, occurrencesBetween } from '../lib/util'
 import { firstName } from '../lib/user'
 import { deadlineInfo } from '../lib/manuscript'
 import ProgressChart from '../components/ProgressChart'
+import GettingStarted from '../components/GettingStarted'
 import type { Deadline, Paper, Project, ProjectEvent, ProjectTask, ProjectUpdate, TimeEntry } from '../types'
 
 const DAY = 864e5
@@ -153,6 +154,8 @@ export default function Today() {
         <button className="primary" disabled={!target || !text.trim()}>Log</button>
         {saved && <span className="ok small">{saved}</span>}
       </form>
+
+      <GettingStarted projects={projects} updates={updates} papers={papers} />
 
       <ProgressChart updates={updates} projects={projects} papers={papers} tasks={tasks} />
 

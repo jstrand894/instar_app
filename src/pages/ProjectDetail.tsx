@@ -238,7 +238,7 @@ export default function ProjectDetail() {
               <button className="link small danger" onClick={async () => { await store.unlinkPaper(project.id, p.id); load() }}>Unlink</button>
             </li>
           ))}
-          {!linked.length && <li className="muted">No papers linked yet.</li>}
+          {!linked.length && <li className="muted">No papers linked yet. Link the papers you are reading for this work and they will show up here and in the reader.</li>}
         </ul>
         <input placeholder="Search your library to link a paper…" value={paperQ} onChange={e => setPaperQ(e.target.value)} />
         {matches.length > 0 && (
@@ -302,7 +302,7 @@ export default function ProjectDetail() {
             )}
           </li>
         ))}
-        {!entries.length && <li className="muted tl-empty">Nothing logged yet. Add the first update or note above.</li>}
+        {!entries.length && <li className="tl-empty"><b>Nothing logged yet.</b> <span className="muted">This timeline fills in as you add updates and notes, so you can look back at what happened and when.</span> <button className="link" onClick={() => document.querySelector<HTMLTextAreaElement>('.composer textarea')?.focus()}>Log the first update</button></li>}
       </ol>
 
       <button className="link small danger" onClick={() => {
