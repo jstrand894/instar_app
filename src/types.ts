@@ -70,3 +70,5 @@ export interface ProjectImport {
   name: string; type: ProjectType; status: ProjectStatus; area?: Area; description: string
   entries: { kind: 'update' | 'note'; body: string; date: string }[]
 }
+
+export interface Calendar { id: string; name: string; url: string; color: string; created_at: string }

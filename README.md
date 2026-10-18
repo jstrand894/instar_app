@@ -19,3 +19,9 @@ One-way mirror of everything (project timelines as Markdown, papers as PDF + Mar
 2. `npm run backup`
 
 The secret key bypasses row security. Keep it only in `.env.backup` on your Mac (git-ignored); never put it in `.env` or the app.
+
+## Calendar tab (Google / Outlook feeds)
+1. Run the `calendars` table SQL from `supabase/schema.sql` in the Supabase SQL Editor.
+2. Supabase dashboard -> Edge Functions -> Deploy a new function -> name it `calendar-feed` -> paste `supabase/functions/calendar-feed/index.ts` -> Deploy (leave "Verify JWT" on).
+3. In the app: Calendar -> Calendars -> paste each calendar's private .ics link.
+   Feed links are stored in your private Supabase account (row security), never in this repo.
