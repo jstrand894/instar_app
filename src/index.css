@@ -388,12 +388,12 @@ main { scrollbar-gutter: stable; }
 .pomo-mini { display: none; text-align: center; font-size: .72rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--muted); padding: .35rem 0; }
 .pomo-mini .run { color: var(--accent); }
 @media (min-width: 761px) {
-  .shell { --nav-w: 92px; display: block; }
+  .shell { --nav-w: 76px; display: block; }
   .shell.nav-pinned { --nav-w: 220px; }
   .shell .nav { position: fixed; top: 0; left: 0; bottom: 0; width: var(--nav-w); z-index: 40; overflow-x: hidden; overflow-y: auto; white-space: nowrap; padding: 1rem 8px; transition: width .22s cubic-bezier(.3,.9,.3,1), box-shadow .22s; }
   .shell main { margin-left: var(--nav-w); height: 100%; transition: margin-left .22s cubic-bezier(.3,.9,.3,1); }
   .shell.nav-auto .nav:hover, .shell.nav-auto .nav:has(:focus-visible) { width: 220px; box-shadow: 10px 0 36px rgba(0,0,0,.2); }
-  .nav a, .nav .account-btn, .nav-toggle { padding-left: 29px; padding-right: 12px; }
+  .nav a, .nav .account-btn, .nav-toggle { padding-left: 21px; padding-right: 12px; }
   .brand-text, .nav a span, .account-btn span, .nav-toggle span { transition: opacity .15s; }
   /* collapsed rail: icons only, a compact timer, no full timer card */
   .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .brand-text,
@@ -418,7 +418,7 @@ main { scrollbar-gutter: stable; }
 
 /* the Instar wordmark */
 .brand-text, .auth h1, .about h2 { font-family: 'Caprasimo', Georgia, serif; font-weight: 400; letter-spacing: .005em; }
-.brand-text { font-size: 1.9rem; line-height: 1; max-width: 140px; overflow: hidden; transition: max-width .22s cubic-bezier(.3,.9,.3,1), opacity .15s; }
+.brand-text { font-size: 1.7rem; line-height: 1; max-width: 140px; overflow: hidden; transition: max-width .22s cubic-bezier(.3,.9,.3,1), opacity .15s; }
 .auth h1 { font-size: 2rem; } .about h2 { font-size: 1.9rem; }
 @media (min-width: 761px) {
   /* collapsed rail: logo alone, centered; the name opens out beside it on hover */
