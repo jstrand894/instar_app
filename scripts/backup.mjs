@@ -110,6 +110,8 @@ async function main() {
   const deadlines = await all('project_deadlines', true)
   const tasks = await all('project_tasks', true)
   const time = await all('time_entries', true)
+  const routines = await all('routines', true)
+  const routineChecks = await all('routine_checks', true)
 
   const dirs = { projects: join(out, 'Projects'), papers: join(out, 'Papers'), raw: join(out, '_raw-data') }
   await Promise.all(Object.values(dirs).map(d => mkdir(d, { recursive: true })))
@@ -139,8 +141,17 @@ async function main() {
 
   await writeFile(join(out, 'Reading List.csv'), readingListCsv(papers))
 
+  if (routines.length) {
+    const day = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const md = ['# Weekly routine', '', ...[1, 2, 3, 4, 5, 6, 0].flatMap(n => {
+      const items = routines.filter(r => r.active && r.weekdays.includes(n)); if (!items.length) return []
+      return [`## ${day[n]}`, '', ...items.map(r => `- ${r.title}${r.notes ? ` (${r.notes})` : ''}`), '']
+    })]
+    await writeFile(join(out, 'Weekly routine.md'), md.join('\n') + '\n')
+  }
+
   // Full-fidelity copy (includes pen strokes) for restoring or migrating later.
-  await writeFile(join(dirs.raw, 'data.json'), JSON.stringify({ exported_at: new Date().toISOString(), projects, project_updates: updates, project_events: events, project_papers: links, project_deadlines: deadlines, project_tasks: tasks, time_entries: time, papers, highlights, ink }, null, 2))
+  await writeFile(join(dirs.raw, 'data.json'), JSON.stringify({ exported_at: new Date().toISOString(), projects, project_updates: updates, project_events: events, project_papers: links, project_deadlines: deadlines, project_tasks: tasks, time_entries: time, routines, routine_checks: routineChecks, papers, highlights, ink }, null, 2))
 
   console.log(`Backed up ${projects.length} projects, ${updates.length} timeline entries, ${papers.length} papers (${newPdfs} new PDFs), ${highlights.length} highlights.`)
   console.log(`Folder: ${out}`)

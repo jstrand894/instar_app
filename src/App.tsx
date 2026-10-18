@@ -47,6 +47,12 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
     const idle: (cb: () => void) => void = (window as unknown as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback ?? (cb => setTimeout(cb, 1800))
     idle(() => { import('./pages/Home'); import('./pages/Manuscripts'); import('./pages/ProjectDetail'); import('./pages/Library') })
   }, [])
+  useEffect(() => {
+    const brand = document.querySelector<HTMLElement>('.brand'); const text = document.querySelector<HTMLElement>('.brand-text')
+    if (!brand || !text) return
+    const measure = () => brand.style.setProperty('--tw', `${text.getBoundingClientRect().width}px`)
+    measure(); document.fonts?.ready.then(measure)
+  }, [])
   const toggleNav = () => setNavMode(m => { const n = m === 'auto' ? 'pinned' : 'auto'; try { localStorage.setItem('tm-nav', n) } catch { /* ignore */ } return n })
   return (
     <div className={`shell nav-${navMode} ${reading ? 'in-reader' : ''}`}>

@@ -304,12 +304,15 @@ function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks }:
         <button className="link small" onClick={() => setOpen(!open)}>{open ? 'Show less' : `Show all ${updates.length}`}</button>
       )}
 
-      <Link to={`/project/${project.id}`} className="link small open">Open notes and full history →</Link>
-      <form className="row" onSubmit={add}>
-        <input placeholder="Add an update…" value={text} onChange={e => setText(e.target.value)} />
-        <button disabled={!text.trim()}>Add</button>
-      </form>
-      <button className="link small danger del" onClick={remove}>Delete project</button>
+      {/* always pinned to the bottom of the card, so it lines up across a row of cards */}
+      <div className="card-foot">
+        <Link to={`/project/${project.id}`} className="link small open">Open notes and full history →</Link>
+        <form className="row" onSubmit={add}>
+          <input placeholder="Add an update…" value={text} onChange={e => setText(e.target.value)} />
+          <button disabled={!text.trim()}>Add</button>
+        </form>
+        <button className="link small danger del" onClick={remove}>Delete project</button>
+      </div>
     </article>
   )
 }

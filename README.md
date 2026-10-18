@@ -11,8 +11,9 @@ Built by Jackson Strand.
 - A time-of-day greeting, plus a one-line summary of what is coming up
 - Quick "log an update" box for any project or manuscript
 - **Your progress**: a weekly chart (last 10 weeks) of papers read, project activity and manuscript activity, with meters for Core papers read, tasks done and manuscripts by stage
+- **Weekly routine**: things you do on the same weekdays every week (grading, check-ins, planning). Today shows the right day's items with check boxes, anything still open from the last three days, and what is coming up. Includes a one-click teaching-week example
 - Your schedule for today and the next week
-- **Tasks** from every project, soonest first, with check boxes
+- **To-dos**: tasks from every project, plus general to-dos that are not tied to a project, soonest first
 - **Focus time** from the Pomodoro timer: this week's total, a 7-day chart and a per-project breakdown
 - Deadlines (manuscript deadlines and standalone ones; use **+** to add one for any project or manuscript)
 - Needs attention: active projects with no update in two weeks
@@ -22,6 +23,7 @@ Built by Jackson Strand.
 - Cards for data, field work, code and other projects, each with its latest updates
 - **Work / Home** switch at the top; each project belongs to one side
 - Pin projects to the top, drag the handle to reorder, collapsible **Completed** section
+- On wide screens a project opens in two columns: the timeline and add-update box on the left, and the schedule, tasks, deadlines, focus time and reading on the right
 - Each project opens to a **timeline** of dated updates and editable note boxes, a **task list** (add, check off, edit, delete with undo), **tags**, **focus time**, a **schedule** (one-off or weekly meetings that also show on the card), **deadlines**, and a **Reading** list of linked papers
 
 **Manuscripts** (separate from projects)
@@ -152,7 +154,7 @@ scripts/backup.mjs       the backup script
 public/                  icons and web app manifest
 ```
 
-Data lives in these tables: `projects`, `project_updates` (updates and notes), `project_events` (schedule), `project_deadlines`, `project_tasks`, `time_entries` (focus time), `project_papers` (links), `papers`, `highlights` and `ink`. PDFs are in the private `papers` storage bucket under a folder named for your user id.
+Data lives in these tables: `projects`, `project_updates` (updates and notes), `project_events` (schedule), `project_deadlines`, `project_tasks` (a task may have no project), `routines` and `routine_checks` (weekly routine), `time_entries` (focus time), `project_papers` (links), `papers`, `highlights` and `ink`. PDFs are in the private `papers` storage bucket under a folder named for your user id.
 
 ## Scripts
 

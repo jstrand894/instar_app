@@ -117,7 +117,7 @@ main { overflow-y: auto; min-width: 0; display: flex; flex-direction: column; }
 @media (max-width: 760px) {
   .shell { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
   .nav { grid-row: 2; flex-direction: row; border-right: 0; border-top: 1px solid var(--line); padding: .3rem .5rem calc(.3rem + env(safe-area-inset-bottom)); justify-content: center; gap: .5rem; }
-  .nav .brand, .nav .spacer, .nav .pomo { display: none; }
+  .nav .brand, .nav .spacer, .nav .pomo, .nav .pomo-wrap { display: none; }
   .nav a { flex: 1; text-align: center; }
   main { grid-row: 1; }
   .page { padding: 1rem; } .paper { grid-template-columns: 1fr auto; } .paper time { display: none; }
@@ -390,18 +390,10 @@ main { scrollbar-gutter: stable; }
 @media (min-width: 761px) {
   .shell { --nav-w: 76px; display: block; }
   .shell.nav-pinned { --nav-w: 220px; }
-  .shell .nav { position: fixed; top: 0; left: 0; bottom: 0; width: var(--nav-w); z-index: 40; overflow-x: hidden; overflow-y: auto; white-space: nowrap; padding: 1rem 8px; transition: width .22s cubic-bezier(.3,.9,.3,1), box-shadow .22s; }
+  .shell .nav { position: fixed; top: 0; left: 0; bottom: 0; width: calc(76px + var(--open) * 144px); z-index: 40; overflow-x: hidden; overflow-y: auto; white-space: nowrap; padding: 1rem 8px; box-shadow: 10px 0 36px rgba(0,0,0, calc(var(--open) * .2)); --open: 0; transition: --open .28s cubic-bezier(.3,.9,.3,1); }
   .shell main { margin-left: var(--nav-w); height: 100%; transition: margin-left .22s cubic-bezier(.3,.9,.3,1); }
-  .shell.nav-auto .nav:hover, .shell.nav-auto .nav:has(:focus-visible) { width: 220px; box-shadow: 10px 0 36px rgba(0,0,0,.2); }
   .nav a, .nav .account-btn, .nav-toggle { padding-left: 21px; padding-right: 12px; }
-  .brand-text, .nav a span, .account-btn span, .nav-toggle span { transition: opacity .15s; }
   /* collapsed rail: icons only, a compact timer, no full timer card */
-  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .brand-text,
-  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) a span,
-  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .account-btn span,
-  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .nav-toggle span { opacity: 0; }
-  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .pomo { display: none; }
-  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .pomo-mini { display: block; }
 }
 .nav svg { flex: none; }
 @media (max-width: 760px) { .nav-toggle { display: none; } }
@@ -414,16 +406,13 @@ main { scrollbar-gutter: stable; }
 .pomo-ring { display: grid; place-items: center; padding: .2rem 0; }
 .pomo-mini { display: none; place-items: center; padding: .4rem 0; }
 .pomo-mini .ring-time { font-size: .62rem !important; }
-@media (min-width: 761px) { .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .pomo-mini { display: grid; } }
 
 /* the Instar wordmark */
 .brand-text, .auth h1, .about h2 { font-family: 'Caprasimo', Georgia, serif; font-weight: 400; letter-spacing: .005em; }
-.brand-text { font-size: 1.7rem; line-height: 1; max-width: 140px; overflow: hidden; transition: max-width .22s cubic-bezier(.3,.9,.3,1), opacity .15s; }
+.brand-text { font-size: 1.7rem; line-height: 1; }
 .auth h1 { font-size: 2rem; } .about h2 { font-size: 1.9rem; }
 @media (min-width: 761px) {
   /* collapsed rail: logo alone, centered; the name opens out beside it on hover */
-  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .brand { gap: 0; }
-  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .brand-text { max-width: 0; }
 }
 
 /* toasts */
@@ -446,8 +435,6 @@ main { scrollbar-gutter: stable; }
 .sync-idle .sync-dot { background: var(--line); }
 @keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
 @media (min-width: 761px) {
-  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .sync span { opacity: 0; }
-  .sync span { transition: opacity .15s; }
 }
 @media (max-width: 760px) { .sync { display: none; } }
 .plus { padding: 0; }
@@ -516,7 +503,6 @@ kbd { background: var(--chip); border: 1px solid var(--line); border-bottom-widt
 @media (min-width: 761px) {
   .nav-search { padding-left: 21px; padding-right: 12px; }
   .nav-search svg { flex: none; }
-  .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .nav-search span, .shell.nav-auto .nav:not(:hover):not(:has(:focus-visible)) .nav-search kbd { opacity: 0; }
 }
 @media (max-width: 760px) { .nav-search { display: none; } .today-search kbd { display: none; } }
 
@@ -616,3 +602,24 @@ kbd { background: var(--chip); border: 1px solid var(--line); border-bottom-widt
 .day-chips { display: flex; gap: .35rem; flex-wrap: wrap; } .day-chips button { min-width: 48px; border-radius: 999px; padding: .3rem .7rem; }
 .todo-add { display: grid; grid-template-columns: 1fr 150px auto; gap: .5rem; }
 @media (max-width: 760px) { .todo-add { grid-template-columns: 1fr 1fr; } .todo-add input:first-child { grid-column: 1 / -1; } }
+
+/* project cards: footer pinned to the bottom so every card lines up */
+.project { display: flex; flex-direction: column; }
+.card-foot { margin-top: auto; padding-top: .5rem; display: grid; gap: .4rem; }
+
+/* sidebar: one animation (--open, 0 to 1) drives the width, labels, logo, status and timer together */
+@property --open { syntax: '<number>'; inherits: true; initial-value: 0; }
+@media (min-width: 761px) {
+  .shell.nav-pinned .nav, .shell.nav-auto .nav:hover, .shell.nav-auto .nav:has(:focus-visible) { --open: 1; }
+  .shell.nav-pinned .nav { box-shadow: none; }
+  /* labels fade in once the sidebar is about a third open, and out quickly as it closes */
+  .brand-text, .nav a span, .account-btn span, .nav-toggle span, .sync span, .nav-search span, .nav-search kbd { opacity: clamp(0, calc((var(--open) - .35) * 1.8), 1); }
+  /* logo glides to its centered spot beside the name; the name slides out from behind it */
+  .brand { position: relative; display: block; height: 68px; padding: 0; --tw: 82px; }
+  .brand .logo { position: absolute; top: 0; left: calc(4.5px + var(--open) * ((204px - 56px - var(--tw)) / 2 - 4.5px)); }
+  .brand-text { position: absolute; top: 50%; left: calc(4.5px + 56px + var(--open) * ((204px - 56px - var(--tw)) / 2 - 4.5px)); transform: translate(calc((1 - var(--open)) * -14px), -50%); }
+  /* timer: the full card grows up out of the compact ring */
+  .pomo-wrap { max-height: calc(var(--open) * 340px); opacity: clamp(0, calc((var(--open) - .3) * 1.8), 1); overflow: hidden; }
+  .pomo-mini { display: grid; max-height: calc((1 - var(--open)) * 64px); opacity: clamp(0, calc(1 - var(--open) * 2.2), 1); overflow: hidden; padding: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .shell .nav, .shell main { transition: none; } }

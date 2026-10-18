@@ -127,6 +127,7 @@ export default function Pomodoro() {
     <div className="pomo-mini" title={`${LABEL[s.mode]}${running ? ' (running)' : ''}`}>
       <Ring pct={pct} label={`${mm}:${ss}`} size={46} running={running} mode={s.mode} />
     </div>
+    <div className="pomo-wrap">
     <div className="pomo">
       <div className="pomo-modes">
         {(['focus', 'short', 'long'] as Mode[]).map(m => (
@@ -144,6 +145,7 @@ export default function Pomodoro() {
         <button onClick={() => restart(s.mode)}>Reset</button>
       </div>
       <div className="muted small">{s.sessions} session{s.sessions === 1 ? '' : 's'} today</div>
+    </div>
     </div>
     </>
   )
