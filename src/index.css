@@ -611,6 +611,9 @@ kbd { background: var(--chip); border: 1px solid var(--line); border-bottom-widt
 @property --open { syntax: '<number>'; inherits: true; initial-value: 0; }
 @media (min-width: 761px) {
   .shell.nav-pinned .nav, .shell.nav-auto .nav:hover, .shell.nav-auto .nav:has(:focus-visible) { --open: 1; }
+  /* hover has to rest on the rail for a moment before it opens, so you can click through it quickly; closing is immediate */
+  .shell.nav-auto .nav:hover:not(:has(:focus-visible)) { transition-delay: .4s; }
+  .shell.nav-auto.nav-shut .nav, .shell.nav-auto.nav-shut .nav:hover { --open: 0; transition-delay: 0s; }
   .shell.nav-pinned .nav { box-shadow: none; }
   /* labels fade in once the sidebar is about a third open, and out quickly as it closes */
   .brand-text, .nav a span, .account-btn span, .nav-toggle span, .sync span, .nav-search span, .nav-search kbd { opacity: clamp(0, calc((var(--open) - .35) * 1.8), 1); }
@@ -790,3 +793,16 @@ main { scroll-behavior: smooth; overscroll-behavior-y: contain; -webkit-overflow
 .gh-actions { display: flex; gap: .8rem; }
 .col-side .gh-link { margin: 0; } .col-side .gh-actions { flex-basis: 100%; padding-left: calc(34px + .9rem); }
 .col-side form.gh-row { padding: .8rem 1rem; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; } .col-side form.gh-row input, .col-side form.gh-row select { flex: 1 1 100%; max-width: none; }
+
+/* check-off animation: the box pops, the text strikes through, then the row slides away */
+.tick:checked { animation: tick-pop .35s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes tick-pop { 0% { transform: scale(.7); } 60% { transform: scale(1.3); } 100% { transform: scale(1); } }
+.leaving { animation: row-out .52s ease forwards; overflow: hidden; pointer-events: none; }
+.leaving .rt-title, .leaving .task-title, .leaving .focus-title b, .leaving > span:not(.pill) { text-decoration: line-through; text-decoration-color: var(--accent); color: var(--muted); transition: color .2s; }
+@keyframes row-out {
+  0%, 38% { opacity: 1; transform: none; max-height: 6rem; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  100% { opacity: 0; transform: translateX(28px); max-height: 0; padding-top: 0; padding-bottom: 0; margin-top: 0; margin-bottom: 0; }
+}
+.focus-tile.leaving { animation-name: tile-out; }
+@keyframes tile-out { 0%, 38% { opacity: 1; transform: none; } 100% { opacity: 0; transform: scale(.94) translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .tick:checked { animation: none; } .leaving { animation: none; opacity: .4; } }

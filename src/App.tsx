@@ -53,10 +53,12 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
     const measure = () => brand.style.setProperty('--tw', `${text.getBoundingClientRect().width}px`)
     measure(); document.fonts?.ready.then(measure)
   }, [])
+  const [railShut, setRailShut] = useState(false)
   const toggleNav = () => setNavMode(m => { const n = m === 'auto' ? 'pinned' : 'auto'; try { localStorage.setItem('tm-nav', n) } catch { /* ignore */ } return n })
   return (
-    <div className={`shell nav-${navMode} ${reading ? 'in-reader' : ''}`}>
-      <nav className="nav">
+    <div className={`shell nav-${navMode} ${reading ? 'in-reader' : ''} ${railShut ? 'nav-shut' : ''}`}>
+      {/* after you click a page, the rail stays slim until the pointer leaves and comes back */}
+      <nav className="nav" onClick={e => { if (e.detail > 0 && (e.target as HTMLElement).closest('a')) setRailShut(true) }} onMouseLeave={() => setRailShut(false)}>
         <div className="brand"><Logo size={64} /><span className="brand-text">Instar</span></div>
         <button className="nav-search" onClick={() => window.dispatchEvent(new CustomEvent('tm-search'))} title="Search (⌘K or /)">
           <Icon d={ICONS.search} /><span>Search</span><kbd>⌘K</kbd>

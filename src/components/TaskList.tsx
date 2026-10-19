@@ -7,12 +7,15 @@ import type { ProjectTask } from '../types'
 
 const byDue = (a: ProjectTask, b: ProjectTask) => (a.due_on ?? '9999').localeCompare(b.due_on ?? '9999') || a.created_at.localeCompare(b.created_at)
 
+const EXIT_MS = 520
+
 /** A checklist for one project: add, check off, edit, and delete with undo. */
 export default function TaskList({ projectId, tasks, onChange }: { projectId: string; tasks: ProjectTask[]; onChange: () => void }) {
   const [title, setTitle] = useState('')
   const [due, setDue] = useState('')
   const [showDone, setShowDone] = useState(false)
   const [opt, setOpt] = useState<Record<string, boolean>>({}) // instant feedback while the save finishes
+  const [leaving, setLeaving] = useState<Set<string>>(new Set()) // just checked: play the check-off animation before the row moves
   const isDone = (t: ProjectTask) => opt[t.id] ?? t.done
   const open = tasks.filter(t => !isDone(t)).sort(byDue)
   const done = tasks.filter(isDone).sort((a, b) => (b.done_at ?? '').localeCompare(a.done_at ?? ''))
@@ -23,14 +26,16 @@ export default function TaskList({ projectId, tasks, onChange }: { projectId: st
     await store.addTask(projectId, title.trim(), due || null); setTitle(''); setDue(''); onChange()
   }
   async function toggle(t: ProjectTask) {
-    const next = !isDone(t); setOpt(o => ({ ...o, [t.id]: next }))
+    const next = !isDone(t)
+    if (next) { setLeaving(s => new Set(s).add(t.id)); await new Promise(r => setTimeout(r, EXIT_MS)); setLeaving(s => { const n = new Set(s); n.delete(t.id); return n }) }
+    setOpt(o => ({ ...o, [t.id]: next }))
     try { await store.patchTask(t.id, { done: next }); onChange() } finally { setOpt(o => { const n = { ...o }; delete n[t.id]; return n }) }
   }
 
   const row = (t: ProjectTask) => {
-    const d = isDone(t); const info = !d ? deadlineInfo(t.due_on) : null
+    const out = leaving.has(t.id); const d = isDone(t) || out; const info = !d ? deadlineInfo(t.due_on) : null
     return (
-      <li key={t.id} className={`task ${d ? 'done' : ''}`}>
+      <li key={t.id} className={`task ${d ? 'done' : ''} ${out ? 'leaving' : ''}`}>
         <input type="checkbox" className="tick" checked={d} onChange={() => toggle(t)} aria-label={`Mark "${t.title}" ${d ? 'not done' : 'done'}`} />
         <InlineEdit value={t.title} className="task-title" onSave={v => store.patchTask(t.id, { title: v }).then(onChange)} />
         {info && <span className={`pill dl-${info.tone}`}>{info.text}</span>}

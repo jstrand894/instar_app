@@ -17,8 +17,8 @@ const clock = (d: Date) => d.toLocaleTimeString(undefined, { hour: 'numeric', mi
 const COMING = 5 // days ahead shown under "Coming up"
 
 /** One agenda: calendar events and weekly routines together, for today, anything still open, and what is coming up. */
-export default function RoutineCard({ routines, checks, projects, events, tasks, onTask, onMoveTask, onManage, onChange }: {
-  routines: Routine[]; checks: RoutineCheck[]; projects: Project[]; events: Appt[]; tasks: ProjectTask[]
+export default function RoutineCard({ routines, checks, projects, events, tasks, leaving, onTask, onMoveTask, onManage, onChange }: {
+  routines: Routine[]; checks: RoutineCheck[]; projects: Project[]; events: Appt[]; tasks: ProjectTask[]; leaving: Set<string>
   onTask: (id: string) => void; onMoveTask: (id: string) => void; onManage: () => void; onChange: () => void
 }) {
   const [opt, setOpt] = useState<Record<string, boolean>>({}) // instant feedback while the save finishes
@@ -76,7 +76,7 @@ export default function RoutineCard({ routines, checks, projects, events, tasks,
   const taskRow = (t: ProjectTask, late: boolean) => {
     const pr = t.project_id ? byId.get(t.project_id) : undefined; const info = deadlineInfo(t.due_on)
     return (
-      <li key={t.id} className={late ? 'late' : ''}>
+      <li key={t.id} className={`${late ? 'late' : ''} ${leaving.has('t' + t.id) ? 'leaving' : ''}`}>
         <input type="checkbox" className="tick" onChange={() => onTask(t.id)} aria-label={`Mark "${t.title}" done`} />
         <div>
           <span className="rt-title">{t.title}</span>

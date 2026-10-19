@@ -136,7 +136,14 @@ export default function Today() {
     if (!todo.trim()) return
     try { await store.addTask(null, todo.trim(), todoDue || null); setTodo(''); setTodoDue(''); load() } catch (er) { setError(friendlyError(er)) }
   }
-  async function checkOff(id: string) {
+  // checking something off: play the exit animation first, then save and drop the row
+  const [leaving, setLeaving] = useState<Set<string>>(new Set())
+  const withExit = (key: string, fn: () => void) => {
+    setLeaving(s => new Set(s).add(key))
+    setTimeout(() => { fn(); setLeaving(s => { const n = new Set(s); n.delete(key); return n }) }, 520)
+  }
+  const checkOff = (id: string) => withExit('t' + id, () => doCheckOff(id))
+  async function doCheckOff(id: string) {
     setTasks(ts => ts.map(t => t.id === id ? { ...t, done: true } : t))
     try { await store.patchTask(id, { done: true }) } catch (er) { setError(friendlyError(er)); load() }
   }
@@ -144,7 +151,8 @@ export default function Today() {
     setTasks(ts => ts.map(t => t.id === id ? { ...t, due_on: todayIso } : t))
     try { await store.patchTask(id, { due_on: todayIso }) } catch (er) { setError(friendlyError(er)); load() }
   }
-  async function finish(id: string) {
+  const finish = (id: string) => withExit('d' + id, () => doFinish(id))
+  async function doFinish(id: string) {
     setDeadlines(ds => ds.map(d => d.id === id ? { ...d, done: true } : d))
     try { await store.patchDeadline(id, { done: true }) } catch (er) { setError(friendlyError(er)); load() }
   }
@@ -172,7 +180,7 @@ export default function Today() {
           <h2>Focus now</h2>
           <div className="focus-tiles">
             {focusItems.map(f => (
-              <div className={`focus-tile ${f.pill?.tone ?? ''}`} key={f.key}>
+              <div className={`focus-tile ${f.pill?.tone ?? ''} ${leaving.has(f.key) ? 'leaving' : ''}`} key={f.key}>
                 <span className="muted small">{f.kind}{f.when && ` · ${f.when}`}</span>
                 <div className="focus-title">
                   {f.tick && <input type="checkbox" className="tick" aria-label={`Mark "${f.title}" done`} onChange={f.tick} />}
@@ -190,7 +198,7 @@ export default function Today() {
 
       <GettingStarted projects={projects} updates={updates} papers={papers} />
 
-      <RoutineCard routines={routines} checks={checks} projects={projects} events={upcoming} tasks={openTasks.filter(t => t.due_on && t.due_on <= todayIso)} onTask={checkOff} onMoveTask={moveToToday} onManage={() => setManage(true)} onChange={load} />
+      <RoutineCard routines={routines} checks={checks} projects={projects} events={upcoming} tasks={openTasks.filter(t => t.due_on && t.due_on <= todayIso)} leaving={leaving} onTask={checkOff} onMoveTask={moveToToday} onManage={() => setManage(true)} onChange={load} />
       {manage && <RoutineManager routines={routines} projects={projects} onClose={() => { setManage(false); load() }} />}
 
       <AddBar projects={projects} onDone={load} onError={setError} />
@@ -217,7 +225,7 @@ export default function Today() {
             </form>
           )}
           {dueItems.map(x => (
-            <div className="trow" key={x.key}>
+            <div className={`trow ${x.id && leaving.has('d' + x.id) ? 'leaving' : ''}`} key={x.key}>
               {x.id
                 ? <input type="checkbox" className="tick" aria-label={`Mark "${x.title}" done`} onChange={() => finish(x.id!)} />
                 : <span className="tick-gap" />}
@@ -239,7 +247,7 @@ export default function Today() {
           {openTasks.slice(0, 8).map(t => {
             const info = deadlineInfo(t.due_on); const pr = t.project_id ? byId.get(t.project_id) : undefined
             return (
-              <div className="trow" key={t.id}>
+              <div className={`trow ${leaving.has('t' + t.id) ? 'leaving' : ''}`} key={t.id}>
                 <input type="checkbox" className="tick" aria-label={`Mark "${t.title}" done`} onChange={() => checkOff(t.id)} />
                 <span>{t.title}</span>
                 {info && <span className={`pill dl-${info.tone}`}>{info.text}</span>}
