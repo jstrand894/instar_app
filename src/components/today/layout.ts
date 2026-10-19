@@ -12,6 +12,6 @@ export const TODAY_CARDS = [
   { id: 'time', label: 'Focus time', hint: 'This week from the timer' },
   { id: 'reading', label: 'Reading now', hint: 'Papers you are in the middle of' },
   { id: 'attention', label: 'Needs attention', hint: 'Projects with no update in two weeks' },
-  { id: 'picture', label: 'Picture of the day', hint: "Wikipedia's featured picture" },
+  { id: 'picture', label: 'Picture of the day', hint: "NASA's Astronomy Picture of the Day" },
   { id: 'activity', label: 'Recent activity', hint: 'The latest updates and pushes' },
 ] as const
