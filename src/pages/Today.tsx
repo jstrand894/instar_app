@@ -18,6 +18,7 @@ import Reading from '../components/today/Reading'
 import Attention from '../components/today/Attention'
 import Activity from '../components/today/Activity'
 import Completed from '../components/today/Completed'
+import Picture from '../components/today/Picture'
 import Customize from '../components/today/Customize'
 
 export default function Today() {
@@ -36,7 +37,7 @@ export default function Today() {
 
   const showFocus = show('focus') && d.focusItems.length > 0
   const showDay = show('day')
-  const plan = ['deadlines', 'todos'].filter(show), progress = ['completed', 'time', 'reading'].filter(show), watch = ['attention', 'activity'].filter(show)
+  const plan = ['deadlines', 'todos'].filter(show), progress = ['completed', 'time', 'reading'].filter(show), watch = ['attention', 'activity', 'picture'].filter(show)
 
   return (
     <div className="page today">
@@ -83,7 +84,7 @@ export default function Today() {
           </>}
           {watch.length > 0 && <>
             <h2 className="group-label">Keep an eye on</h2>
-            <div className="today-grid">{show('attention') && <Attention d={d} />}{show('activity') && <Activity d={d} />}</div>
+            <div className="today-grid">{show('attention') && <Attention d={d} />}{show('activity') && <Activity d={d} />}{show('picture') && <Picture />}</div>
           </>}
         </>
       )}

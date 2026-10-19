@@ -900,3 +900,5 @@ main.is-scrolling * { pointer-events: none !important; }
 }
 .done-row { align-items: center; } .done-ico { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; flex: none; }
 .done-title { flex: 1; min-width: 6rem; } .done-time { margin-left: auto; white-space: nowrap; } .done-row a { color: inherit; }
+.picture figure { margin: 0; display: grid; gap: .6rem; } .picture img { display: block; width: 100%; max-height: 420px; object-fit: cover; border-radius: 12px; background: var(--chip); }
+.picture figcaption { display: grid; gap: .15rem; font-size: .92rem; } .picture figcaption a { color: inherit; }

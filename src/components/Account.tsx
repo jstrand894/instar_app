@@ -109,6 +109,13 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
                 </div>
               </div>
               <div className="set-row">
+                <span><b>Picture of the day</b><span className="muted small">Shown at the bottom of Today</span></span>
+                <div className="seg" role="group" aria-label="Picture source">
+                  <button className={prefs.picture === 'wikipedia' ? 'on' : ''} onClick={() => update({ picture: 'wikipedia' })}>Wikipedia</button>
+                  <button className={prefs.picture === 'nasa' ? 'on' : ''} onClick={() => update({ picture: 'nasa' })}>NASA</button>
+                </div>
+              </div>
+              <div className="set-row">
                 <span><b>Week starts on</b><span className="muted small">For focus time and the weekly review</span></span>
                 <div className="seg" role="group" aria-label="Week starts on">
                   <button className={prefs.weekStart === 1 ? 'on' : ''} onClick={() => update({ weekStart: 1 })}>Monday</button>

@@ -30,6 +30,8 @@ jobs:
           # Settings -> Secrets and variables -> Actions -> Variables.
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          # Optional free key from api.nasa.gov for the NASA picture of the day (falls back to a shared, rate-limited demo key).
+          VITE_NASA_API_KEY: ${{ vars.VITE_NASA_API_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
