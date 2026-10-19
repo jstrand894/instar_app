@@ -80,3 +80,11 @@ export function splitWhen(line: string, now = new Date()): { title: string; date
   base.setDate(base.getDate() + diff)
   return { title: m[1].trim(), date: isoDay(base) }
 }
+
+/** The one line to show for a GitHub push entry: the commit message (older entries began "Pushed N commit(s) to branch" with the messages as bullets below). */
+export function commitHeadline(body: string): string {
+  const lines = body.split('\n')
+  if (!/^Pushed \d+ commits? to /.test(lines[0])) return lines[0]
+  const first = lines.slice(1).find(l => l.startsWith('•'))
+  return first ? first.replace(/^•\s*/, '').replace(/\s*\([0-9a-f]{7}\)$/, '') : lines[0]
+}

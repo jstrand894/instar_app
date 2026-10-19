@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 /** Per-device appearance and timer settings, kept in localStorage. */
 export type Theme = 'system' | 'light' | 'dark'
 
@@ -10,15 +12,21 @@ export const ACCENTS = [
   { id: 'slate', label: 'Slate', light: '#475569', dark: '#aab6c8' },
 ] as const
 
+export type Units = 'auto' | 'f' | 'c'
 export interface Prefs {
   theme: Theme
   accent: string
   name: string
   pomo: { focus: number; short: number; long: number }
+  units: Units
+  weekStart: 0 | 1 // 0 = Sunday, 1 = Monday
+  density: 'comfortable' | 'compact'
+  motion: 'system' | 'reduce'
+  todayHidden: string[] // Today cards you turned off
 }
 
 const KEY = 'tm-prefs-v1'
-const DEFAULTS: Prefs = { theme: 'system', accent: 'forest', name: '', pomo: { focus: 25, short: 5, long: 15 } }
+const DEFAULTS: Prefs = { theme: 'system', accent: 'forest', name: '', pomo: { focus: 25, short: 5, long: 15 }, units: 'auto', weekStart: 1, density: 'comfortable', motion: 'system', todayHidden: [] }
 
 export function getPrefs(): Prefs {
   try {
@@ -40,6 +48,7 @@ const isDark = (theme: Theme) =>
 export function applyPrefs() {
   const p = getPrefs(); const root = document.documentElement
   if (p.theme === 'system') delete root.dataset.theme; else root.dataset.theme = p.theme
+  root.dataset.density = p.density; if (p.motion === 'reduce') root.dataset.motion = 'reduce'; else delete root.dataset.motion
   const dark = isDark(p.theme)
   const a = ACCENTS.find(x => x.id === p.accent) ?? ACCENTS[0]
   root.style.setProperty('--accent', dark ? a.dark : a.light)
@@ -51,4 +60,11 @@ export function applyPrefs() {
 export function watchSystemTheme() {
   if (typeof matchMedia === 'undefined') return
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (getPrefs().theme === 'system') applyPrefs() })
+}
+
+/** Current prefs, re-read whenever they change anywhere in the app. */
+export function usePrefs(): Prefs {
+  const [p, setP] = useState(getPrefs)
+  useEffect(() => { const on = () => setP(getPrefs()); window.addEventListener('tm-prefs', on); return () => window.removeEventListener('tm-prefs', on) }, [])
+  return p
 }

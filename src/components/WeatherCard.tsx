@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import Icon, { type IconName } from './Icon'
+import { getPrefs } from '../lib/prefs'
 
 interface Wx { place: string; temp: number; code: number; hi: number; lo: number; wind: number; rain: number; day: boolean; days: { d: string; code: number; hi: number }[] }
 interface City { name: string; lat: number; lon: number }
 
 const KEY = 'tm-weather2'; const CITY = 'tm-weather-city'
 const TTL = 30 * 6e4
-const US = (navigator.language || '').toLowerCase().startsWith('en-us')
+const usUnits = () => { const u = getPrefs().units; return u === 'f' || (u === 'auto' && (navigator.language || '').toLowerCase().startsWith('en-us')) }
 
 function describe(c: number): [IconName, string] {
   if (c === 0) return ['sun', 'Clear']
@@ -37,7 +38,7 @@ function advice(w: Wx): string {
   if (c >= 95) return 'Storms around. A good day to work indoors and stay put.'
   if (c >= 71 && c <= 77 || c === 85 || c === 86) return 'Snow today. Leave extra time if you are heading out.'
   if (w.rain >= 50 || (c >= 51 && c <= 67) || (c >= 80 && c <= 82)) return `${w.rain >= 50 ? `${w.rain}% chance of rain. ` : ''}Good day for indoor work. Bring an umbrella if you go out.`
-  const hot = US ? 90 : 32; const cold = US ? 32 : 0
+  const hot = usUnits() ? 90 : 32; const cold = usUnits() ? 32 : 0
   if (w.hi >= hot) return 'Hot one. Plan outdoor time for the morning or evening.'
   if (w.hi <= cold) return 'Bitterly cold. Dress warm if you go out.'
   if (c <= 1 && w.day) return 'Lovely out. Worth a walk or a break outside.'
@@ -51,7 +52,7 @@ function savedCity(): City | null { try { return JSON.parse(localStorage.getItem
 
 async function fetchWx(lat: number, lon: number, place?: string): Promise<Wx> {
   const [f, g] = await Promise.all([
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=6${US ? '&temperature_unit=fahrenheit&wind_speed_unit=mph' : ''}`).then(r => r.json()),
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=6${usUnits() ? '&temperature_unit=fahrenheit&wind_speed_unit=mph' : ''}`).then(r => r.json()),
     place ? Promise.resolve({ city: place }) : fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`).then(r => r.json()).catch(() => ({})),
   ])
   return {
@@ -71,6 +72,12 @@ export default function WeatherCard() {
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
 
+  // settings changed (units or location): drop the cache and fetch again
+  useEffect(() => {
+    let sig = JSON.stringify([getPrefs().units, localStorage.getItem(CITY)])
+    const on = () => { const n = JSON.stringify([getPrefs().units, localStorage.getItem(CITY)]); if (n === sig) return; sig = n; try { localStorage.removeItem(KEY) } catch { /* ignore */ } setCity(savedCity()); setWx(null); setMsg('') }
+    window.addEventListener('tm-prefs', on); return () => window.removeEventListener('tm-prefs', on)
+  }, [])
   useEffect(() => {
     if (wx) return
     let off = false

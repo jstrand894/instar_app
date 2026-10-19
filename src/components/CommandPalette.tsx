@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import Icon, { type IconName } from './Icon'
 import { store } from '../lib/store'
 import { getPrefs, setPrefs } from '../lib/prefs'
+import { notify } from '../lib/notify'
+import { splitWhen } from '../lib/util'
 import type { Deadline, Highlight, Paper, Project, ProjectTask, ProjectUpdate } from '../types'
 
 type Kind = 'Actions' | 'Projects' | 'Manuscripts' | 'Papers' | 'Tasks' | 'Notes and updates' | 'Deadlines' | 'Highlights'
@@ -82,6 +84,22 @@ export default function CommandPalette() {
     return out
   }, [data, loc.pathname, go, close])
 
+  // typing "todo: email reviewer fri", "due: Revision 3/14" or "log: ran the model" creates it right from the palette
+  const quick = (text: string, path: string): Item[] => {
+    const m = text.match(/^(todo|task|t|due|deadline|d|log|update|u):\s*(.+)$/i)
+    if (!m) return []
+    const kind = /^(todo|task|t)$/i.test(m[1]) ? 'todo' : /^(due|deadline|d)$/i.test(m[1]) ? 'deadline' : 'log'
+    const pid = path.startsWith('/project/') ? path.split('/')[2] : undefined
+    const pr = data?.projects.find(p => p.id === pid)
+    const { title, date } = kind === 'log' ? { title: m[2].trim(), date: null } : splitWhen(m[2])
+    const done = (msg: string) => { notify.success(msg); window.dispatchEvent(new Event('tm-data')); close() }
+    const mk = (label: string, sub: string, run: () => Promise<unknown>) => [{ id: 'q:' + kind, kind: 'Actions' as Kind, title: label, sub, hay: '', weight: 99, run: () => { run().then(() => done(label), e => notify.error(e)) } }]
+    if (kind === 'todo') return mk(`Add to-do: ${title}`, `${pr ? pr.name : 'No project'}${date ? ' · due ' + date : ''}`, () => store.addTask(pr?.id ?? null, title, date))
+    if (!pr) return [{ id: 'q:need', kind: 'Actions' as Kind, title: kind === 'deadline' ? 'Open a project first to add a deadline' : 'Open a project first to log an update', sub: 'Or use the Quick add box on Today', hay: '', weight: 99, run: () => {} }]
+    if (kind === 'deadline') return date ? mk(`Add deadline: ${title}`, `${pr.name} · due ${date}`, () => store.addDeadline(pr.id, title, date)) : [{ id: 'q:date', kind: 'Actions' as Kind, title: 'Add a date, like "due: Revision fri" or "3/14"', sub: pr.name, hay: '', weight: 99, run: () => {} }]
+    return mk(`Log update: ${title}`, pr.name, () => store.addUpdate(pr.id, title))
+  }
+
   const results = useMemo(() => {
     const tokens = q.toLowerCase().split(/\s+/).filter(Boolean)
     let found: Item[]
@@ -101,8 +119,8 @@ export default function CommandPalette() {
       }).filter((x): x is { i: Item; score: number } => !!x).sort((a, b) => b.score - a.score).map(x => x.i).slice(0, 40)
     }
     const grouped = ORDER.flatMap(k => found.filter(i => i.kind === k))
-    return grouped
-  }, [items, q])
+    return [...quick(q, loc.pathname), ...grouped]
+  }, [items, q, loc.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { setSel(0) }, [q])
   useEffect(() => { list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' }) }, [sel, results])

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { ACCENTS, getPrefs, setPrefs, type Theme } from '../lib/prefs'
+import { ACCENTS, getPrefs, setPrefs, type Theme, type Units } from '../lib/prefs'
 import { isDesktop } from '../lib/util'
 import Logo from './Logo'
 
@@ -45,7 +45,7 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
 
   return (
     <div className="modal-back" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label="Account">
+      <div className="modal wide" role="dialog" aria-modal="true" aria-label="Account">
         <div className="modal-head">
           {view === 'about' ? <button className="link" onClick={() => setView('settings')}>← Account</button> : <h2>Account</h2>}
           <button className="close-x" onClick={onClose} aria-label="Close">×</button>
@@ -77,6 +77,48 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
                 ))}
               </div>
               <p className="muted small">These settings are saved on this device, so your Mac, iPad and iPhone can each look different.</p>
+            </section>
+
+            <section>
+              <h3>Layout</h3>
+              <div className="set-row">
+                <span><b>Density</b><span className="muted small">Compact fits more on screen</span></span>
+                <div className="seg" role="group" aria-label="Density">
+                  {(['comfortable', 'compact'] as const).map(d => <button key={d} className={prefs.density === d ? 'on' : ''} onClick={() => update({ density: d })}>{d[0].toUpperCase() + d.slice(1)}</button>)}
+                </div>
+              </div>
+              <div className="set-row">
+                <span><b>Animations</b><span className="muted small">Turn off to reduce motion</span></span>
+                <div className="seg" role="group" aria-label="Animations">
+                  <button className={prefs.motion === 'system' ? 'on' : ''} onClick={() => update({ motion: 'system' })}>On</button>
+                  <button className={prefs.motion === 'reduce' ? 'on' : ''} onClick={() => update({ motion: 'reduce' })}>Reduced</button>
+                </div>
+              </div>
+              <div className="set-row">
+                <span><b>Today screen</b><span className="muted small">Choose which cards appear{prefs.todayHidden.length ? ` (${prefs.todayHidden.length} hidden)` : ''}</span></span>
+                <button onClick={() => { onClose(); setTimeout(() => window.dispatchEvent(new Event('tm-customize-today')), 50) }}>Customize…</button>
+              </div>
+            </section>
+
+            <section>
+              <h3>Weather and dates</h3>
+              <div className="set-row">
+                <span><b>Temperature</b></span>
+                <div className="seg" role="group" aria-label="Temperature units">
+                  {([['auto', 'Auto'], ['f', '°F'], ['c', '°C']] as [Units, string][]).map(([u, l]) => <button key={u} className={prefs.units === u ? 'on' : ''} onClick={() => update({ units: u })}>{l}</button>)}
+                </div>
+              </div>
+              <div className="set-row">
+                <span><b>Week starts on</b><span className="muted small">For focus time and the weekly review</span></span>
+                <div className="seg" role="group" aria-label="Week starts on">
+                  <button className={prefs.weekStart === 1 ? 'on' : ''} onClick={() => update({ weekStart: 1 })}>Monday</button>
+                  <button className={prefs.weekStart === 0 ? 'on' : ''} onClick={() => update({ weekStart: 0 })}>Sunday</button>
+                </div>
+              </div>
+              <div className="set-row">
+                <span><b>Weather location</b><span className="muted small">Uses your device location unless you pick a city on Today</span></span>
+                <button onClick={() => { try { localStorage.removeItem('tm-weather-city'); localStorage.removeItem('tm-weather2') } catch { /* ignore */ } update({}) }}>Use my location</button>
+              </div>
             </section>
 
             {isDesktop() && (

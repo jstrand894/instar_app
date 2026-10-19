@@ -17,7 +17,11 @@ const PREFIX: [RegExp, Mode][] = [[/^(todo|task|to-do|t):\s*/i, 'todo'], [/^(due
 export default function AddBar({ projects, onDone, onError }: { projects: Project[]; onDone: () => void; onError: (m: string) => void }) {
   const [mode, setMode] = useState<Mode>('todo')
   const [text, setText] = useState('')
-  const [target, setTarget] = useState('')
+  const [chosen, setChosen] = useState<string | null>(null)
+  // the project you used last, if it still exists, until you pick another
+  const remembered = (() => { try { return localStorage.getItem('tm-addbar-project') ?? '' } catch { return '' } })()
+  const target = chosen ?? (projects.some(p => p.id === remembered) ? remembered : '')
+  const setTarget = (v: string) => { setChosen(v); try { localStorage.setItem('tm-addbar-project', v) } catch { /* ignore */ } }
   const [date, setDate] = useState('')
   const [saved, setSaved] = useState('')
 
@@ -49,10 +53,10 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
 
   return (
     <form className="card addbar" onSubmit={submit}>
-      <div className="addbar-modes" role="tablist" aria-label="What to add">
-        {MODES.map(m => <button type="button" role="tab" aria-selected={mode === m.id} key={m.id} className={mode === m.id ? 'on' : ''} onClick={() => setMode(m.id)}>{m.label}</button>)}
-      </div>
       <div className="addbar-row">
+      <div className="addbar-modes" role="tablist" aria-label="What to add">
+          {MODES.map(m => <button type="button" role="tab" aria-selected={mode === m.id} key={m.id} className={mode === m.id ? 'on' : ''} onClick={() => setMode(m.id)}>{m.label}</button>)}
+        </div>
         <input placeholder={MODES.find(m => m.id === mode)!.hint} value={text} onChange={e => change(e.target.value)} aria-label="Text" />
         <select value={target} onChange={e => setTarget(e.target.value)} aria-label="Project">
           <option value="">{needsProject ? 'For which project…' : 'No project'}</option>

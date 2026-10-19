@@ -4,7 +4,7 @@ import Icon from './Icon'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { dayList } from './RoutineManager'
-import { deadlineInfo } from '../lib/manuscript'
+import TaskRow from './TaskRow'
 import type { Project, ProjectTask, Routine, RoutineCheck } from '../types'
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -17,9 +17,9 @@ const clock = (d: Date) => d.toLocaleTimeString(undefined, { hour: 'numeric', mi
 const COMING = 5 // days ahead shown under "Coming up"
 
 /** One agenda: calendar events and weekly routines together, for today, anything still open, and what is coming up. */
-export default function RoutineCard({ routines, checks, projects, events, tasks, leaving, onTask, onMoveTask, onManage, onChange }: {
+export default function RoutineCard({ routines, checks, projects, events, tasks, leaving, onTask, onRename, onDue, onManage, onChange }: {
   routines: Routine[]; checks: RoutineCheck[]; projects: Project[]; events: Appt[]; tasks: ProjectTask[]; leaving: Set<string>
-  onTask: (id: string) => void; onMoveTask: (id: string) => void; onManage: () => void; onChange: () => void
+  onTask: (id: string) => void; onRename: (id: string, title: string) => void; onDue: (id: string, due: string | null) => void; onManage: () => void; onChange: () => void
 }) {
   const [opt, setOpt] = useState<Record<string, boolean>>({}) // instant feedback while the save finishes
   const today = new Date(); const base = new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -73,19 +73,10 @@ export default function RoutineCard({ routines, checks, projects, events, tasks,
   const doneCount = todayItems.filter(isDone).length
   const dueToday = tasks.filter(t => t.due_on === todayIso)
   const overdue = tasks.filter(t => t.due_on && t.due_on < todayIso)
-  const taskRow = (t: ProjectTask, late: boolean) => {
-    const pr = t.project_id ? byId.get(t.project_id) : undefined; const info = deadlineInfo(t.due_on)
-    return (
-      <li key={t.id} className={`${late ? 'late' : ''} ${leaving.has('t' + t.id) ? 'leaving' : ''}`}>
-        <input type="checkbox" className="tick" onChange={() => onTask(t.id)} aria-label={`Mark "${t.title}" done`} />
-        <div>
-          <span className="rt-title">{t.title}</span>
-          <span className="muted small"> {late && info && <b className="rt-late">{info.text.split(' · ')[0]}</b>}{pr && <> · <Link to={`/project/${pr.id}`}>{pr.name}</Link></>}</span>
-          {late && <> <button className="link small" onClick={() => onMoveTask(t.id)}>Move to today</button></>}
-        </div>
-      </li>
-    )
-  }
+  const taskRow = (t: ProjectTask, late: boolean) => (
+    <TaskRow as="li" key={t.id} task={t} late={late} project={t.project_id ? byId.get(t.project_id) : undefined} leaving={leaving.has('t' + t.id)}
+      onToggle={onTask} onRename={onRename} onDue={onDue} />
+  )
   const tomorrow = addDays(base, 1)
   const todayEvents = events.filter(e => e.when < tomorrow)
   const comingEvents = events.filter(e => e.when >= tomorrow && e.when < addDays(base, COMING + 1))

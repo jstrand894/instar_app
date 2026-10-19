@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { NavLink, Route, Routes, HashRouter, useLocation } from 'react-router-dom'
 import AuthGate from './components/Auth'
 import Pomodoro from './components/Pomodoro'
@@ -7,6 +7,7 @@ import Logo from './components/Logo'
 import PageSkeleton from './components/PageSkeleton'
 import Toasts from './components/Toasts'
 import SyncStatus from './components/SyncStatus'
+import OfflineBar from './components/OfflineBar'
 const CommandPalette = lazy(() => import('./components/CommandPalette'))
 import QuickCapture from './components/QuickCapture'
 const Tour = lazy(() => import('./components/Tour'))
@@ -17,6 +18,7 @@ const Manuscripts = lazy(() => import('./pages/Manuscripts'))
 const Library = lazy(() => import('./pages/Library'))
 const Reader = lazy(() => import('./pages/Reader'))
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'))
+const Review = lazy(() => import('./pages/Review'))
 import { demoMode } from './lib/supabase'
 import { isDesktop } from './lib/util'
 
@@ -29,6 +31,7 @@ const ICONS = {
   today: 'M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
   manuscripts: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
   projects: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+  review: 'M4 5h16v15H4zM4 10h16M8 3v4M16 3v4M8 15l2.5 2.5L16 13',
   papers: 'M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7',
   pin: 'M9 3h6M10 3v6l-4 5h12l-4-5V3M12 14v7',
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5',
@@ -45,7 +48,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
   })
   useEffect(() => {
     const idle: (cb: () => void) => void = (window as unknown as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback ?? (cb => setTimeout(cb, 1800))
-    idle(() => { import('./pages/Home'); import('./pages/Manuscripts'); import('./pages/ProjectDetail'); import('./pages/Library') })
+    idle(() => { import('./pages/Home'); import('./pages/Manuscripts'); import('./pages/ProjectDetail'); import('./pages/Library'); import('./pages/Review') })
   }, [])
   useEffect(() => {
     const brand = document.querySelector<HTMLElement>('.brand'); const text = document.querySelector<HTMLElement>('.brand-text')
@@ -54,6 +57,15 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
     measure(); document.fonts?.ready.then(measure)
   }, [])
   const [railShut, setRailShut] = useState(false)
+  // while the page is moving, ignore the pointer so hover effects don't repaint under the cursor on every frame
+  const mainRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = mainRef.current; if (!el) return
+    let t: ReturnType<typeof setTimeout> | undefined
+    const on = () => { el.classList.add('is-scrolling'); clearTimeout(t); t = setTimeout(() => el.classList.remove('is-scrolling'), 140) }
+    el.addEventListener('scroll', on, { passive: true })
+    return () => { el.removeEventListener('scroll', on); clearTimeout(t) }
+  }, [])
   const toggleNav = () => setNavMode(m => { const n = m === 'auto' ? 'pinned' : 'auto'; try { localStorage.setItem('tm-nav', n) } catch { /* ignore */ } return n })
   return (
     <div className={`shell nav-${navMode} ${reading ? 'in-reader' : ''} ${railShut ? 'nav-shut' : ''}`}>
@@ -67,6 +79,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
         <NavLink to="/projects"><Icon d={ICONS.projects} /><span>Projects</span></NavLink>
         <NavLink to="/manuscripts"><Icon d={ICONS.manuscripts} /><span>Manuscripts</span></NavLink>
         <NavLink to="/library"><Icon d={ICONS.papers} /><span>Reading</span></NavLink>
+        <NavLink to="/review"><Icon d={ICONS.review} /><span>Review</span></NavLink>
         <div className="spacer" />
         <SyncStatus />
         {desktop && <Pomodoro />}
@@ -76,7 +89,8 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
         </button>
         <Account signOut={signOut} />
       </nav>
-      <main>
+      <main ref={mainRef}>
+        <OfflineBar />
         {demoMode && !bannerOff && (
           <div className="banner">
             <span>Demo mode: data is saved only in this browser. Add your Supabase keys to <code>.env</code> to sync across devices.</span>
@@ -91,6 +105,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
           <Route path="/project/:id" element={<ProjectDetail />} />
           <Route path="/library" element={<Library />} />
           <Route path="/read/:id" element={<Reader />} />
+          <Route path="/review" element={<Review />} />
         </Routes>
         </Suspense>
       </main>

@@ -8,7 +8,7 @@ import Empty from '../components/Empty'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError, UserError } from '../lib/errors'
-import { ago, fmtWhen, nextOccurrence } from '../lib/util'
+import { ago, commitHeadline, fmtWhen, nextOccurrence } from '../lib/util'
 import type { ProjectTask, Area, Project, ProjectEvent, ProjectImport, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
@@ -295,7 +295,7 @@ function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks }:
       <ul className="updates">
         {shown.map(u => (
           <li key={u.id}>
-            <span>{u.kind === 'note' && <em className="notetag">Note · </em>}{u.kind === 'commit' && <Icon name="git" size={13} className="commit-ico" />}{(() => { const b = u.kind === 'commit' ? u.body.split('\n')[0] : u.body; return b.length > 140 ? b.slice(0, 140) + '…' : b })()}</span>
+            <span>{u.kind === 'note' && <em className="notetag">Note · </em>}{u.kind === 'commit' && <Icon name="git" size={13} className="commit-ico" />}{(() => { const b = u.kind === 'commit' ? commitHeadline(u.body) : u.body; return b.length > 140 ? b.slice(0, 140) + '…' : b })()}</span>
             <time>{ago(u.created_at)}</time>
           </li>
         ))}
