@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import Icon, { type IconName } from './Icon'
 import { store } from '../lib/store'
 import { getPrefs, setPrefs } from '../lib/prefs'
 import type { Deadline, Highlight, Paper, Project, ProjectTask, ProjectUpdate } from '../types'
@@ -8,7 +9,7 @@ type Kind = 'Actions' | 'Projects' | 'Manuscripts' | 'Papers' | 'Tasks' | 'Notes
 interface Item { id: string; kind: Kind; title: string; sub: string; hay: string; run: () => void; weight: number }
 
 const ORDER: Kind[] = ['Actions', 'Projects', 'Manuscripts', 'Papers', 'Tasks', 'Deadlines', 'Notes and updates', 'Highlights']
-const ICON: Record<Kind, string> = { Actions: '⚡', Projects: '▣', Manuscripts: '✎', Papers: '☰', Tasks: '☑', 'Notes and updates': '✎', Deadlines: '⏰', Highlights: '❝' }
+const ICON: Record<Kind, IconName> = { Actions: 'bolt', Projects: 'folder', Manuscripts: 'pen', Papers: 'list', Tasks: 'task', 'Notes and updates': 'pen', Deadlines: 'clock', Highlights: 'quote' }
 const snip = (s: string, n = 90) => (s.length > n ? s.slice(0, n) + '…' : s).replace(/\s+/g, ' ')
 
 export default function CommandPalette() {
@@ -136,7 +137,7 @@ export default function CommandPalette() {
               <div key={r.id}>
                 {head && <div className="palette-head">{head}</div>}
                 <div role="option" aria-selected={idx === sel} className={`palette-row ${idx === sel ? 'sel' : ''}`} onMouseMove={() => setSel(idx)} onClick={() => r.run()}>
-                  <span className="p-ico" aria-hidden>{ICON[r.kind]}</span>
+                  <span className="p-ico" aria-hidden><Icon name={ICON[r.kind]} /></span>
                   <span className="p-text"><span className="p-title">{mark(r.title)}</span>{r.sub && <span className="p-sub">{r.sub}</span>}</span>
                 </div>
               </div>

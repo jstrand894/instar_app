@@ -93,6 +93,39 @@ Without a `.env` the app starts in **demo mode**: data is stored only in that br
 
 Any other static host (Vercel, Cloudflare Pages, Netlify) works too: build with `npm run build`, publish `dist/`, and set the same two environment variables.
 
+## Connect GitHub (pushes show up as updates)
+
+Pick a repo on a project's page and every push to a branch adds an entry to its timeline: the branch, the commit messages and a link to the diff. This uses a **GitHub App** you create once for your own account, plus two small Supabase functions. After that, adding a repo is just choosing it from a list.
+
+**One-time setup**
+
+1. Run the new lines at the bottom of [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL Editor.
+2. Make a random secret (`openssl rand -hex 32`). It signs webhooks from GitHub.
+3. On GitHub: *Settings → Developer settings → GitHub Apps → New GitHub App*.
+   - Name: anything unique (e.g. `instar-yourname`). Homepage URL: any URL (your site is fine).
+   - Webhook: **Active**, URL `https://<project-ref>.supabase.co/functions/v1/github-webhook`, Secret: the string from step 2.
+   - Repository permissions: **Contents: Read-only** (Metadata is added automatically).
+   - Subscribe to events: **Push**.
+   - Where can it be installed: **Only on this account**. Click *Create GitHub App*.
+4. On the App's page note the **App ID**, then *Generate a private key* (a `.pem` file downloads).
+5. Click *Install App* in the sidebar and choose **All repositories** or only the ones you want.
+6. Set the secrets and deploy (use `npx supabase@latest` if you don't have the CLI installed):
+
+   ```bash
+   supabase secrets set GITHUB_WEBHOOK_SECRET=<the string from step 2>
+   supabase secrets set GITHUB_APP_ID=<the App ID>
+   supabase secrets set GITHUB_APP_PRIVATE_KEY="$(cat path/to/your-key.pem)"
+   supabase secrets set GITHUB_OWNER_EMAILS=<the email you sign in with>
+   supabase functions deploy github-webhook --no-verify-jwt
+   supabase functions deploy github-repos
+   ```
+
+   `github-webhook` is deployed without a Supabase login because GitHub can't send one; it checks GitHub's signature instead. `github-repos` requires you to be signed in, and both functions only act for the emails in `GITHUB_OWNER_EMAILS`, so nobody else who signs up can see your repos or read your commit messages.
+
+**Using it:** open a project, choose a repo under *Connect a GitHub repo*. Repos the App isn't installed on don't appear; the *Add more repos* link takes you to GitHub to add them. Re-delivered pushes are ignored, and tag pushes and branch deletions are skipped.
+
+Prefer no App? A plain per-repo webhook also works: *Settings → Webhooks* on the repo, same URL and secret, content type `application/json`, push events only. Type the repo name by hand in the app.
+
 ## Importing your data
 
 **Reading list (Excel).** On the Reading page choose *Import reading list* and pick an `.xlsx` file. The first row must have headers (case-insensitive): `Title` (required), and optionally `Read`, `doi`, `Category`, `Priority`, `Authors`, `Year`, `Source`, `Why it matters`. In the `Read` column any mark means read, `unavailable` marks the paper unavailable, and blank means to-read. Papers already in your library (same DOI, or same title and year) are skipped, so re-importing is safe.

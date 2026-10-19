@@ -1,3 +1,4 @@
+import Icon from '../components/Icon'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { DndContext, DragOverlay, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
@@ -215,7 +216,7 @@ function ManuscriptCard({ p, last, next, papers, openTasks, onStage, onPin }: {
       <div className="project-head">
         <span className="tag"><i className="dotc" />Manuscript</span>
         <span className="card-tools">
-          <button className={`star ${p.pinned ? 'on' : ''}`} onClick={onPin} aria-pressed={!!p.pinned} title={p.pinned ? 'Unpin' : 'Pin to top'}>{p.pinned ? '★' : '☆'}</button>
+          <button className={`star ${p.pinned ? 'on' : ''}`} onClick={onPin} aria-pressed={!!p.pinned} title={p.pinned ? 'Unpin' : 'Pin to top'}><Icon name="star" size={18} filled={!!p.pinned} /></button>
         </span>
         <select className="status" value={p.stage ?? 'drafting'} onChange={e => onStage(e.target.value as Stage)} aria-label="Stage">
           {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
@@ -227,7 +228,7 @@ function ManuscriptCard({ p, last, next, papers, openTasks, onStage, onPin }: {
       <div className="ms-meta">
         {dl && <span className={`pill dl-${dl.tone}`}>{dl.text}</span>}
         {papers > 0 && <span className="pill">{papers} paper{papers === 1 ? '' : 's'}</span>}
-        {openTasks > 0 && <span className="pill">☑ {openTasks} task{openTasks === 1 ? '' : 's'}</span>}
+        {openTasks > 0 && <span className="pill"><Icon name="task" size={12} /> {openTasks} task{openTasks === 1 ? '' : 's'}</span>}
         {next?.when && <span className="pill has-pdf">{fmtWhen(next.when)} · {next.e.title}</span>}
       </div>
       {last && <p className="ms-last"><span>{last.kind === 'note' ? 'Note · ' : ''}{last.body.length > 110 ? last.body.slice(0, 110) + '…' : last.body}</span><time>{ago(last.created_at)}</time></p>}

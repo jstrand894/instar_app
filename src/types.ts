@@ -12,6 +12,7 @@ export interface Project {
   status: ProjectStatus
   area: Area
   pinned?: boolean
+  github_repo?: string | null
   sort_order?: number | null
   stage?: Stage | null
   journal?: string
@@ -33,8 +34,9 @@ export interface ProjectEvent {
 export interface ProjectUpdate {
   id: string
   project_id: string
-  kind: 'update' | 'note'
+  kind: 'update' | 'note' | 'commit'
   body: string
+  source_url?: string | null
   created_at: string
 }
 export interface Paper {

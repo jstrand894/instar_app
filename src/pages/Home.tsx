@@ -1,3 +1,4 @@
+import Icon from '../components/Icon'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
@@ -178,7 +179,7 @@ export default function Home() {
 
       {pinnedList.length > 0 && (
         <section className="sect">
-          <h2 className="sect-title"><span className="pin-ico">★</span> Pinned</h2>
+          <h2 className="sect-title"><Icon name="star" size={16} filled className="pin-ico" /> Pinned</h2>
           {renderGrid(pinnedList, 'pinned')}
         </section>
       )}
@@ -191,7 +192,7 @@ export default function Home() {
       {doneList.length > 0 && (
         <section className="sect">
           <button className="sect-toggle" onClick={() => setDoneOpen(!doneOpen)} aria-expanded={doneOpen}>
-            <span className="chev">{doneOpen ? '▾' : '▸'}</span> Completed <span className="count-pill">{doneList.length}</span>
+            <Icon name={doneOpen ? 'chevDown' : 'chevRight'} size={16} /> Completed <span className="count-pill">{doneList.length}</span>
           </button>
           {doneOpen && renderGrid(doneList, 'done')}
         </section>
@@ -262,10 +263,10 @@ function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks }:
       <div className="project-head">
         <span className="tag"><i className="dotc" />{TYPES.find(t => t.id === project.type)?.label}</span>
         <span className="card-tools">
-          <button className={`star ${project.pinned ? 'on' : ''}`} onClick={onPin} aria-pressed={!!project.pinned} title={project.pinned ? 'Unpin' : 'Pin to top'} aria-label={project.pinned ? 'Unpin project' : 'Pin project to top'}>{project.pinned ? '★' : '☆'}</button>
-          <button className="grip" ref={setActivatorNodeRef} {...attributes} {...listeners} title="Drag to reorder" aria-label="Drag to reorder">⠿</button>
+          <button className={`star ${project.pinned ? 'on' : ''}`} onClick={onPin} aria-pressed={!!project.pinned} title={project.pinned ? 'Unpin' : 'Pin to top'} aria-label={project.pinned ? 'Unpin project' : 'Pin project to top'}><Icon name="star" size={18} filled={!!project.pinned} /></button>
+          <button className="grip" ref={setActivatorNodeRef} {...attributes} {...listeners} title="Drag to reorder" aria-label="Drag to reorder"><Icon name="grip" size={18} /></button>
         </span>
-        <select className="status" value={project.status} onChange={e => setStatus(e.target.value as ProjectStatus)} aria-label="Status">
+        <select className="status" data-status={project.status} value={project.status} onChange={e => setStatus(e.target.value as ProjectStatus)} aria-label="Status">
           {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
@@ -286,7 +287,7 @@ function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks }:
 
       {openTasks.length > 0 && (
         <div className="task-chip">
-          <span>☑ {openTasks.length} open task{openTasks.length === 1 ? '' : 's'}</span>
+          <span><Icon name="task" size={13} /> {openTasks.length} open task{openTasks.length === 1 ? '' : 's'}</span>
           {overdueCount(openTasks) > 0 && <b>{overdueCount(openTasks)} overdue</b>}
         </div>
       )}
@@ -294,7 +295,7 @@ function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks }:
       <ul className="updates">
         {shown.map(u => (
           <li key={u.id}>
-            <span>{u.kind === 'note' && <em className="notetag">Note · </em>}{u.body.length > 140 ? u.body.slice(0, 140) + '…' : u.body}</span>
+            <span>{u.kind === 'note' && <em className="notetag">Note · </em>}{u.kind === 'commit' && <Icon name="git" size={13} className="commit-ico" />}{(() => { const b = u.kind === 'commit' ? u.body.split('\n')[0] : u.body; return b.length > 140 ? b.slice(0, 140) + '…' : b })()}</span>
             <time>{ago(u.created_at)}</time>
           </li>
         ))}

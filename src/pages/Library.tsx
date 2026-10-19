@@ -1,3 +1,4 @@
+import Icon from '../components/Icon'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Empty from '../components/Empty'
@@ -239,7 +240,7 @@ export default function Library() {
                 {links.some(l => l.paper_id === p.id) && (
                   <div className="paper-foot">
                     {links.filter(l => l.paper_id === p.id).map(l => projects.find(pr => pr.id === l.project_id)).filter((x): x is Project => !!x).map(pr => (
-                      <Link key={pr.id} to={`/project/${pr.id}`} className="pill proj-tag">{pr.type === 'manuscript' ? '📄 ' : ''}{pr.name}</Link>
+                      <Link key={pr.id} to={`/project/${pr.id}`} className="pill proj-tag">{pr.type === 'manuscript' && <Icon name="file" size={12} />} {pr.name}</Link>
                     ))}
                   </div>
                 )}

@@ -1,3 +1,4 @@
+import Icon from '../components/Icon'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { store } from '../lib/store'
@@ -7,6 +8,7 @@ import { ago, fmtMinutes, fmtWhen, nextOccurrence } from '../lib/util'
 import { STAGES, deadlineInfo, stageLabel } from '../lib/manuscript'
 import TaskList from '../components/TaskList'
 import TagEditor from '../components/TagEditor'
+import GithubLink from '../components/GithubLink'
 import EntryBody from '../components/EntryBody'
 import LinkTextarea from '../components/LinkTextarea'
 import LinkedText from '../components/LinkedText'
@@ -116,7 +118,7 @@ export default function ProjectDetail() {
     <div className="page detail">
       <Link to={project.type === 'manuscript' ? '/manuscripts' : '/projects'} className="link back-link">← {project.type === 'manuscript' ? 'Manuscripts' : 'Projects'}</Link>
       <header className="detail-head">
-        <button className={`star big ${project.pinned ? 'on' : ''}`} onClick={() => patch({ pinned: !project.pinned })} aria-pressed={!!project.pinned} title={project.pinned ? 'Unpin' : 'Pin to top'}>{project.pinned ? '★' : '☆'}</button>
+        <button className={`star big ${project.pinned ? 'on' : ''}`} onClick={() => patch({ pinned: !project.pinned })} aria-pressed={!!project.pinned} title={project.pinned ? 'Unpin' : 'Pin to top'}><Icon name="star" size={20} filled={!!project.pinned} /></button>
         <input className="title-input" defaultValue={project.name} aria-label="Project name"
           onBlur={e => e.target.value.trim() && e.target.value !== project.name && patch({ name: e.target.value.trim() })} />
         <div className="row wrap">
@@ -178,7 +180,13 @@ export default function ProjectDetail() {
                 notify.undoable(u.kind === 'note' ? 'Note deleted' : 'Update deleted', () => store.deleteUpdate(u.id), [u.id])
               }}>Delete</button>
             </div>
-            {u.kind === 'note' ? (
+            {u.kind === 'commit' ? (
+              <div className="commit-box">
+                <span className="tag"><Icon name="git" size={13} /> GitHub</span>
+                <pre className="commit-body">{u.body}</pre>
+                {u.source_url && <a className="link small" href={u.source_url} target="_blank" rel="noreferrer">View on GitHub →</a>}
+              </div>
+            ) : u.kind === 'note' ? (
               <div className="note-box">
                 <span className="tag">Note</span>
                 <EntryBody note body={u.body} onSave={v => saveEntry(u, v)} />
@@ -197,6 +205,7 @@ export default function ProjectDetail() {
       }}>Delete project</button>
         </div>
         <aside className="col-side">
+          <GithubLink repo={project.github_repo ?? null} lastPush={entries.find(u => u.kind === 'commit')?.created_at} pushes={entries.filter(u => u.kind === 'commit').length} onChange={r => patch({ github_repo: r })} />
       {project.type === 'manuscript' && (
         <section className="card ms-panel">
           <h2>Manuscript</h2>

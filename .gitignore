@@ -30,3 +30,4 @@ dist-ssr
 
 # personal data files
 import/
+supabase/.temp

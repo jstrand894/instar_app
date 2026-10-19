@@ -265,7 +265,7 @@ export default function Reader() {
                   <select value="" onChange={e => linkProject(e.target.value)} aria-label="Link to project">
                     <option value="">Link to a project…</option>
                     {[...projects].filter(pr => !links.some(l => l.project_id === pr.id)).sort((a, b) => Number(b.type === 'manuscript') - Number(a.type === 'manuscript') || a.name.localeCompare(b.name))
-                      .map(pr => <option key={pr.id} value={pr.id}>{pr.type === 'manuscript' ? '📄 ' : ''}{pr.name}</option>)}
+                      .map(pr => <option key={pr.id} value={pr.id}>{pr.name}{pr.type === 'manuscript' ? ' (manuscript)' : ''}</option>)}
                   </select>
                 </div>
                 <div className="linked-projects"><span className="muted small">Tags</span><TagEditor tags={paper.tags ?? []} onChange={t => patchPaper({ tags: t })} /></div>

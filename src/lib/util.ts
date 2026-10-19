@@ -57,3 +57,26 @@ export function greeting(hour: number): string {
   if (hour >= 12 && hour < 17) return 'Good afternoon'
   return 'Good evening'
 }
+
+const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
+const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/** Pulls a trailing date phrase (today, tomorrow, fri, 3/14, 2026-03-14) off a line: "email reviewer fri" -> title + ISO date. */
+export function splitWhen(line: string, now = new Date()): { title: string; date: string | null } {
+  const m = line.trim().match(/^(.*?)\s*\b(today|tomorrow|tmrw|(?:next\s+)?(?:sun(?:day)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:rs?|rsday)?|fri(?:day)?|sat(?:urday)?)|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2})\s*$/i)
+  if (!m || !m[1].trim()) return { title: line.trim(), date: null }
+  const w = m[2].toLowerCase(); const base = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (w === 'today') return { title: m[1].trim(), date: isoDay(base) }
+  if (w === 'tomorrow' || w === 'tmrw') { base.setDate(base.getDate() + 1); return { title: m[1].trim(), date: isoDay(base) } }
+  if (/^\d{4}-/.test(w)) return { title: m[1].trim(), date: w }
+  const sl = w.match(/^(\d{1,2})\/(\d{1,2})$/)
+  if (sl) {
+    const d = new Date(now.getFullYear(), +sl[1] - 1, +sl[2]); if (d < base) d.setFullYear(d.getFullYear() + 1)
+    return { title: m[1].trim(), date: isoDay(d) }
+  }
+  const idx = WEEKDAYS.indexOf(w.replace(/^next\s+/, '').slice(0, 3))
+  if (idx < 0) return { title: line.trim(), date: null }
+  let diff = (idx - base.getDay() + 7) % 7; if (diff === 0 || w.startsWith('next')) diff = diff || 7
+  base.setDate(base.getDate() + diff)
+  return { title: m[1].trim(), date: isoDay(base) }
+}

@@ -186,3 +186,9 @@ drop policy if exists "own papers" on storage.objects;
 create policy "own papers" on storage.objects for all
   using (bucket_id = 'papers' and (storage.foldername(name))[1] = auth.uid()::text)
   with check (bucket_id = 'papers' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- added later: link a project to a GitHub repo; pushes arrive as timeline entries via the github-webhook function (safe to re-run)
+alter table projects add column if not exists github_repo text;
+alter table project_updates add column if not exists source_url text;
+alter table project_updates add column if not exists external_id text;
+create unique index if not exists project_updates_external_id on project_updates (project_id, external_id);

@@ -1,3 +1,4 @@
+import Icon from '../components/Icon'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { store } from '../lib/store'
@@ -7,6 +8,8 @@ import { firstName } from '../lib/user'
 import { deadlineInfo } from '../lib/manuscript'
 import ProgressChart from '../components/ProgressChart'
 import GettingStarted from '../components/GettingStarted'
+import WeatherCard from '../components/WeatherCard'
+import AddBar from '../components/AddBar'
 import RoutineCard from '../components/RoutineCard'
 import RoutineManager from '../components/RoutineManager'
 import type { Deadline, Paper, Project, ProjectEvent, ProjectTask, ProjectUpdate, Routine, RoutineCheck, TimeEntry } from '../types'
@@ -14,7 +17,6 @@ import type { Deadline, Paper, Project, ProjectEvent, ProjectTask, ProjectUpdate
 const DAY = 864e5
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
-const clock = (d: Date) => d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 const link = (p: Project) => `/project/${p.id}`
 
 export default function Today() {
@@ -35,9 +37,6 @@ export default function Today() {
   const [dlTitle, setDlTitle] = useState('')
   const [dlDate, setDlDate] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 7); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })
   const [dlProject, setDlProject] = useState('')
-  const [target, setTarget] = useState('')
-  const [text, setText] = useState('')
-  const [saved, setSaved] = useState('')
   const [error, setError] = useState('')
   const [name, setName] = useState('')
   useEffect(() => { firstName().then(setName).catch(() => {}) }, [])
@@ -65,7 +64,6 @@ export default function Today() {
     return out.sort((a, b) => a.when.getTime() - b.when.getTime())
   }, [events, byId]) // eslint-disable-line react-hooks/exhaustive-deps
   const todays = upcoming.filter(x => x.when < addDays(today, 1))
-  const later = upcoming.filter(x => x.when >= addDays(today, 1))
 
   // manuscript "next deadline" fields plus standalone deadlines, soonest first
   const dueItems = [
@@ -112,6 +110,22 @@ export default function Today() {
     dueThisWeek ? `${dueThisWeek} deadline${dueThisWeek === 1 ? '' : 's'} this week` : '',
   ].filter(Boolean).join(' · ')
 
+  // a one-line read on how full the day is
+  const routinesToday = routines.filter(r => r.active && r.weekdays.includes(now.getDay()) && iso(now) >= iso(new Date(r.created_at))).length
+  const load_ = todays.length * 2 + tasksDueNow + routinesToday
+  const tone = load_ === 0 ? 'A clear day. Good time for deep work.'
+    : load_ <= 4 ? `Light day${todays.length ? `: ${todays.length} event${todays.length === 1 ? '' : 's'}` : ''}${tasksDueNow ? `, ${tasksDueNow} due` : ''}.`
+    : load_ <= 9 ? `Steady day: ${[todays.length && `${todays.length} event${todays.length === 1 ? '' : 's'}`, tasksDueNow && `${tasksDueNow} due`, routinesToday && `${routinesToday} routine${routinesToday === 1 ? '' : 's'}`].filter(Boolean).join(', ')}.`
+    : `Busy day: ${todays.length} events, ${tasksDueNow} due. Protect a focus block.`
+  const allClear = projects.length > 0 && tasksDueNow === 0 && todays.length === 0 && dueItems.every(x => x.info.days > 3)
+
+  // the few things that matter most right now: sooner (or overdue) first
+  const focusItems = [
+    ...openTasks.filter(t => t.due_on && t.due_on <= todayIso).map(t => ({ key: 't' + t.id, kind: 'To-do', title: t.title, score: deadlineInfo(t.due_on)!.days, pill: deadlineInfo(t.due_on)!, project: t.project_id ? byId.get(t.project_id) : undefined, tick: () => checkOff(t.id), when: '' })),
+    ...dueItems.filter(x => x.info.days <= 3).map(x => ({ key: 'd' + x.key, kind: 'Deadline', title: x.title, score: x.info.days, pill: x.info, project: x.project, tick: x.id ? () => finish(x.id!) : null, when: '' })),
+    ...todays.filter(x => x.when.getTime() >= now.getTime() - 36e5).slice(0, 1).map((x, i) => ({ key: 'e' + i, kind: 'Next up', title: x.title, score: 0, pill: null, project: x.project, tick: null, when: x.when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) })),
+  ].sort((a, b) => a.score - b.score).slice(0, 3)
+
   async function addDeadline(e: React.FormEvent) {
     e.preventDefault()
     if (!dlTitle.trim() || !dlDate || !dlProject) return
@@ -126,21 +140,15 @@ export default function Today() {
     setTasks(ts => ts.map(t => t.id === id ? { ...t, done: true } : t))
     try { await store.patchTask(id, { done: true }) } catch (er) { setError(friendlyError(er)); load() }
   }
+  async function moveToToday(id: string) {
+    setTasks(ts => ts.map(t => t.id === id ? { ...t, due_on: todayIso } : t))
+    try { await store.patchTask(id, { due_on: todayIso }) } catch (er) { setError(friendlyError(er)); load() }
+  }
   async function finish(id: string) {
     setDeadlines(ds => ds.map(d => d.id === id ? { ...d, done: true } : d))
     try { await store.patchDeadline(id, { done: true }) } catch (er) { setError(friendlyError(er)); load() }
   }
 
-  async function log(e: React.FormEvent) {
-    e.preventDefault()
-    if (!target || !text.trim()) return
-    try {
-      await store.addUpdate(target, text.trim()); setSaved(`Logged to ${byId.get(target)?.name}`); setText(''); load()
-      setTimeout(() => setSaved(''), 3000)
-    } catch (er) { setError(friendlyError(er)) }
-  }
-
-  const choices = [...live].sort((a, b) => (lastTouch.get(b.id) ?? '').localeCompare(lastTouch.get(a.id) ?? ''))
   const group = (label: string, list: Project[]) => list.length > 0 && <optgroup label={label}>{list.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>
 
   return (
@@ -149,6 +157,7 @@ export default function Today() {
         <div>
           <h1>{greeting(now.getHours())}{name ? `, ${name}` : ''}</h1>
           <p className="muted today-date">{now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}{summary && ` · ${summary}`}</p>
+          <p className="today-tone">{tone}</p>
         </div>
         <button className="today-search" onClick={() => window.dispatchEvent(new CustomEvent('tm-search'))} aria-label="Search">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg> Search <kbd>⌘K</kbd>
@@ -156,39 +165,38 @@ export default function Today() {
       </header>
       {error && <p className="error">{error}</p>}
 
-      <form className="card quick" onSubmit={log}>
-        <select value={target} onChange={e => setTarget(e.target.value)} aria-label="Project">
-          <option value="">Log an update to…</option>
-          {group('Manuscripts', choices.filter(p => p.type === 'manuscript'))}
-          {group('Work', choices.filter(p => p.type !== 'manuscript' && (p.area ?? 'work') === 'work'))}
-          {group('Home', choices.filter(p => p.type !== 'manuscript' && p.area === 'home'))}
-        </select>
-        <input placeholder="What did you do or decide?" value={text} onChange={e => setText(e.target.value)} />
-        <button className="primary" disabled={!target || !text.trim()}>Log</button>
-        {saved && <span className="ok small">{saved}</span>}
-      </form>
+      <WeatherCard />
+
+      {focusItems.length > 0 ? (
+        <section className="card focus-now" aria-label="Focus now">
+          <h2>Focus now</h2>
+          <div className="focus-tiles">
+            {focusItems.map(f => (
+              <div className={`focus-tile ${f.pill?.tone ?? ''}`} key={f.key}>
+                <span className="muted small">{f.kind}{f.when && ` · ${f.when}`}</span>
+                <div className="focus-title">
+                  {f.tick && <input type="checkbox" className="tick" aria-label={`Mark "${f.title}" done`} onChange={f.tick} />}
+                  <b>{f.title}</b>
+                </div>
+                <div className="focus-meta">
+                  {f.pill && <span className={`pill dl-${f.pill.tone}`}>{f.pill.text}</span>}
+                  {f.project && <Link to={link(f.project)} className="muted small">{f.project.name}</Link>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : allClear && <p className="all-clear"><Icon name="check" size={14} /> Everything due is handled</p>}
 
       <GettingStarted projects={projects} updates={updates} papers={papers} />
 
-      <RoutineCard routines={routines} checks={checks} projects={projects} onManage={() => setManage(true)} onChange={load} />
+      <RoutineCard routines={routines} checks={checks} projects={projects} events={upcoming} tasks={openTasks.filter(t => t.due_on && t.due_on <= todayIso)} onTask={checkOff} onMoveTask={moveToToday} onManage={() => setManage(true)} onChange={load} />
       {manage && <RoutineManager routines={routines} projects={projects} onClose={() => { setManage(false); load() }} />}
 
-      <ProgressChart updates={updates} projects={projects} papers={papers} tasks={tasks} />
+      <AddBar projects={projects} onDone={load} onError={setError} />
 
+      <h2 className="group-label">Plan ahead</h2>
       <div className="today-grid">
-        <section className="card">
-          <h2>On your schedule</h2>
-          {todays.length > 0 && <>
-            <h3 className="sub">Today</h3>
-            {todays.map((x, i) => <Row key={i} when={clock(x.when)} title={x.title} project={x.project} />)}
-          </>}
-          {later.length > 0 && <>
-            <h3 className="sub">Coming up</h3>
-            {later.map((x, i) => <Row key={i} when={`${x.when.toLocaleDateString(undefined, { weekday: 'short' })} ${clock(x.when)}`} title={x.title} project={x.project} />)}
-          </>}
-          {!upcoming.length && <p className="muted">Nothing scheduled in the next week. Add meetings from a project's Schedule section.</p>}
-        </section>
-
         <section className="card">
           <div className="card-head">
             <h2>Deadlines</h2>
@@ -243,15 +251,14 @@ export default function Today() {
           {!openTasks.length && <p className="muted">Nothing to do right now. Add a to-do above, or add tasks inside a project.</p>}
         </section>
 
-        <section className="card">
-          <h2>Needs attention</h2>
-          {stale.map(({ p, days }) => (
-            <div className="trow" key={p.id}><Link to={link(p)}>{p.name}</Link><span className="muted small">no update in {days} days</span></div>
-          ))}
-          {!stale.length && <p className="muted">Every active project has been touched in the last two weeks.</p>}
-        </section>
+      </div>
 
-        <section className="card">
+      <h2 className="group-label">Progress</h2>
+      <ProgressChart updates={updates} projects={projects} papers={papers} tasks={tasks} />
+
+      <AddBar projects={projects} onDone={load} onError={setError} />
+      <div className="today-grid">
+        <section className={`card ${weekMinutes ? '' : 'slim'}`}>
           <h2>Focus time</h2>
           {weekMinutes > 0 ? (
             <>
@@ -273,7 +280,7 @@ export default function Today() {
           ) : <p className="muted">No focus time yet this week. Start the timer in the sidebar (on a Mac), pick a project, and your focused time adds up here.</p>}
         </section>
 
-        <section className="card">
+        <section className={`card ${reading.length || coreLeft ? '' : 'slim'}`}>
           <h2>Reading now</h2>
           {reading.map(p => (
             <div className="trow" key={p.id}><Link to={`/read/${p.id}`}>{p.title}</Link><span className="muted small">{[p.authors.split(',')[0], p.year].filter(Boolean).join(' ')}</span></div>
@@ -282,7 +289,19 @@ export default function Today() {
           {coreLeft > 0 && <Link to="/library" className="link small">{coreLeft} Core papers still to read →</Link>}
         </section>
 
-        <section className="card wide">
+      </div>
+
+      <h2 className="group-label">Keep an eye on</h2>
+      <div className="today-grid">
+        <section className={`card ${stale.length ? '' : 'slim'}`}>
+          <h2>Needs attention</h2>
+          {stale.map(({ p, days }) => (
+            <div className="trow" key={p.id}><Link to={link(p)}>{p.name}</Link><span className="muted small">no update in {days} days</span></div>
+          ))}
+          {!stale.length && <p className="muted">Every active project has been touched in the last two weeks.</p>}
+        </section>
+
+        <section className={`card wide ${recent.length ? '' : 'slim'}`}>
           <h2>Recent activity</h2>
           {recent.map(u => {
             const pr = byId.get(u.project_id)
@@ -290,23 +309,13 @@ export default function Today() {
               <div className="trow act" key={u.id}>
                 <time className="muted small">{ago(u.created_at)}</time>
                 {pr ? <Link to={link(pr)} className="small"><b>{pr.name}</b></Link> : <span />}
-                <span>{u.kind === 'note' ? 'Note · ' : ''}{u.body.length > 120 ? u.body.slice(0, 120) + '…' : u.body}</span>
+                <span>{u.kind === 'note' ? 'Note · ' : ''}{u.kind === 'commit' && <Icon name="git" size={13} className="commit-ico" />}{(() => { const b = u.kind === 'commit' ? u.body.split('\n')[0] : u.body; return b.length > 120 ? b.slice(0, 120) + '…' : b })()}</span>
               </div>
             )
           })}
           {!recent.length && <p className="muted">No activity yet.</p>}
         </section>
       </div>
-    </div>
-  )
-}
-
-function Row({ when, title, project }: { when: string; title: string; project: Project }) {
-  return (
-    <div className="trow">
-      <b className="when">{when}</b>
-      <span>{title}</span>
-      <Link to={link(project)} className="muted small">{project.name}</Link>
     </div>
   )
 }

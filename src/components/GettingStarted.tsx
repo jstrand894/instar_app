@@ -1,3 +1,4 @@
+import Icon from './Icon'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Paper, Project, ProjectUpdate } from '../types'
@@ -25,7 +26,7 @@ export default function GettingStarted({ projects, updates, papers }: { projects
       <ul className="started-list">
         {steps.map(s => (
           <li key={s.label} className={s.done ? 'done' : ''}>
-            <span className="started-tick" aria-hidden>{s.done ? '✓' : ''}</span>
+            <span className="started-tick" aria-hidden>{s.done && <Icon name="check" size={14} />}</span>
             <div><b>{s.label}</b><div className="muted small">{s.hint}</div></div>
             {!s.done && <button onClick={s.go}>Start</button>}
           </li>
