@@ -6,7 +6,7 @@ interface Day { d: string; code: number; hi: number; lo: number; rain: number; w
 interface Wx { place: string; temp: number; code: number; hi: number; lo: number; wind: number; rain: number; day: boolean; hour: number; days: Day[] }
 interface City { name: string; lat: number; lon: number }
 
-const KEY = 'tm-weather3'; const CITY = 'tm-weather-city'
+const KEY = 'tm-weather4'; const CITY = 'tm-weather-city'
 const TTL = 30 * 6e4
 const usUnits = () => { const u = getPrefs().units; return u === 'f' || (u === 'auto' && (navigator.language || '').toLowerCase().startsWith('en-us')) }
 
@@ -65,7 +65,7 @@ async function fetchWx(lat: number, lon: number, place?: string): Promise<Wx> {
       d: i === 0 ? 'Today' : new Date(f.daily.time[i] + 'T12:00').toLocaleDateString(undefined, { weekday: 'short' }),
       code: f.daily.weather_code[i], hi: Math.round(f.daily.temperature_2m_max[i]), lo: Math.round(f.daily.temperature_2m_min[i]),
       rain: Math.round(f.daily.precipitation_probability_max?.[i] ?? 0), wind: Math.round(f.daily.wind_speed_10m_max?.[i] ?? 0),
-      temps: (f.hourly.temperature_2m as number[]).slice(i * 24, i * 24 + 24).map(Math.round),
+      temps: (f.hourly.temperature_2m as number[]).slice(i * 24, i * 24 + 24),
       sunrise: String(f.daily.sunrise?.[i] ?? ''), sunset: String(f.daily.sunset?.[i] ?? ''),
     })),
   }
@@ -83,10 +83,16 @@ function TempLine({ day, nowHour }: { day: Day; nowHour: number | null }) {
   const x = (i: number) => PX + (i / (t.length - 1)) * (W - PX * 2)
   const y = (v: number) => PT + (1 - (v - lo) / span) * (H - PT - PB)
   const pts = t.map((v, i) => [x(i), y(v)] as const)
+  // Catmull-Rom through the hourly points, with the control heights kept inside the neighbours so it never overshoots
+  const clampY = (v: number, a: number, b: number) => Math.min(Math.max(v, Math.min(a, b)), Math.max(a, b))
   let line = `M${pts[0][0]},${pts[0][1]}`
-  for (let i = 1; i < pts.length; i++) { const mx = (pts[i - 1][0] + pts[i][0]) / 2; line += ` C${mx},${pts[i - 1][1]} ${mx},${pts[i][1]} ${pts[i][0]},${pts[i][1]}` }
+  for (let i = 1; i < pts.length; i++) {
+    const p0 = pts[Math.max(i - 2, 0)], p1 = pts[i - 1], p2 = pts[i], p3 = pts[Math.min(i + 1, pts.length - 1)]
+    const c1y = clampY(p1[1] + (p2[1] - p0[1]) / 6, p1[1], p2[1]), c2y = clampY(p2[1] - (p3[1] - p1[1]) / 6, p1[1], p2[1])
+    line += ` C${p1[0] + (p2[0] - p0[0]) / 6},${c1y} ${p2[0] - (p3[0] - p1[0]) / 6},${c2y} ${p2[0]},${p2[1]}`
+  }
   const area = `${line} L${pts[pts.length - 1][0]},${H - PB} L${pts[0][0]},${H - PB} Z`
-  const hiI = t.indexOf(hi), loI = t.indexOf(lo)
+  const hiI = t.indexOf(hi), loI = t.indexOf(lo), r = Math.round
   const at = (e: React.PointerEvent<SVGSVGElement>) => {
     const r = e.currentTarget.getBoundingClientRect()
     setHover(Math.max(0, Math.min(t.length - 1, Math.round(((e.clientX - r.left) / r.width * W - PX) / (W - PX * 2) * (t.length - 1)))))
@@ -102,12 +108,12 @@ function TempLine({ day, nowHour }: { day: Day; nowHour: number | null }) {
       <path d={line} className="wx-ln" />
       {hv !== null && <line x1={x(hv)} x2={x(hv)} y1={PT - 6} y2={H - PB} className="wx-cursor" />}
       {hover === null && <>
-        <text x={x(hiI)} y={y(hi) - 8} className="wx-pt" textAnchor="middle">{hi}°</text>
-        <text x={x(loI)} y={y(lo) + 15} className="wx-pt" textAnchor="middle">{lo}°</text>
+        <text x={x(hiI)} y={y(hi) - 8} className="wx-pt" textAnchor="middle">{r(hi)}°</text>
+        <text x={x(loI)} y={y(lo) + 15} className="wx-pt" textAnchor="middle">{r(lo)}°</text>
       </>}
       {hv !== null && <>
         <circle cx={x(hv)} cy={y(t[hv])} r="4.5" className="wx-dot" />
-        <text x={tipX} y={14} className="wx-pt" textAnchor="middle">{hover === null ? 'Now' : hourLabel(hv)} · {t[hv]}°</text>
+        <text x={tipX} y={14} className="wx-pt" textAnchor="middle">{hover === null ? 'Now' : hourLabel(hv)} · {r(t[hv])}°</text>
       </>}
     </svg>
   )
