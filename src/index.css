@@ -1193,23 +1193,44 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .lvl-bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width .7s cubic-bezier(.3, 1, .4, 1); }
 .lvl-text, .lvl-row { opacity: clamp(0, calc((var(--open, 1) - .35) * 1.8), 1); }
 @media (max-width: 760px) { .lvl { display: none; } }
-.quests-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
-@media (max-width: 760px) { .quests-body { grid-template-columns: 1fr; gap: 1rem; } }
-.quest-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
-.quest-list li { display: flex; align-items: center; gap: .6rem; }
-.quest-label { flex: 1; transition: color .3s; }
-.quest-list li.done .quest-label { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); text-decoration-thickness: 1.5px; }
-.quest-tick { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; color: var(--accent-ink); transition: background .3s, border-color .3s, transform .3s cubic-bezier(.3, 1.6, .5, 1); }
-.quest-list li.done .quest-tick { background: var(--accent); border-color: var(--accent); transform: scale(1.08); }
-.quest-list .quest-bonus { display: block; margin-top: .2rem; }
-.quest-side { display: grid; gap: .8rem; }
-.quest-level b { font-variant-numeric: tabular-nums; }
-.quest-streak b { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
-.quest-week { display: flex; gap: 5px; height: 38px; align-items: flex-end; }
-.quest-week span { flex: 1; height: 100%; display: flex; align-items: flex-end; }
-.quest-week i { display: block; width: 100%; border-radius: 3px; background: var(--line); }
-.quest-week i.on { background: var(--accent); opacity: .85; }
-.quest-week span:last-child i.on { opacity: 1; }
+/* Daily goals: level ring, goal tiles, streak */
+.quests-body { display: grid; grid-template-columns: auto minmax(0, 1.5fr) minmax(0, 1fr); gap: 1.5rem 2.2rem; align-items: center; }
+@media (max-width: 900px) { .quests-body { grid-template-columns: auto minmax(0, 1fr); } .q-streak { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .quests-body { grid-template-columns: 1fr; } }
+.q-level { display: grid; grid-template-columns: 84px auto; grid-template-areas: 'ring text'; align-items: center; gap: .9rem; position: relative; }
+.q-ring { grid-area: ring; width: 84px; height: 84px; }
+.q-ring-bg, .q-ring-fg { fill: none; stroke-width: 7; }
+.q-ring-bg { stroke: var(--line); }
+.q-ring-fg { stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(.3, 1, .4, 1); }
+.q-ring-num { position: absolute; left: 0; top: 0; width: 84px; height: 84px; display: grid; place-content: center; text-align: center; line-height: 1; }
+.q-ring-num b { font-size: 1.7rem; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.q-ring-num span { margin-top: .15rem; font-size: .6rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.q-level-text { grid-area: text; display: grid; gap: .15rem; }
+.q-level-text b { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.q-goals { display: grid; gap: .55rem; min-width: 0; }
+.q-goal { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: 'check text count' 'bar bar bar'; align-items: center; gap: .3rem .6rem; padding: .55rem .75rem .6rem; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); transition: background .3s, border-color .3s; }
+.q-check { grid-area: check; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; color: var(--accent-ink); transition: background .3s, border-color .3s; }
+.q-text { grid-area: text; font-size: .92rem; min-width: 0; }
+.q-count { grid-area: count; font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.q-bar { grid-area: bar; height: 4px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.q-bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width .8s cubic-bezier(.3, 1, .4, 1); }
+.q-goal.done { background: color-mix(in srgb, var(--accent) 9%, var(--panel)); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.q-goal.done .q-check { background: var(--accent); border-color: var(--accent); animation: q-pop .4s cubic-bezier(.3, 1.6, .5, 1); }
+.q-goal.done .q-count { color: var(--accent); font-weight: 600; }
+.q-bonus { font-size: .8rem; color: var(--muted); text-align: center; padding: .1rem 0; }
+.q-bonus.got { color: var(--accent); font-weight: 600; }
+@keyframes q-pop { 0% { transform: scale(.5); } 100% { transform: scale(1); } }
+.q-streak { display: grid; gap: .7rem; min-width: 0; }
+.q-streak-top { display: flex; align-items: baseline; gap: .55rem; flex-wrap: wrap; }
+.q-streak-top b { font-size: 2.1rem; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.q-week { display: flex; gap: 6px; height: 74px; align-items: stretch; }
+.q-week span { flex: 1; display: grid; grid-template-rows: 1fr auto; gap: 4px; justify-items: center; min-width: 0; }
+.q-week em { width: 100%; display: flex; align-items: flex-end; }
+.q-week i { display: block; width: 100%; border-radius: 4px; background: var(--line); transition: height .8s cubic-bezier(.3, 1, .4, 1); }
+.q-week i.on { background: color-mix(in srgb, var(--accent) 55%, var(--panel)); }
+.q-week .today i.on { background: var(--accent); }
+.q-week small { font-size: .65rem; color: var(--muted); line-height: 1; }
+.q-week .today small { color: var(--ink); font-weight: 700; }
 
 /* completion celebration: a soft ring, a few specks and the XP earned drifting up */
 .celebrate { position: fixed; width: 0; height: 0; pointer-events: none; z-index: 210; }
