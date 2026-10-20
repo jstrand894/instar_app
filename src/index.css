@@ -1223,3 +1223,6 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 @keyframes cel-level { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.9); } 15%, 80% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .cel-ring, .cel-dot { display: none; } .cel-xp, .cel-level { animation-duration: 1.6s; transform: translate(-50%, 0); } }
 :root[data-motion="reduce"] .cel-ring, :root[data-motion="reduce"] .cel-dot { display: none; }
+/* the account dialog lives inside the sidebar, so undo the sidebar link styling on this little "i" */
+.creator a.info-i { display: inline-grid; padding: 0; width: 1.1rem; height: 1.1rem; min-height: 0; gap: 0; background: none; }
+.creator a.info-i:hover { background: none; }
