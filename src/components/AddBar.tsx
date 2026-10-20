@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
@@ -26,6 +26,22 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
   const [date, setDate] = useState('')
   const [saved, setSaved] = useState('')
   const [dateOpen, setDateOpen] = useState(false)
+  const modesRef = useRef<HTMLDivElement>(null)
+  const bubble = useRef<HTMLSpanElement>(null)
+  // slide the white bubble under whichever mode is selected
+  useLayoutEffect(() => {
+    const place = (animate: boolean) => {
+      const box = modesRef.current, b = bubble.current, on = box?.querySelector<HTMLElement>('button[aria-selected="true"]')
+      if (!box || !b || !on) return
+      b.style.transition = animate ? '' : 'none'
+      b.style.width = `${on.offsetWidth}px`; b.style.transform = `translateX(${on.offsetLeft}px)`
+    }
+    place(bubble.current?.dataset.ready === '1')
+    if (bubble.current) bubble.current.dataset.ready = '1'
+    const re = () => place(false)
+    window.addEventListener('resize', re)
+    return () => window.removeEventListener('resize', re)
+  }, [mode])
 
   function change(v: string) {
     const hit = PREFIX.find(([re]) => re.test(v))
@@ -56,7 +72,8 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
   return (
     <form className="card addbar" onSubmit={submit}>
       <div className="addbar-row">
-      <div className="addbar-modes" role="tablist" aria-label="What to add">
+      <div className="addbar-modes" role="tablist" aria-label="What to add" ref={modesRef}>
+          <span className="addbar-bubble" ref={bubble} aria-hidden />
           {MODES.map(m => <button type="button" role="tab" aria-selected={mode === m.id} key={m.id} className={mode === m.id ? 'on' : ''} onClick={() => setMode(m.id)}>{m.label}</button>)}
         </div>
         <input placeholder={MODES.find(m => m.id === mode)!.hint} value={text} onChange={e => change(e.target.value)} aria-label="Text" />
