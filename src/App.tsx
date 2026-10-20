@@ -8,6 +8,8 @@ import PageSkeleton from './components/PageSkeleton'
 import Toasts from './components/Toasts'
 import UpdateNotice from './components/UpdateNotice'
 import CheckPop from './components/CheckPop'
+import Celebrate from './components/Celebrate'
+import LevelChip from './components/LevelChip'
 import { Navigate } from 'react-router-dom'
 import { getPrefs } from './lib/prefs'
 import { forgetOpen, lastOpen, previousPath, setPreviousPath, type Section } from './lib/resume'
@@ -89,6 +91,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
         <NavLink to="/library"><Icon d={ICONS.papers} /><span>Reading</span></NavLink>
         <NavLink to="/review"><Icon d={ICONS.review} /><span>Review</span></NavLink>
         <div className="spacer" />
+        <LevelChip />
         <SyncStatus />
         {desktop && <Pomodoro />}
         <button className="nav-toggle" onClick={toggleNav} aria-pressed={navMode === 'pinned'}
@@ -119,7 +122,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
       </main>
       <Suspense fallback={null}><Tour /><CommandPalette /></Suspense>
       <QuickCapture />
-      <Toasts /><CheckPop /><UpdateNotice />
+      <Toasts /><CheckPop /><Celebrate /><UpdateNotice />
     </div>
   )
 }

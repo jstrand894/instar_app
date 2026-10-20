@@ -4,6 +4,7 @@ export const TODAY_CARDS = [
   { id: 'started', label: 'Getting started', hint: 'The first-steps checklist' },
   { id: 'focus', label: 'Focus now', hint: 'The few things that matter most right now' },
   { id: 'day', label: 'Your day', hint: 'Events, routines and what is coming up' },
+  { id: 'quests', label: 'Daily quests', hint: 'XP, level, streak and three goals for today' },
   { id: 'add', label: 'Quick add', hint: 'One box for to-dos, deadlines and updates' },
   { id: 'pinned', label: 'Pinned projects', hint: 'Projects you pinned, ready to pick up' },
   { id: 'deadlines', label: 'Deadlines', hint: 'Due in the next three weeks' },
@@ -19,7 +20,7 @@ export const TODAY_CARDS = [
 
 /** How each card lays out: full width, the two-up row at the top, or a tile in a grid; and which labelled group it belongs to. */
 export const CARD_META: Record<string, { shape: 'full' | 'top' | 'grid'; group?: string }> = {
-  weather: { shape: 'full' }, started: { shape: 'full' }, focus: { shape: 'top' }, day: { shape: 'top' }, pinned: { shape: 'full' }, add: { shape: 'full' },
+  weather: { shape: 'full' }, started: { shape: 'full' }, focus: { shape: 'top' }, day: { shape: 'top' }, quests: { shape: 'full' }, pinned: { shape: 'full' }, add: { shape: 'full' },
   deadlines: { shape: 'grid', group: 'Plan ahead' }, todos: { shape: 'grid', group: 'Plan ahead' },
   progress: { shape: 'full', group: 'Progress' }, completed: { shape: 'grid', group: 'Progress' }, time: { shape: 'grid', group: 'Progress' }, reading: { shape: 'grid', group: 'Progress' },
   attention: { shape: 'grid', group: 'Keep an eye on' }, activity: { shape: 'grid', group: 'Keep an eye on' }, picture: { shape: 'grid', group: 'Keep an eye on' },

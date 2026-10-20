@@ -20,6 +20,7 @@ import Reading from '../components/today/Reading'
 import Attention from '../components/today/Attention'
 import Activity from '../components/today/Activity'
 import Completed from '../components/today/Completed'
+import Quests from '../components/today/Quests'
 import Picture from '../components/today/Picture'
 import Customize from '../components/today/Customize'
 import { CARD_META, orderedIds } from '../components/today/layout'
@@ -46,6 +47,7 @@ export default function Today() {
     focus: showFocus ? <FocusNow key="focus" d={d} /> : d.allClear ? <p key="focus" className="all-clear"><Icon name="check" size={14} /> Everything due is handled</p> : null,
     day: <RoutineCard key="day" routines={d.routines} checks={d.checks} projects={d.projects} events={d.upcoming} tasks={d.dueNow} leaving={d.leaving}
       onTask={d.checkOff} onRename={d.rename} onDue={d.setDue} onManage={() => setManage(true)} onChange={d.reload} />,
+    quests: <Quests key="quests" />,
     pinned: <PinnedProjects key="pinned" d={d} />,
     add: <AddBar key="add" projects={d.projects} onDone={d.reload} onError={d.setError} />,
     deadlines: <Deadlines key="deadlines" d={d} />, todos: <Todos key="todos" d={d} />,
