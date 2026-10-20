@@ -78,7 +78,7 @@ export default function PinnedProjects({ d }: { d: TodayData }) {
                 <span className="task-fill" />
                 <div className="row between">
                   <span className="muted small">touched {ago(touched(p))}</span>
-                  <button type="button" className="link small" onClick={() => setPinned(p, false)} aria-label={`Unpin ${p.name}`}>Unpin</button>
+                  <button type="button" className="link small pin-unpin" onClick={() => setPinned(p, false)} aria-label={`Unpin ${p.name}`}>Unpin</button>
                 </div>
               </article>
             ))}

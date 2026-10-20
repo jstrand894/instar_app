@@ -3,7 +3,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
-import { fromLocalInput, isoDay, splitWhen, toLocalInput } from '../lib/util'
+import { fromLocalInput, isoDay, toLocalInput } from '../lib/util'
+import { parseQuick } from '../lib/quickParse'
 import type { Project } from '../types'
 
 type Kind = 'update' | 'note'
@@ -18,13 +19,13 @@ const PREFIX: [RegExp, Mode][] = [[/^(todo|task|to-do|t):\s*/i, 'todo'], [/^(due
 
 /** One box for the three things you add most: a to-do, a deadline, or a log entry. */
 export default function AddBar({ projects, onDone, onError }: { projects: Project[]; onDone: () => void; onError: (m: string) => void }) {
-  const [mode, setMode] = useState<Mode>('todo')
+  const [picked, setMode] = useState<Mode>('todo')
   const [text, setText] = useState('')
   const [chosen, setChosen] = useState<string | null>(null)
   // the project you used last, if it still exists, until you pick another
   const remembered = (() => { try { return localStorage.getItem('tm-addbar-project') ?? '' } catch { return '' } })()
-  const target = chosen ?? (projects.some(p => p.id === remembered) ? remembered : '')
-  const setTarget = (v: string) => { setChosen(v); try { localStorage.setItem('tm-addbar-project', v) } catch { /* ignore */ } }
+  const [manual, setManual] = useState<string | null>(null) // a project you picked yourself beats one read from the text
+  const setTarget = (v: string) => { setManual(v); setChosen(v); try { localStorage.setItem('tm-addbar-project', v) } catch { /* ignore */ } }
   const [date, setDate] = useState('')
   const [saved, setSaved] = useState('')
   const [dateOpen, setDateOpen] = useState(false)
@@ -32,6 +33,11 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
   const [kind, setKind] = useState<Kind>('update')
   const [again, setAgain] = useState(false)
   const [at, setAt] = useState('')
+  const open = projects.filter(p => p.status !== 'done' && p.stage !== 'accepted')
+  const smart = parseQuick(text, open, picked)
+  const mode: Mode = smart.mode ?? picked
+  const fromText = manual === null ? smart.projectId : null
+  const target = manual ?? fromText ?? chosen ?? (projects.some(p => p.id === remembered) ? remembered : '')
   const bigField = useRef<HTMLTextAreaElement>(null)
   useEffect(() => { if (big) setTimeout(() => bigField.current?.focus(), 30) }, [big])
   const modesRef = useRef<HTMLDivElement>(null)
@@ -57,12 +63,11 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
     setText(v)
   }
 
-  const parsed = mode === 'update' ? { title: text.trim(), date: null } : splitWhen(text.replace(/\s*\n\s*/g, ' '))
+  const parsed = { title: smart.title, date: smart.date }
   const when = date || parsed.date || (mode === 'todo' ? isoDay(new Date()) : '')
   const needsProject = mode !== 'todo'
   const ready = !!parsed.title && (!needsProject || !!target) && (mode !== 'deadline' || !!when)
   const group = (label: string, list: Project[]) => list.length > 0 && <optgroup label={label}>{list.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>
-  const open = projects.filter(p => p.status !== 'done' && p.stage !== 'accepted')
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -72,7 +77,7 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
       else if (mode === 'deadline') await store.addDeadline(target, parsed.title, when)
       else await store.addUpdate(target, parsed.title, big ? kind : 'update', big ? fromLocalInput(at) : undefined)
       setSaved(mode === 'todo' ? '' : mode === 'deadline' ? 'Deadline added' : `Logged to ${projects.find(p => p.id === target)?.name}`)
-      setText(''); setDate(''); setAt(''); setDateOpen(false); if (!again) setBig(false); onDone(); notify.added()
+      setText(''); setDate(''); setAt(''); setManual(null); setDateOpen(false); if (!again) setBig(false); onDone(); notify.added()
       setTimeout(() => setSaved(''), 3000)
     } catch (er) { onError(friendlyError(er)) }
   }
@@ -101,6 +106,14 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
           : <button type="button" className="addbar-date" onClick={() => setDateOpen(true)}>+ date</button>)}
         <button className="primary" disabled={!ready}>Add</button>
       </div>
+      {(smart.mode || fromText || smart.date) && parsed.title && (
+        <p className="addbar-hint small muted" role="status">
+          Understood: <b>{MODES.find(m => m.id === mode)!.label}</b>
+          {fromText && <> for <b>{smart.projectName}</b></>}
+          {smart.date && <> {mode === 'deadline' ? 'due' : 'on'} <b>{new Date(smart.date + 'T00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</b></>}
+          {' · '}“{parsed.title}”
+        </p>
+      )}
       {saved && <span className="ok small" role="status">{saved}</span>}
       {big && createPortal(
         <div className="modal-back capture-back" onMouseDown={e => { if (e.target === e.currentTarget) setBig(false) }}
