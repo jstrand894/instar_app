@@ -22,7 +22,7 @@ export default function TaskList({ projectId, tasks, onChange }: { projectId: st
   async function add(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
-    await store.addTask(projectId, title.trim(), due || null); setTitle(''); setDue(''); onChange()
+    await store.addTask(projectId, title.trim(), due || null); setTitle(''); setDue(''); onChange(); notify.added()
   }
   async function toggle(t: ProjectTask) {
     const next = !isDone(t)

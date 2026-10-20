@@ -81,7 +81,7 @@ export default function QuickCapture() {
         undo = () => store.deletePaper(r.id); what = 'Paper'
       }
       if (projectId && tab !== 'paper') { try { localStorage.setItem(LAST, projectId) } catch { /* ignore */ } }
-      close()
+      close(); notify.added()
       notify.action(`${what} added${pr ? ` to ${pr.name}` : ''}`, 'Undo', () => { undo().catch(er => notify.error(er)) })
     } catch (er) { setErr(friendlyError(er)) }
     setBusy(false)

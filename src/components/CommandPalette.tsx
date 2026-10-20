@@ -93,7 +93,7 @@ export default function CommandPalette() {
     const pr = data?.projects.find(p => p.id === pid)
     const { title, date } = kind === 'log' ? { title: m[2].trim(), date: null } : splitWhen(m[2])
     const done = (msg: string) => { notify.success(msg); window.dispatchEvent(new Event('tm-data')); close() }
-    const mk = (label: string, sub: string, run: () => Promise<unknown>) => [{ id: 'q:' + kind, kind: 'Actions' as Kind, title: label, sub, hay: '', weight: 99, run: () => { run().then(() => done(label), e => notify.error(e)) } }]
+    const mk = (label: string, sub: string, run: () => Promise<unknown>) => [{ id: 'q:' + kind, kind: 'Actions' as Kind, title: label, sub, hay: '', weight: 99, run: () => { run().then(() => { notify.added(); done(label) }, e => notify.error(e)) } }]
     if (kind === 'todo') return mk(`Add to-do: ${title}`, `${pr ? pr.name : 'No project'}${date ? ' · due ' + date : ''}`, () => store.addTask(pr?.id ?? null, title, date))
     if (!pr) return [{ id: 'q:need', kind: 'Actions' as Kind, title: kind === 'deadline' ? 'Open a project first to add a deadline' : 'Open a project first to log an update', sub: 'Or use the Quick add box on Today', hay: '', weight: 99, run: () => {} }]
     if (kind === 'deadline') return date ? mk(`Add deadline: ${title}`, `${pr.name} · due ${date}`, () => store.addDeadline(pr.id, title, date)) : [{ id: 'q:date', kind: 'Actions' as Kind, title: 'Add a date, like "due: Revision fri" or "3/14"', sub: pr.name, hay: '', weight: 99, run: () => {} }]

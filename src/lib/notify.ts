@@ -27,6 +27,8 @@ export const isPendingDelete = (id: unknown) => typeof id === 'string' && hidden
 const refreshPages = () => window.dispatchEvent(new Event('tm-data'))
 
 export const notify = {
+  /** A quick animated check mark: something was added or scheduled. */
+  added: () => window.dispatchEvent(new Event('tm-check')),
   info: (message: string, duration = 3500) => emit({ kind: 'info', message, duration }),
   success: (message: string, duration = 3000) => emit({ kind: 'success', message, duration }),
   /** A confirmation with one button, e.g. "Added to X · Undo". */

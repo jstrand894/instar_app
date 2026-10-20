@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { store } from '../lib/store'
+import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
 import { splitWhen } from '../lib/util'
 import type { Project } from '../types'
@@ -46,7 +47,7 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
       else if (mode === 'deadline') await store.addDeadline(target, parsed.title, when)
       else await store.addUpdate(target, parsed.title)
       setSaved(mode === 'todo' ? 'To-do added' : mode === 'deadline' ? 'Deadline added' : `Logged to ${projects.find(p => p.id === target)?.name}`)
-      setText(''); setDate(''); onDone()
+      setText(''); setDate(''); onDone(); notify.added()
       setTimeout(() => setSaved(''), 3000)
     } catch (er) { onError(friendlyError(er)) }
   }

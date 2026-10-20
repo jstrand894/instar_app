@@ -97,7 +97,7 @@ export default function ProjectDetail() {
   async function addDeadline(e: React.FormEvent) {
     e.preventDefault()
     if (!project || !dlTitle.trim() || !dlDate) return
-    try { await store.addDeadline(project.id, dlTitle.trim(), dlDate); setDlTitle(''); load() } catch (er) { setError(friendlyError(er)) }
+    try { await store.addDeadline(project.id, dlTitle.trim(), dlDate); setDlTitle(''); load(); notify.added() } catch (er) { setError(friendlyError(er)) }
   }
 
   async function setStage(next: Stage) {
@@ -120,7 +120,7 @@ export default function ProjectDetail() {
   async function add(e: React.FormEvent) {
     e.preventDefault()
     if (!text.trim() || !project) return
-    try { await store.addUpdate(project.id, text.trim(), kind); setText(''); load() } catch (er) { setError(friendlyError(er)) }
+    try { await store.addUpdate(project.id, text.trim(), kind); setText(''); load(); notify.added() } catch (er) { setError(friendlyError(er)) }
   }
 
   async function addEvent(e: React.FormEvent) {
@@ -128,7 +128,7 @@ export default function ProjectDetail() {
     if (!evTitle.trim() || !evDate || !evTime || !project) return
     const starts = new Date(`${evDate}T${evTime}`)
     if (isNaN(starts.getTime())) return
-    try { await store.addEvent(project.id, evTitle.trim(), starts.toISOString(), evWeekly ? 'weekly' : 'none'); setEvTitle(''); load() } catch (er) { setError(friendlyError(er)) }
+    try { await store.addEvent(project.id, evTitle.trim(), starts.toISOString(), evWeekly ? 'weekly' : 'none'); setEvTitle(''); load(); notify.added() } catch (er) { setError(friendlyError(er)) }
   }
 
   async function saveEntry(u: ProjectUpdate, body: string) {

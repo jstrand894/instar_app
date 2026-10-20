@@ -6,6 +6,7 @@ import Account from './components/Account'
 import Logo from './components/Logo'
 import PageSkeleton from './components/PageSkeleton'
 import Toasts from './components/Toasts'
+import CheckPop from './components/CheckPop'
 import SyncStatus from './components/SyncStatus'
 import OfflineBar from './components/OfflineBar'
 const CommandPalette = lazy(() => import('./components/CommandPalette'))
@@ -102,7 +103,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
       </main>
       <Suspense fallback={null}><Tour /><CommandPalette /></Suspense>
       <QuickCapture />
-      <Toasts />
+      <Toasts /><CheckPop />
     </div>
   )
 }
