@@ -171,8 +171,9 @@ export default function ProjectDetail() {
           onBlur={e => e.target.value.trim() && e.target.value !== project.name && patch({ name: e.target.value.trim() })} />
         {(() => {
           const names = linkedTo(project.id, projLinks).map(i => allProjects.find(x => x.id === i)).filter((x): x is Project => !!x)
-          return names.length > 0 && (
-            <div className="head-links" aria-label={`Linked ${project.type === 'manuscript' ? 'projects' : 'manuscripts'}`}>
+          return (names.length > 0 || !!project.github_repo) && (
+            <div className="head-links" aria-label="Links">
+              {project.github_repo && <a href={`https://github.com/${project.github_repo}`} target="_blank" rel="noreferrer" className="head-link gh" title={`GitHub: ${project.github_repo}`}><Icon name="git" size={14} /><span>{project.github_repo.split('/')[1] ?? project.github_repo}</span></a>}
               {names.slice(0, 2).map(l => <Link key={l.id} to={`/project/${l.id}`} className="head-link" title={`Linked ${l.type === 'manuscript' ? 'manuscript' : 'project'}: ${l.name}`}><Icon name="link" size={14} /><span>{l.name}</span></Link>)}
               {names.length > 2 && <a href="#linked-work" className="head-link more" title="See all links" onClick={e => { e.preventDefault(); document.querySelector('.linked-work')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}>+{names.length - 2}</a>}
             </div>
