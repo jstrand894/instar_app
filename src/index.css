@@ -1025,3 +1025,11 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .wx-strip-btn:hover { background: rgba(255,255,255,.08); }
 .wx-collapse { position: absolute; top: .5rem; right: .6rem; z-index: 2; display: inline-flex; padding: .25rem; background: rgba(255,255,255,.18); border: 0; min-height: 0; border-radius: 8px; color: inherit; cursor: pointer; transform: rotate(180deg); } .wx-collapse:hover { background: rgba(255,255,255,.3); }
 @media (max-width: 760px) { .wx-strip-tip, .wx-strip-chips { display: none; } }
+.wx-swap { margin-bottom: var(--gap, 1rem); }
+.wx-swap .weather { margin-bottom: 0 !important; }
+.wx-fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .45s cubic-bezier(.3, .8, .2, 1); }
+.wx-fold-in { overflow: hidden; min-height: 0; transition: opacity .3s ease, visibility 0s .45s; opacity: 0; visibility: hidden; }
+.wx-fold-strip { grid-template-rows: 1fr; } .wx-fold-strip .wx-fold-in { opacity: 1; visibility: visible; transition: opacity .3s .15s ease; }
+.wx-swap.open .wx-fold-strip { grid-template-rows: 0fr; } .wx-swap.open .wx-fold-strip .wx-fold-in { opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s .45s; }
+.wx-swap.open .wx-fold-full { grid-template-rows: 1fr; } .wx-swap.open .wx-fold-full .wx-fold-in { opacity: 1; visibility: visible; transition: opacity .35s .1s ease; }
+.wx-fold-full .wx-fold-in { padding-bottom: 8px; margin-bottom: -8px; }

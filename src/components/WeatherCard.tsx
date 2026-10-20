@@ -184,7 +184,7 @@ export default function WeatherCard() {
   const [ico, label] = describe(wx.code)
   const tip = advice(wx)
   const m = mood(wx.code, wx.day) + (!wx.day && mood(wx.code, wx.day) !== 'storm' ? ' is-night' : '')
-  if (!open) return (
+  const strip = (
     <section className={`weather wx-strip wx-${m}`} aria-label="Current weather">
       <button type="button" className="wx-strip-btn" aria-expanded="false" onClick={() => setOpen(true)} title="Show the forecast">
         <span className="wx-ico" aria-hidden><Icon name={ico} size={26} /></span>
@@ -197,6 +197,9 @@ export default function WeatherCard() {
     </section>
   )
   return (
+    <div className={`wx-swap ${open ? 'open' : ''}`}>
+      <div className="wx-fold wx-fold-strip" aria-hidden={open} inert={open}><div className="wx-fold-in">{strip}</div></div>
+      <div className="wx-fold wx-fold-full" aria-hidden={!open} inert={!open}><div className="wx-fold-in">
     <section className={`weather wx-${m}`} aria-label="Current weather">
       <button type="button" className="wx-collapse" onClick={() => setOpen(false)} aria-label="Collapse the forecast" title="Collapse"><Icon name="chevDown" size={16} /></button>
       <div className="wx-left">
@@ -229,5 +232,7 @@ export default function WeatherCard() {
         <TempLine day={wx.days[sel]} nowHour={sel === 0 ? wx.hour : null} />
       </div>
     </section>
+      </div></div>
+    </div>
   )
 }
