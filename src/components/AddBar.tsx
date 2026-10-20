@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
-import { splitWhen } from '../lib/util'
+import { fromLocalInput, splitWhen, toLocalInput } from '../lib/util'
 import type { Project } from '../types'
 
 type Kind = 'update' | 'note'
@@ -31,6 +31,7 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
   const [big, setBig] = useState(false)
   const [kind, setKind] = useState<Kind>('update')
   const [again, setAgain] = useState(false)
+  const [at, setAt] = useState('')
   const bigField = useRef<HTMLTextAreaElement>(null)
   useEffect(() => { if (big) setTimeout(() => bigField.current?.focus(), 30) }, [big])
   const modesRef = useRef<HTMLDivElement>(null)
@@ -69,9 +70,9 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
     try {
       if (mode === 'todo') await store.addTask(target || null, parsed.title, when || null)
       else if (mode === 'deadline') await store.addDeadline(target, parsed.title, when)
-      else await store.addUpdate(target, parsed.title, big ? kind : 'update')
+      else await store.addUpdate(target, parsed.title, big ? kind : 'update', big ? fromLocalInput(at) : undefined)
       setSaved(mode === 'todo' ? '' : mode === 'deadline' ? 'Deadline added' : `Logged to ${projects.find(p => p.id === target)?.name}`)
-      setText(''); setDate(''); setDateOpen(false); if (!again) setBig(false); onDone(); notify.added()
+      setText(''); setDate(''); setAt(''); setDateOpen(false); if (!again) setBig(false); onDone(); notify.added()
       setTimeout(() => setSaved(''), 3000)
     } catch (er) { onError(friendlyError(er)) }
   }
@@ -122,6 +123,7 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
                   </select>
                 </label>
                 {mode !== 'update' && <label>{mode === 'deadline' ? 'Due date' : 'Due (optional)'}<input type="date" value={when} onChange={e => setDate(e.target.value)} /></label>}
+                {mode === 'update' && <label>When (blank = now)<input type="datetime-local" value={at} max={toLocalInput(new Date().toISOString())} onChange={e => setAt(e.target.value)} /></label>}
                 {mode === 'update' && (
                   <label>Type
                     <select value={kind} onChange={e => setKind(e.target.value as Kind)} aria-label="Type">

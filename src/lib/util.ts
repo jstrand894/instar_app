@@ -88,3 +88,13 @@ export function commitHeadline(body: string): string {
   const first = lines.slice(1).find(l => l.startsWith('•'))
   return first ? first.replace(/^•\s*/, '').replace(/\s*\([0-9a-f]{7}\)$/, '') : lines[0]
 }
+
+/** ISO timestamp -> value for <input type="datetime-local"> (local time). */
+export function toLocalInput(iso: string): string {
+  const d = new Date(iso), p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+/** datetime-local value -> ISO timestamp, or undefined when blank/invalid. */
+export function fromLocalInput(v: string): string | undefined {
+  const d = new Date(v); return v && !isNaN(d.getTime()) ? d.toISOString() : undefined
+}

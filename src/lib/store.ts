@@ -158,8 +158,8 @@ const local = {
     d.events.push(row); save(d); return row
   },
   async deleteEvent(id: string) { const d = load(); d.events = d.events.filter(e => e.id !== id); save(d) },
-  async addUpdate(project_id: string, body: string, kind: ProjectUpdate['kind'] = 'update') {
-    const d = load(); const row: ProjectUpdate = { id: uid(), project_id, kind, body, created_at: now() }
+  async addUpdate(project_id: string, body: string, kind: ProjectUpdate['kind'] = 'update', at?: string) {
+    const d = load(); const row: ProjectUpdate = { id: uid(), project_id, kind, body, created_at: at ?? now() }
     d.updates.push(row); save(d); return row
   },
   async patchUpdate(id: string, patch: Partial<ProjectUpdate>) {
@@ -275,7 +275,7 @@ const remote: typeof local = {
   async events() { return ok(await sb().from('project_events').select('*').order('starts_at')) },
   async addEvent(project_id, title, starts_at, repeat) { return ok(await sb().from('project_events').insert({ project_id, title, starts_at, repeat }).select().single()) },
   async deleteEvent(id) { ok(await sb().from('project_events').delete().eq('id', id)) },
-  async addUpdate(project_id, body, kind = 'update') { return ok(await sb().from('project_updates').insert({ project_id, body, kind }).select().single()) },
+  async addUpdate(project_id, body, kind = 'update', at) { return ok(await sb().from('project_updates').insert({ project_id, body, kind, ...(at ? { created_at: at } : {}) }).select().single()) },
   async patchUpdate(id, patch) { ok(await sb().from('project_updates').update(patch).eq('id', id)) },
   async deleteUpdate(id) { ok(await sb().from('project_updates').delete().eq('id', id)) },
   async papers() { return ok(await sb().from('papers').select('*').order('created_at', { ascending: false })) },

@@ -6,7 +6,7 @@ import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { forgetOpen, rememberOpen } from '../lib/resume'
 import { friendlyError } from '../lib/errors'
-import { ago, fmtMinutes, fmtWhen, nextOccurrence } from '../lib/util'
+import { ago, fmtMinutes, fmtWhen, fromLocalInput, nextOccurrence, toLocalInput } from '../lib/util'
 import { STAGES, deadlineInfo, stageLabel } from '../lib/manuscript'
 import TaskList from '../components/TaskList'
 import TagEditor from '../components/TagEditor'
@@ -76,6 +76,9 @@ export default function ProjectDetail() {
   const setText = (v: string) => setDrafts(d => ({ ...d, [mode]: v }))
   const pickMode = (m: Mode) => { setMode(m); if (m === 'meeting') setDrafts(d => d.meeting.trim() ? d : { ...d, meeting: meetingTemplate() }) }
   const [error, setError] = useState('')
+  const [when, setWhen] = useState('')
+  const [shown, setShown] = useState(5)
+  const [timeId, setTimeId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -122,7 +125,7 @@ export default function ProjectDetail() {
   async function add(e: React.FormEvent) {
     e.preventDefault()
     if (!text.trim() || !project) return
-    try { await store.addUpdate(project.id, text.trim(), kind); setText(''); load(); notify.added() } catch (er) { setError(friendlyError(er)) }
+    try { await store.addUpdate(project.id, text.trim(), kind, fromLocalInput(when)); setText(''); setWhen(''); load(); notify.added() } catch (er) { setError(friendlyError(er)) }
   }
 
   async function addEvent(e: React.FormEvent) {
@@ -131,6 +134,13 @@ export default function ProjectDetail() {
     const starts = new Date(`${evDate}T${evTime}`)
     if (isNaN(starts.getTime())) return
     try { await store.addEvent(project.id, evTitle.trim(), starts.toISOString(), evWeekly ? 'weekly' : 'none'); setEvTitle(''); load(); notify.added() } catch (er) { setError(friendlyError(er)) }
+  }
+
+  async function saveTime(u: ProjectUpdate, v: string) {
+    setTimeId(null)
+    const at = fromLocalInput(v); if (!at || at === u.created_at) return
+    setEntries(es => es.map(x => x.id === u.id ? { ...x, created_at: at } : x).sort((a, b) => b.created_at.localeCompare(a.created_at)))
+    try { await store.patchUpdate(u.id, { created_at: at }) } catch (e) { setError(friendlyError(e)); load() }
   }
 
   async function saveEntry(u: ProjectUpdate, body: string) {
@@ -197,23 +207,30 @@ export default function ProjectDetail() {
           value={text} onChange={setText}
           onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') add(e) }} />
         <div className="row between">
-          <span className="muted small">⌘↵ to add</span>
+          <span className="row"><span className="muted small">⌘↵ to add</span>
+            <label className="small muted">When <input type="datetime-local" value={when} max={toLocalInput(new Date().toISOString())} onChange={e => setWhen(e.target.value)} aria-label="When it happened (blank = now)" /></label>
+            {when && <button type="button" className="link small" onClick={() => setWhen('')}>Now</button>}
+          </span>
           <button className="primary" disabled={!text.trim()}>Add {kind}</button>
         </div>
       </form>
 
       <ol className="tl">
-        {entries.map(u => (
+        {entries.slice(0, shown).map(u => (
           <li key={u.id} className={`tl-item ${u.kind}`}>
             <span className="tl-dot" />
             <div className="tl-meta">
-              <time title={fmt(u.created_at)}>{ago(u.created_at)} · {fmt(u.created_at)}</time>
+              {timeId === u.id
+                ? <input type="datetime-local" autoFocus defaultValue={toLocalInput(u.created_at)} aria-label="Entry time"
+                    onBlur={e => saveTime(u, e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveTime(u, e.currentTarget.value); if (e.key === 'Escape') setTimeId(null) }} />
+                : <time title={fmt(u.created_at)}>{ago(u.created_at)} · {fmt(u.created_at)}</time>}
               <div className="tl-menu" onClick={e => e.stopPropagation()}>
                 <button type="button" className="tl-pen" aria-label="Entry actions" aria-haspopup="menu" aria-expanded={menuId === u.id} title="Edit or delete"
                   onClick={() => setMenuId(menuId === u.id ? null : u.id)}><Icon name="pen" size={14} /></button>
                 {menuId === u.id && (
                   <div className="tl-pop" role="menu">
                     {u.kind !== 'commit' && <button type="button" role="menuitem" onClick={() => { setEditingId(editingId === u.id ? null : u.id); setMenuId(null) }}>{editingId === u.id ? 'Cancel edit' : 'Edit'}</button>}
+                    {u.kind !== 'commit' && <button type="button" role="menuitem" onClick={() => { setTimeId(u.id); setMenuId(null) }}>Change time</button>}
                     <button type="button" role="menuitem" className="danger" onClick={() => {
                       setMenuId(null)
                       notify.undoable(u.kind === 'note' ? 'Note deleted' : 'Update deleted', () => store.deleteUpdate(u.id), [u.id])
@@ -238,6 +255,12 @@ export default function ProjectDetail() {
             )}
           </li>
         ))}
+        {entries.length > shown && (
+          <li className="tl-empty row">
+            <button type="button" className="link small" onClick={() => setShown(n => n + 5)}>Show 5 more</button>
+            <button type="button" className="link small" onClick={() => setShown(entries.length)}>Show all ({entries.length - shown} more)</button>
+          </li>
+        )}
         {!entries.length && <li className="tl-empty"><b>Nothing logged yet.</b> <span className="muted">This timeline fills in as you add updates and notes, so you can look back at what happened and when.</span> <button className="link" onClick={() => document.querySelector<HTMLTextAreaElement>('.composer textarea')?.focus()}>Log the first update</button></li>}
       </ol>
 

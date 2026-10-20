@@ -1,3 +1,4 @@
+import { fromLocalInput, toLocalInput } from '../lib/util'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { store } from '../lib/store'
@@ -23,6 +24,7 @@ export default function QuickCapture() {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('09:00')
   const [weekly, setWeekly] = useState(false)
+  const [when, setWhen] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const field = useRef<HTMLTextAreaElement | HTMLInputElement>(null)
@@ -32,7 +34,7 @@ export default function QuickCapture() {
 
   const show = (t: Tab = 'update', pid?: string) => {
     setTab(t); setText(''); setErr('')
-    const d = new Date(); d.setDate(d.getDate() + 7); setDate(t === 'deadline' ? iso(d) : t === 'event' ? iso(new Date()) : ''); setTime('09:00'); setWeekly(false)
+    const d = new Date(); d.setDate(d.getDate() + 7); setDate(t === 'deadline' ? iso(d) : t === 'event' ? iso(new Date()) : ''); setTime('09:00'); setWeekly(false); setWhen('')
     setProjectId(pid || onProject || (() => { try { return localStorage.getItem(LAST) ?? '' } catch { return '' } })())
     setOpen(true)
   }
@@ -71,7 +73,7 @@ export default function QuickCapture() {
     try {
       const pr = projects.find(p => p.id === projectId)
       let undo: () => Promise<unknown>, what: string
-      if (tab === 'update' || tab === 'note') { const r = await store.addUpdate(projectId, text.trim(), tab); undo = () => store.deleteUpdate(r.id); what = tab === 'note' ? 'Note' : 'Update' }
+      if (tab === 'update' || tab === 'note') { const r = await store.addUpdate(projectId, text.trim(), tab, fromLocalInput(when)); undo = () => store.deleteUpdate(r.id); what = tab === 'note' ? 'Note' : 'Update' }
       else if (tab === 'task') { const r = await store.addTask(projectId || null, text.trim(), date || null); undo = () => store.deleteTask(r.id); what = 'Task' }
       else if (tab === 'deadline') { const r = await store.addDeadline(projectId, text.trim(), date); undo = () => store.deleteDeadline(r.id); what = 'Deadline' }
       else if (tab === 'event') {
@@ -126,6 +128,9 @@ export default function QuickCapture() {
               ) : (
                 <input ref={field as React.RefObject<HTMLInputElement>} value={text} onChange={e => setText(e.target.value)}
                   placeholder={tab === 'task' ? 'What needs doing?' : tab === 'deadline' ? "What's due?" : tab === 'event' ? 'What? e.g. Team meeting' : 'Paste a DOI, e.g. 10.2307/3894934'} />
+              )}
+              {(tab === 'update' || tab === 'note') && (
+                <label className="cap-date">When (blank = now)<input type="datetime-local" value={when} max={toLocalInput(new Date().toISOString())} onChange={e => setWhen(e.target.value)} /></label>
               )}
               {(tab === 'task' || tab === 'deadline') && (
                 <label className="cap-date">{tab === 'task' ? 'Due (optional)' : 'Due date'}<input type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
