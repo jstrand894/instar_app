@@ -126,7 +126,7 @@ main { overflow-y: auto; min-width: 0; display: flex; flex-direction: column; }
 
 /* ---- polish ---- */
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-button, .card, .nav a { transition: background .15s, border-color .15s, box-shadow .15s, transform .15s; }
+button, .card, .nav a { transition: background .15s, border-color .15s, transform .15s; }
 body { font-size: 15px; line-height: 1.45; }
 h1 { font-size: 1.75rem; letter-spacing: -.02em; }
 .logo { display: inline-block; flex: none; }
@@ -671,7 +671,7 @@ kbd { background: var(--chip); border: 1px solid var(--line); border-bottom-widt
 /* today: grouping, depth, smoother scrolling */
 .group-label { margin: 1.6rem 0 .7rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); display: flex; align-items: center; gap: .8rem; }
 .group-label::after { content: ''; flex: 1; height: 1px; background: var(--line); }
-.today { display: block; } .today .card { border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px -16px rgba(0,0,0,.16); transition: box-shadow .2s ease, transform .2s ease; }
+.today { display: block; } .today .card { border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px -16px rgba(0,0,0,.16); transition: transform .2s ease; }
 .today .today-grid { margin-bottom: .4rem; } .today .today-grid .card { }
 .today .today-grid .card:hover { box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 14px 30px -16px rgba(0,0,0,.22); }
 .today .card h2 { font-size: 1rem; letter-spacing: -.005em; }
@@ -679,7 +679,7 @@ kbd { background: var(--chip); border: 1px solid var(--line); border-bottom-widt
 .trow { padding: .15rem 0; }
 main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll-padding-top: 1rem; }
 .nav, .side-scroll, .reader-scroll { overscroll-behavior: contain; }
-.page { animation: page-in .28s ease both; } @keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.page { animation: page-in .28s ease backwards; } @keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { main { scroll-behavior: auto; } .page { animation: none; } .today .card { transition: none; } }
 
 /* inline svg icons */
@@ -707,7 +707,7 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 
 /* focus now */
 .focus-now { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 7%, var(--panel)), var(--panel)); }
-.focus-tile { background: var(--panel); border: 1px solid var(--line); border-left-width: 4px; box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: transform .15s ease, box-shadow .15s ease; }
+.focus-tile { background: var(--panel); border: 1px solid var(--line); border-left-width: 4px; box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: transform .15s ease; }
 .focus-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 18px -12px rgba(0,0,0,.3); }
 .focus-title b { font-weight: 600; line-height: 1.3; }
 
@@ -757,7 +757,7 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .sect-title::after, .sect-toggle::after { content: ''; flex: 1; height: 1px; background: var(--line); margin-left: .4rem; }
 .sect { margin-bottom: 1.8rem; }
 .grid { gap: 1.1rem; }
-.project { border-top: 1px solid var(--line); border-radius: 18px; padding: 1.1rem 1.15rem; gap: .5rem; position: relative; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 28px -20px rgba(0,0,0,.25); transition: box-shadow .2s ease, transform .2s ease, border-color .2s; }
+.project { border-top: 1px solid var(--line); border-radius: 18px; padding: 1.1rem 1.15rem; gap: .5rem; position: relative; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 28px -20px rgba(0,0,0,.25); transition: transform .2s ease, border-color .2s; }
 .project::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--t-other); }
 .project.t-manuscript::before { background: var(--t-manuscript); } .project.t-data::before { background: var(--t-data); }
 .project.t-field::before { background: var(--t-field); } .project.t-code::before { background: var(--t-code); }
@@ -901,8 +901,8 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .picture figure { margin: 0; display: grid; gap: .6rem; } .picture img { display: block; width: 100%; max-height: 420px; object-fit: cover; border-radius: 12px; background: var(--chip); }
 .picture figcaption { display: grid; gap: .15rem; font-size: .92rem; } .picture figcaption a { color: inherit; }
 
-/* steadier scrolling: no scroll-behavior easing on wheel/trackpad, a cheap hover pause, and no layout jumps while things load */
-main.is-scrolling { pointer-events: none; }
+/* steadier scrolling: no layout jumps while things load; long paper lists skip rendering off-screen cards */
+.paper2 { content-visibility: auto; contain-intrinsic-size: auto 110px; }
 .picture img { aspect-ratio: 16 / 9; height: auto; object-fit: cover; content-visibility: auto; }
 .weather { min-height: 150px; }
 
@@ -936,3 +936,7 @@ main.is-scrolling { pointer-events: none; }
 .ptl-chip.st-read, .ptl-chip.st-reading, .ptl-chip.st-unavailable { color: var(--ink); background: var(--chip); }
 .ptl-t { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-weight: 500; }
 .ptl-a { color: var(--muted); font-size: .72rem; }
+
+/* scrolling: skip hover shadow/transform repaints and cheap-render off-screen cards */
+.project, .paper, .tl-body { contain: layout style; }
+@media (hover: hover) { main { scroll-behavior: auto; } }

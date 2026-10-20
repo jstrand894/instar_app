@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { NavLink, Route, Routes, HashRouter, useLocation } from 'react-router-dom'
 import AuthGate from './components/Auth'
 import Pomodoro from './components/Pomodoro'
@@ -57,15 +57,6 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
     measure(); document.fonts?.ready.then(measure)
   }, [])
   const [railShut, setRailShut] = useState(false)
-  // while the page is moving, ignore the pointer so hover effects don't repaint under the cursor on every frame
-  const mainRef = useRef<HTMLElement>(null)
-  useEffect(() => {
-    const el = mainRef.current; if (!el) return
-    let t: ReturnType<typeof setTimeout> | undefined
-    const on = () => { el.classList.add('is-scrolling'); clearTimeout(t); t = setTimeout(() => el.classList.remove('is-scrolling'), 140) }
-    el.addEventListener('scroll', on, { passive: true })
-    return () => { el.removeEventListener('scroll', on); clearTimeout(t) }
-  }, [])
   const toggleNav = () => setNavMode(m => { const n = m === 'auto' ? 'pinned' : 'auto'; try { localStorage.setItem('tm-nav', n) } catch { /* ignore */ } return n })
   return (
     <div className={`shell nav-${navMode} ${reading ? 'in-reader' : ''} ${railShut ? 'nav-shut' : ''}`}>
@@ -89,7 +80,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
         </button>
         <Account signOut={signOut} />
       </nav>
-      <main ref={mainRef}>
+      <main>
         <OfflineBar />
         {demoMode && !bannerOff && (
           <div className="banner">
