@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import RichTextarea, { RichView } from './RichText'
 
 /** A timeline entry: shows links and tags; click to edit, click away to save, Esc to cancel. */
-export default function EntryBody({ body, note, onSave }: { body: string; note?: boolean; onSave: (v: string) => void }) {
-  const [editing, setEditing] = useState(false)
+export default function EntryBody({ body, note, editing, setEditing, onSave }: { body: string; note?: boolean; editing: boolean; setEditing: (e: boolean) => void; onSave: (v: string) => void }) {
   const [v, setV] = useState(body)
   useEffect(() => { if (!editing) setV(body) }, [body, editing])
 

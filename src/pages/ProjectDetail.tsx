@@ -47,9 +47,13 @@ export default function ProjectDetail() {
   const [evDate, setEvDate] = useState(todayStr)
   const [evTime, setEvTime] = useState('10:00')
   const [evWeekly, setEvWeekly] = useState(false)
-  const [kind, setKind] = useState<'update' | 'note'>('update')
-  const [text, setText] = useState('')
-  const isMeeting = kind === 'note' && text.startsWith('## Meeting')
+  type Mode = 'update' | 'note' | 'meeting'
+  const [mode, setMode] = useState<Mode>('update')
+  const [drafts, setDrafts] = useState<Record<Mode, string>>({ update: '', note: '', meeting: '' })
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const text = drafts[mode], kind = mode === 'update' ? 'update' : 'note', isMeeting = mode === 'meeting'
+  const setText = (v: string) => setDrafts(d => ({ ...d, [mode]: v }))
+  const pickMode = (m: Mode) => { setMode(m); if (m === 'meeting') setDrafts(d => d.meeting.trim() ? d : { ...d, meeting: meetingTemplate() }) }
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
@@ -159,9 +163,9 @@ export default function ProjectDetail() {
 
       <form className="card composer" onSubmit={add}>
         <div className="seg" role="tablist">
-          <button type="button" className={kind === 'update' ? 'on' : ''} onClick={() => setKind('update')}>Update</button>
-          <button type="button" className={kind === 'note' && !isMeeting ? 'on' : ''} onClick={() => { setKind('note'); if (isMeeting) setText('') }}>Note</button>
-          <button type="button" className={isMeeting ? 'on' : ''} onClick={() => { setKind('note'); if (!text.trim()) setText(meetingTemplate()) }}>Meeting</button>
+          <button type="button" className={kind === 'update' ? 'on' : ''} onClick={() => pickMode('update')}>Update</button>
+          <button type="button" className={mode === 'note' ? 'on' : ''} onClick={() => pickMode('note')}>Note</button>
+          <button type="button" className={isMeeting ? 'on' : ''} onClick={() => pickMode('meeting')}>Meeting</button>
         </div>
         <RichTextarea
           placeholder={kind === 'update' ? 'What happened? e.g. “Resubmitted with revisions”' : 'Write a longer note. Type [[ to link a project or paper, # to tag.'}
@@ -180,6 +184,7 @@ export default function ProjectDetail() {
             <span className="tl-dot" />
             <div className="tl-meta">
               <time title={fmt(u.created_at)}>{ago(u.created_at)} · {fmt(u.created_at)}</time>
+              {u.kind !== 'commit' && <button className="link small" onClick={() => setEditingId(editingId === u.id ? null : u.id)}>{editingId === u.id ? 'Cancel' : 'Edit'}</button>}
               <button className="link small danger" onClick={async () => {
                 notify.undoable(u.kind === 'note' ? 'Note deleted' : 'Update deleted', () => store.deleteUpdate(u.id), [u.id])
               }}>Delete</button>
@@ -193,10 +198,10 @@ export default function ProjectDetail() {
             ) : u.kind === 'note' ? (
               <div className="note-box">
                 <span className="tag">{u.body.startsWith('## Meeting') ? 'Meeting' : 'Note'}</span>
-                <EntryBody note body={u.body} onSave={v => saveEntry(u, v)} />
+                <EntryBody note body={u.body} editing={editingId === u.id} setEditing={e => setEditingId(e ? u.id : null)} onSave={v => saveEntry(u, v)} />
               </div>
             ) : (
-              <EntryBody body={u.body} onSave={v => saveEntry(u, v)} />
+              <EntryBody body={u.body} editing={editingId === u.id} setEditing={e => setEditingId(e ? u.id : null)} onSave={v => saveEntry(u, v)} />
             )}
           </li>
         ))}
