@@ -72,12 +72,11 @@ async function fetchWx(lat: number, lon: number, place?: string): Promise<Wx> {
 }
 
 const hourLabel = (h: number) => `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`
-const clock = (iso: string) => { const m = /T(\d+):(\d+)/.exec(iso); return m ? `${+m[1] % 12 || 12}:${m[2]}${+m[1] < 12 ? 'a' : 'p'}` : '' }
 
 /** The day's temperature hour by hour, as a line you can scrub across. */
 function TempLine({ day, nowHour }: { day: Day; nowHour: number | null }) {
   const [hover, setHover] = useState<number | null>(null)
-  const W = 600, H = 120, PX = 14, PT = 24, PB = 22
+  const W = 400, H = 104, PX = 12, PT = 22, PB = 18
   const t = day.temps
   if (t.length < 2) return null
   const lo = Math.min(...t), hi = Math.max(...t), span = Math.max(hi - lo, 1)
@@ -98,7 +97,7 @@ function TempLine({ day, nowHour }: { day: Day; nowHour: number | null }) {
     <svg className="wx-line-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Temperature through ${day.d === 'Today' ? 'today' : day.d}: low ${day.lo}°, high ${day.hi}°`}
       onPointerMove={at} onPointerDown={at} onPointerLeave={() => setHover(null)}>
       <defs><linearGradient id="wx-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity=".35" /><stop offset="1" stopColor="#fff" stopOpacity="0" /></linearGradient></defs>
-      {[0, 6, 12, 18, 23].map(h => <text key={h} x={x(h)} y={H - 6} className="wx-ax" textAnchor={h === 0 ? 'start' : h === 23 ? 'end' : 'middle'}>{h === 23 ? '11p' : hourLabel(h)}</text>)}
+      {[0, 6, 12, 18, 23].map(h => <text key={h} x={x(h)} y={H - 3} className="wx-ax" textAnchor={h === 0 ? 'start' : h === 23 ? 'end' : 'middle'}>{h === 23 ? '11p' : hourLabel(h)}</text>)}
       <path d={area} fill="url(#wx-fill)" />
       <path d={line} className="wx-ln" />
       {hv !== null && <line x1={x(hv)} x2={x(hv)} y1={PT - 6} y2={H - PB} className="wx-cursor" />}
@@ -203,10 +202,8 @@ export default function WeatherCard() {
         <div className="wx-detail-head">
           <b>{sel === 0 ? 'Today' : wx.days[sel].d}</b>
           <span>{describe(wx.days[sel].code)[1]}</span>
-          <span><Icon name="up" size={12} /> {wx.days[sel].hi}° <Icon name="down" size={12} /> {wx.days[sel].lo}°</span>
           <span><Icon name="drop" size={12} /> {wx.days[sel].rain}%</span>
           <span><Icon name="wind" size={12} /> {wx.days[sel].wind}</span>
-          {wx.days[sel].sunrise && <span><Icon name="sun" size={12} /> {clock(wx.days[sel].sunrise)} – {clock(wx.days[sel].sunset)}</span>}
         </div>
         <TempLine day={wx.days[sel]} nowHour={sel === 0 ? wx.hour : null} />
       </div>
