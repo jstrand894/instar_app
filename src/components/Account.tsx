@@ -181,7 +181,9 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
               <p className="muted small">Version {__APP_VERSION__}</p>
               <p>A personal research workspace for projects, manuscripts and reading, on a Mac, iPad and iPhone.</p>
               <p className="muted small">An <i>instar</i> is the stage between molts in an insect's growth. Every project and manuscript moves through stages too.</p>
-              <p className="creator">Made by <b>Jackson Strand</b></p>
+              <p className="creator">Made by <b>Jackson R. Strand</b>
+                <a className="info-i" href="https://jackson-strand.com" target="_blank" rel="noopener noreferrer" aria-label="Jackson R. Strand's website" title="jackson-strand.com">i</a>
+              </p>
               <p className="muted small">Built with React, Supabase and PDF.js.</p>
             </div>
           )}

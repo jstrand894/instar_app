@@ -1090,3 +1090,5 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
   .set-nav-foot { margin: 0; }
   .set-main { overflow-y: auto; padding-right: 2.6rem; }
 }
+.info-i { display: inline-grid; place-items: center; width: 1.1rem; height: 1.1rem; margin-left: .4rem; border: 1.5px solid currentColor; border-radius: 50%; font-size: .7rem; font-weight: 700; font-style: italic; font-family: Georgia, serif; line-height: 1; color: var(--muted); text-decoration: none; vertical-align: .1em; }
+.info-i:hover { color: var(--accent); }
