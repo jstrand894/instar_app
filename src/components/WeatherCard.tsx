@@ -183,12 +183,12 @@ export default function WeatherCard() {
           <span className="wx-ico" aria-hidden><Icon name={ico} size={52} /></span>
           <div>
             <div className="wx-temp">{wx.temp}°</div>
-            <div className="wx-cond">{label} · {wx.place}</div>
+            <div className="wx-cond">{label} · {wx.place} <button type="button" className="wx-edit" aria-label="Change location" title="Change location" onClick={() => setEdit(e => !e)}><Icon name="pen" size={13} /></button></div>
           </div>
         </div>
         <div className="wx-chips"><span><Icon name="up" size={12} /> {wx.hi}°</span><span><Icon name="down" size={12} /> {wx.lo}°</span><span><Icon name="wind" size={12} /> {wx.wind}</span><span><Icon name="drop" size={12} /> {wx.rain}%</span></div>
         {tip && <p className="wx-tip">{tip}</p>}
-        {picker || <button className="wx-link" onClick={() => setEdit(true)}>Change location</button>}
+        {picker}
         {msg && <span className="wx-err">{msg}</span>}
       </div>
       <div className="wx-days">
