@@ -10,7 +10,7 @@ export default function Quests() {
   return (
     <section className="card quests">
       <div className="card-head">
-        <h2>Daily quests <span className="count-pill">{done}/{g.quests.length}</span></h2>
+        <h2>Daily goals <span className="count-pill">{done}/{g.quests.length}</span></h2>
         <span className="muted small">{g.today.xp} XP today{g.today.questBonus ? ` (incl. +${XP.quest} bonus)` : ''}</span>
       </div>
       <div className="quests-body">

@@ -4,7 +4,7 @@ export const TODAY_CARDS = [
   { id: 'started', label: 'Getting started', hint: 'The first-steps checklist' },
   { id: 'focus', label: 'Focus now', hint: 'The few things that matter most right now' },
   { id: 'day', label: 'Your day', hint: 'Events, routines and what is coming up' },
-  { id: 'quests', label: 'Daily quests', hint: 'XP, level, streak and three goals for today' },
+  { id: 'quests', label: 'Daily goals', hint: 'XP, level, streak and three goals for today' },
   { id: 'add', label: 'Quick add', hint: 'One box for to-dos, deadlines and updates' },
   { id: 'pinned', label: 'Pinned projects', hint: 'Projects you pinned, ready to pick up' },
   { id: 'deadlines', label: 'Deadlines', hint: 'Due in the next three weeks' },
