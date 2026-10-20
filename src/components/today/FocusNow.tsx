@@ -7,17 +7,24 @@ const SHOW = 3
 export default function FocusNow({ d }: { d: TodayData }) {
   const box = useRef<HTMLDivElement>(null)
   const [more, setMore] = useState(false) // is there something below the visible three?
+  const [back, setBack] = useState(false) // have you scrolled past the top?
   const n = d.focusItems.length
 
   // show exactly three tiles, whatever their heights; the rest scroll
   const fit = useCallback(() => {
     const el = box.current; if (!el) return
     const tiles = el.children
-    if (tiles.length <= SHOW) { el.style.maxHeight = ''; setMore(false); return }
+    if (tiles.length <= SHOW) { el.style.maxHeight = ''; setMore(false); setBack(false); return }
     const last = tiles[SHOW - 1] as HTMLElement
     el.style.maxHeight = `${last.offsetTop + last.offsetHeight - (tiles[0] as HTMLElement).offsetTop}px`
     setMore(el.scrollTop + el.clientHeight < el.scrollHeight - 2)
+    setBack(el.scrollTop > 2)
   }, [])
+  const prev = () => {
+    const el = box.current; if (!el) return
+    const to = el.scrollTop - ((el.firstElementChild as HTMLElement).offsetHeight + 10)
+    el.scrollTo({ top: to < 40 ? 0 : to, behavior: 'smooth' })
+  }
   const next = () => {
     const el = box.current; if (!el) return
     const max = el.scrollHeight - el.clientHeight
@@ -35,6 +42,9 @@ export default function FocusNow({ d }: { d: TodayData }) {
     <section className="card focus-now" aria-label="Focus now">
       <h2>Focus now</h2>
       <div className="focus-scroll">
+      {back && <button type="button" className="focus-more up" aria-label="Show earlier" onClick={prev}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m6 15 6-6 6 6" /></svg>
+      </button>}
       <div className="focus-tiles" ref={box} onScroll={fit}>
         {d.focusItems.map(f => (
           <div className={`focus-tile ${f.pill?.tone ?? ''} ${d.leaving.has(f.key) ? 'leaving' : ''}`} key={f.key}>
