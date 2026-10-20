@@ -107,10 +107,19 @@ export function useTodayData() {
 
   // what you finished today: tasks, routines you ticked, papers you finished reading
   const startMs = today.getTime()
+  // removing one takes its XP with it: a to-do is deleted, a routine tick is cleared, a paper goes back to "reading"
   const doneToday = [
-    ...tasks.filter(t => t.done && t.done_at && new Date(t.done_at).getTime() >= startMs).map(t => ({ key: 't' + t.id, kind: 'To-do', title: t.title, at: t.done_at!, project: t.project_id ? byId.get(t.project_id) : undefined })),
-    ...checks.filter(c => c.on_date === todayIso).map(c => ({ c, r: routines.find(x => x.id === c.routine_id) })).filter(x => x.r).map(x => ({ key: 'r' + x.c.id, kind: 'Routine', title: x.r!.title, at: x.c.created_at, project: x.r!.project_id ? byId.get(x.r!.project_id) : undefined })),
-    ...papers.filter(p => p.read_at && new Date(p.read_at).getTime() >= startMs).map(p => ({ key: 'p' + p.id, kind: 'Read', title: p.title, at: p.read_at!, project: undefined as Project | undefined })),
+    ...tasks.filter(t => t.done && t.done_at && new Date(t.done_at).getTime() >= startMs).map(t => ({ key: 't' + t.id, kind: 'To-do', title: t.title, at: t.done_at!, project: t.project_id ? byId.get(t.project_id) : undefined,
+      remove: () => notify.undoable(`Deleted "${t.title}" and its XP`, () => store.deleteTask(t.id), [t.id]) })),
+    ...checks.filter(c => c.on_date === todayIso).map(c => ({ c, r: routines.find(x => x.id === c.routine_id) })).filter(x => x.r).map(x => ({ key: 'r' + x.c.id, kind: 'Routine', title: x.r!.title, at: x.c.created_at, project: x.r!.project_id ? byId.get(x.r!.project_id) : undefined,
+      remove: () => notify.undoable(`Cleared "${x.r!.title}" and its XP`, () => store.uncheckRoutine(x.c.routine_id, x.c.on_date), [x.c.id]) })),
+    ...papers.filter(p => p.read_at && new Date(p.read_at).getTime() >= startMs).map(p => ({ key: 'p' + p.id, kind: 'Read', title: p.title, at: p.read_at!, project: undefined as Project | undefined,
+      remove: async () => {
+        try {
+          await store.patchPaper(p.id, { status: 'reading' }); load()
+          notify.action(`Marked "${p.title}" as not finished and removed its XP`, 'Undo', async () => { try { await store.patchPaper(p.id, { status: 'read' }) } finally { load() } })
+        } catch (er) { fail(er) }
+      } })),
   ].sort((a, b) => b.at.localeCompare(a.at))
 
   // ----- actions -----

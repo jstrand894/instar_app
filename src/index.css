@@ -1277,3 +1277,9 @@ img.avatar { object-fit: cover; background: var(--chip); }
 .account-pic { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex: none; margin: -7px; box-shadow: 0 0 0 1px var(--line); }
 @media (max-width: 760px) { .nav .account-pic { width: 28px; height: 28px; margin: -5px; } }
 .account-btn:has(.account-pic) .unread-dot { left: 46px; top: 3px; }
+
+/* Completed today: remove a finished item (and its XP) */
+.done-x { flex: none; display: grid; place-items: center; width: 24px; height: 24px; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); opacity: 0; transition: opacity .15s, background .15s, color .15s; cursor: pointer; }
+.done-row:hover .done-x, .done-x:focus-visible { opacity: 1; }
+.done-x:hover { background: var(--chip); color: var(--danger); }
+@media (hover: none) { .done-x { opacity: .7; } }

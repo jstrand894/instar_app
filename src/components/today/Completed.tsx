@@ -13,6 +13,7 @@ export default function Completed({ d }: { d: TodayData }) {
           <span className="done-title">{x.title}</span>
           <span className="muted small">{x.kind}{x.project ? <> · <Link to={`/project/${x.project.id}`}>{x.project.name}</Link></> : null}</span>
           <time className="muted small done-time">{when(x.at)}</time>
+          <button type="button" className="done-x" onClick={() => x.remove()} aria-label={`Remove "${x.title}" and its XP`} title="Remove (also removes its XP)"><Icon name="x" size={14} /></button>
         </div>
       ))}
       {!d.doneToday.length && <p className="muted">Nothing checked off yet today. Finished tasks and routines show up here.</p>}

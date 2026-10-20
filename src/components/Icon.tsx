@@ -28,6 +28,7 @@ const P = {
   git: <><circle cx="6" cy="5" r="2.2" /><circle cx="6" cy="19" r="2.2" /><circle cx="18" cy="8" r="2.2" /><path d="M6 7.2v9.6M18 10.2c0 4-6 3-11 7.2" /></>,
   alert: <><path d="M12 3 2 20h20z" /><path d="M12 10v4M12 17h.01" /></>,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  x: <path d="M6 6l12 12M18 6 6 18" />,
 } as const
 
 export type IconName = keyof typeof P
