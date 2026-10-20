@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 30 # enough history for the "app updated" notice
       - uses: actions/setup-node@v4
         with:
           node-version: 22

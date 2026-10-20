@@ -1169,3 +1169,15 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 
 .addbar-hint { margin: 0; }
 .addbar-hint b { color: var(--ink); font-weight: 600; }
+
+/* "App updated" notice, bottom left (clear of the sidebar) */
+.update-note { position: fixed; left: calc(var(--nav-w, 0px) + 16px); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 190; width: min(340px, calc(100% - 32px)); padding: .85rem 1rem .9rem; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 18px 40px -14px rgba(0,0,0,.35); animation: update-in .45s cubic-bezier(.22,1,.36,1) backwards; }
+.update-note.out { animation: update-out .25s ease forwards; }
+.update-note h3 { margin: 0 0 .4rem; font-size: .95rem; display: flex; align-items: center; gap: .5rem; }
+.update-note h3::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+.update-note ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .25rem; font-size: .85rem; color: var(--muted); }
+.update-note li { overflow-wrap: anywhere; }
+.update-note .update-x { position: absolute; top: .45rem; right: .55rem; background: none; border: 0; min-height: 0; padding: .1rem .35rem; font-size: 1.2rem; line-height: 1; color: var(--muted); }
+@keyframes update-in { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes update-out { to { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .update-note, .update-note.out { animation: none; } }

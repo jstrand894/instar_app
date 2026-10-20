@@ -6,6 +6,7 @@ import Account from './components/Account'
 import Logo from './components/Logo'
 import PageSkeleton from './components/PageSkeleton'
 import Toasts from './components/Toasts'
+import UpdateNotice from './components/UpdateNotice'
 import CheckPop from './components/CheckPop'
 import { Navigate } from 'react-router-dom'
 import { getPrefs } from './lib/prefs'
@@ -118,7 +119,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
       </main>
       <Suspense fallback={null}><Tour /><CommandPalette /></Suspense>
       <QuickCapture />
-      <Toasts /><CheckPop />
+      <Toasts /><CheckPop /><UpdateNotice />
     </div>
   )
 }
