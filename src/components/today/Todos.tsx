@@ -49,7 +49,7 @@ export default function Todos({ d }: { d: TodayData }) {
   })
 
   return (
-    <section className="card">
+    <section className={`card ${d.dueItems.length ? '' : 'wide'}`}>
       <div className="card-head">
         <h2>To-dos {d.openTasks.length > 0 && <span className="count-pill">{d.openTasks.length}</span>}</h2>
         {d.openTasks.length > 1 && (

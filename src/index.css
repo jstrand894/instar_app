@@ -1025,14 +1025,18 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .wx-strip-btn:hover { background: rgba(255,255,255,.08); }
 .wx-collapse { position: absolute; top: .5rem; right: .6rem; z-index: 2; display: inline-flex; padding: .25rem; background: rgba(255,255,255,.18); border: 0; min-height: 0; border-radius: 8px; color: inherit; cursor: pointer; transform: rotate(180deg); } .wx-collapse:hover { background: rgba(255,255,255,.3); }
 @media (max-width: 760px) { .wx-strip-tip, .wx-strip-chips { display: none; } }
-.wx-swap { margin-bottom: var(--gap, 1rem); }
-.wx-swap .weather { margin-bottom: 0 !important; }
-.wx-fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .45s cubic-bezier(.3, .8, .2, 1); }
-.wx-fold-in { overflow: hidden; min-height: 0; transition: opacity .3s ease, visibility 0s .45s; opacity: 0; visibility: hidden; }
-.wx-fold-strip { grid-template-rows: 1fr; } .wx-fold-strip .wx-fold-in { opacity: 1; visibility: visible; transition: opacity .3s .15s ease; }
-.wx-swap.open .wx-fold-strip { grid-template-rows: 0fr; } .wx-swap.open .wx-fold-strip .wx-fold-in { opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s .45s; }
-.wx-swap.open .wx-fold-full { grid-template-rows: 1fr; } .wx-swap.open .wx-fold-full .wx-fold-in { opacity: 1; visibility: visible; transition: opacity .35s .1s ease; }
-.wx-fold-full .wx-fold-in { padding-bottom: 8px; margin-bottom: -8px; }
+.wx-swap { position: relative; overflow: hidden; margin-bottom: var(--gap, 1rem); border-radius: 16px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.18); background: linear-gradient(120deg, var(--w1, #3b8ee8), var(--w2, #7cc4f5)); box-shadow: 0 4px 14px -8px var(--w1, #3b8ee8); }
+.wx-swap.wx-clear { background: radial-gradient(ellipse 60% 140% at 100% 0%, rgba(255, 205, 110, .45), transparent 70%), linear-gradient(120deg, #2f7fe0, #7fb4ea); }
+.wx-swap.is-night { --w1: #141c44; --w2: #3a3f8f; }
+.wx-swap .weather { margin: 0 !important; background: none !important; box-shadow: none !important; border-radius: 0 !important; min-height: 0; }
+.wx-swap .wx-body { border-top: 1px solid rgba(255,255,255,.22); }
+.wx-fold { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .55s cubic-bezier(.32, .72, 0, 1); }
+.wx-swap.open .wx-fold { grid-template-rows: 1fr; }
+.wx-fold-in { overflow: hidden; min-height: 0; opacity: 0; visibility: hidden; transform: translateY(-8px); transition: opacity .35s ease, transform .55s cubic-bezier(.32, .72, 0, 1), visibility 0s .55s; }
+.wx-swap.open .wx-fold-in { opacity: 1; visibility: visible; transform: none; transition: opacity .45s .1s ease, transform .55s cubic-bezier(.32, .72, 0, 1), visibility 0s; }
+.wx-strip-more .icon { transition: transform .35s ease; } .wx-swap.open .wx-strip-more .icon { transform: rotate(180deg); }
+.wx-collapse { display: none; }
+@media (prefers-reduced-motion: reduce) { .wx-fold, .wx-fold-in { transition: none; } }
 
 /* Today refinements */
 .today .today-grid { align-items: start; }
@@ -1050,6 +1054,6 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .today-grid .trow.task-row > a.muted:last-child { margin-left: .2rem; }
 .todo-group span { background: var(--chip); border-radius: 99px; padding: 0 .5rem; font-size: .68rem; opacity: 1; }
 .addbar-date { background: none; border: 1px dashed var(--line); color: var(--muted); border-radius: 8px; min-height: 0; padding: .45rem .8rem; font-size: .85rem; cursor: pointer; white-space: nowrap; } .addbar-date:hover { color: var(--ink); border-color: var(--muted); }
-.weather.wx-clear { background: radial-gradient(ellipse 60% 120% at 100% 0%, rgba(255, 205, 110, .5), transparent 70%), linear-gradient(120deg, #2f7fe0, #7fb4ea); }
 .today .card { transition: box-shadow .2s ease, transform .2s ease; }
 .today-grid > .card:hover { transform: translateY(-1px); }
+.task-row.trow { flex-wrap: nowrap; } .task-row .task-title { overflow: hidden; text-overflow: ellipsis; }

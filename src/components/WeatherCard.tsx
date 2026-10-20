@@ -184,24 +184,20 @@ export default function WeatherCard() {
   const [ico, label] = describe(wx.code)
   const tip = advice(wx)
   const m = mood(wx.code, wx.day) + (!wx.day && mood(wx.code, wx.day) !== 'storm' ? ' is-night' : '')
-  const strip = (
-    <section className={`weather wx-strip wx-${m}`} aria-label="Current weather">
-      <button type="button" className="wx-strip-btn" aria-expanded="false" onClick={() => setOpen(true)} title="Show the forecast">
-        <span className="wx-ico" aria-hidden><Icon name={ico} size={26} /></span>
-        <b className="wx-strip-temp">{wx.temp}°</b>
-        <span className="wx-strip-cond">{label} · {wx.place}</span>
-        <span className="wx-strip-chips"><span><Icon name="up" size={12} /> {wx.hi}°</span><span><Icon name="down" size={12} /> {wx.lo}°</span><span><Icon name="drop" size={12} /> {wx.rain}%</span></span>
-        {tip && <span className="wx-strip-tip">{tip}</span>}
-        <span className="wx-strip-more">Forecast <Icon name="chevDown" size={14} /></span>
-      </button>
-    </section>
-  )
   return (
-    <div className={`wx-swap ${open ? 'open' : ''}`}>
-      <div className="wx-fold wx-fold-strip" aria-hidden={open} inert={open}><div className="wx-fold-in">{strip}</div></div>
-      <div className="wx-fold wx-fold-full" aria-hidden={!open} inert={!open}><div className="wx-fold-in">
-    <section className={`weather wx-${m}`} aria-label="Current weather">
-      <button type="button" className="wx-collapse" onClick={() => setOpen(false)} aria-label="Collapse the forecast" title="Collapse"><Icon name="chevDown" size={16} /></button>
+    <section className={`wx-swap wx-${m} ${open ? 'open' : ''}`} aria-label="Current weather">
+      <div className="weather wx-strip">
+        <button type="button" className="wx-strip-btn" aria-expanded={open} onClick={() => setOpen(!open)} title={open ? 'Hide the forecast' : 'Show the forecast'}>
+          <span className="wx-ico" aria-hidden><Icon name={ico} size={26} /></span>
+          <b className="wx-strip-temp">{wx.temp}°</b>
+          <span className="wx-strip-cond">{label} · {wx.place}</span>
+          <span className="wx-strip-chips"><span><Icon name="up" size={12} /> {wx.hi}°</span><span><Icon name="down" size={12} /> {wx.lo}°</span><span><Icon name="drop" size={12} /> {wx.rain}%</span></span>
+          {tip && <span className="wx-strip-tip">{tip}</span>}
+          <span className="wx-strip-more">Forecast <Icon name="chevDown" size={14} /></span>
+        </button>
+      </div>
+      <div className="wx-fold" aria-hidden={!open} inert={!open}><div className="wx-fold-in">
+    <div className="weather wx-body">
       <div className="wx-left">
         <div className="wx-now">
           <span className="wx-ico" aria-hidden><Icon name={ico} size={52} /></span>
@@ -231,8 +227,8 @@ export default function WeatherCard() {
         </div>
         <TempLine day={wx.days[sel]} nowHour={sel === 0 ? wx.hour : null} />
       </div>
-    </section>
-      </div></div>
     </div>
+      </div></div>
+    </section>
   )
 }
