@@ -6,7 +6,7 @@ import { store, type ProjectPage } from '../lib/store'
 import { notify } from '../lib/notify'
 import { forgetOpen, rememberOpen } from '../lib/resume'
 import { friendlyError } from '../lib/errors'
-import { ago, fmtMinutes, fmtWhen, fromLocalInput, nextOccurrence, toLocalInput } from '../lib/util'
+import { ago, commitText, fmtMinutes, fmtWhen, fromLocalInput, nextOccurrence, toLocalInput } from '../lib/util'
 import { STAGES, deadlineInfo, stageLabel } from '../lib/manuscript'
 import TaskList from '../components/TaskList'
 import TagEditor from '../components/TagEditor'
@@ -245,7 +245,7 @@ export default function ProjectDetail() {
             {u.kind === 'commit' ? (
               <div className="commit-box">
                 <span className="tag"><Icon name="git" size={13} /> GitHub</span>
-                <pre className="commit-body">{u.body}</pre>
+                <pre className="commit-body">{commitText(u.body)}</pre>
                 {u.source_url && <a className="link small" href={u.source_url} target="_blank" rel="noreferrer">View on GitHub →</a>}
               </div>
             ) : u.kind === 'note' ? (

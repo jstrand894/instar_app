@@ -82,11 +82,17 @@ export function splitWhen(line: string, now = new Date()): { title: string; date
 }
 
 /** The one line to show for a GitHub push entry: the commit message (older entries began "Pushed N commit(s) to branch" with the messages as bullets below). */
+/** A stored commit entry as plain commit text: no file list and no hashes; the "abc1234 on main" line becomes "Pushed to main". */
+export function commitText(body: string): string {
+  return body.split('\n')
+    .filter(l => !/^[+~-] \S/.test(l) && !/^…and \d+ more files$/.test(l))
+    .map(l => l.replace(/^[0-9a-f]{7} on (\S+)$/, 'Pushed to $1').replace(/\s*\([0-9a-f]{7}\)$/, ''))
+    .join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+/** The one-line headline of a commit entry: the first commit message, without bullets or the "N commits pushed" header. */
 export function commitHeadline(body: string): string {
-  const lines = body.split('\n')
-  if (!/^Pushed \d+ commits? to /.test(lines[0])) return lines[0]
-  const first = lines.slice(1).find(l => l.startsWith('•'))
-  return first ? first.replace(/^•\s*/, '').replace(/\s*\([0-9a-f]{7}\)$/, '') : lines[0]
+  const line = commitText(body).split('\n').find(l => l.trim() && !/^(Pushed \d+ commits? to |\d+ commits pushed to |Pushed to )/.test(l))
+  return (line ?? body.split('\n')[0]).replace(/^•\s*/, '')
 }
 
 /** ISO timestamp -> value for <input type="datetime-local"> (local time). */

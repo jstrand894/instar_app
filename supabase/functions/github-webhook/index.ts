@@ -35,18 +35,13 @@ Deno.serve(async req => {
   const repo = String(p.repository?.full_name ?? '').toLowerCase()
   const branch = String(p.ref).slice('refs/heads/'.length)
   const n: number = p.commits.length
-  // one commit: its message is the headline, with the full message and the files it touched.
-  // several commits: a list, newest last, each with its message.
-  const files = (c: { added?: string[]; modified?: string[]; removed?: string[] }) => {
-    const all = [...(c.added ?? []).map(f => `+ ${f}`), ...(c.modified ?? []).map(f => `~ ${f}`), ...(c.removed ?? []).map(f => `- ${f}`)]
-    return all.length ? all.slice(0, 8).join('\n') + (all.length > 8 ? `\n…and ${all.length - 8} more files` : '') : ''
-  }
+  // just the commit message(s): one commit is its full message; several are a list, each with its first line.
   let body: string
   if (n === 1) {
     const c = p.commits[0]; const [head, ...rest] = String(c.message).trim().split('\n')
-    body = [head.slice(0, 200), rest.join('\n').trim(), files(c) && `\n${files(c)}`, `\n${c.id.slice(0, 7)} on ${branch}`].filter(Boolean).join('\n')
+    body = [head.slice(0, 200), rest.join('\n').trim(), `\nPushed to ${branch}`].filter(Boolean).join('\n')
   } else {
-    const line = (c: { message: string; id: string }) => `• ${c.message.split('\n')[0].slice(0, 120)} (${c.id.slice(0, 7)})`
+    const line = (c: { message: string }) => `• ${c.message.split('\n')[0].slice(0, 120)}`
     body = [`${n} commits pushed to ${branch}`, ...p.commits.slice(0, 10).map(line), ...(n > 10 ? [`…and ${n - 10} more`] : [])].join('\n')
   }
 
