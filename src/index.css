@@ -200,7 +200,7 @@ h1 { font-size: 1.75rem; letter-spacing: -.02em; }
 .tl-item { position: relative; display: grid; gap: .3rem; }
 .tl-dot { position: absolute; left: -1.4rem; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--panel); border: 3px solid var(--accent); }
 .tl-item.note .tl-dot { border-color: var(--t-manuscript); border-radius: 3px; }
-.tl-meta { display: flex; justify-content: space-between; gap: 1rem; color: var(--muted); font-size: .78rem; }
+.tl-meta { display: flex; align-items: center; gap: .5rem; color: var(--muted); font-size: .78rem; }
 .tl-body { outline: none; padding: .1rem .3rem; margin: 0 -.3rem; border-radius: 6px; white-space: pre-wrap; }
 .tl-body:hover { background: var(--chip); } .tl-body:focus { background: var(--panel); box-shadow: 0 0 0 2px var(--accent); }
 .note-box { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--t-manuscript); border-radius: 10px; padding: .6rem .8rem .7rem; display: grid; gap: .3rem; }
@@ -955,7 +955,9 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .entry-fold-btn { margin-top: .25rem; }
 @media (prefers-reduced-motion: reduce) { .entry-fold-clip { transition: none; } }
 .tl-menu { position: relative; }
-.tl-pen { display: inline-flex; align-items: center; background: none; border: 0; padding: .2rem; border-radius: 6px; color: var(--muted); cursor: pointer; opacity: .7; }
+.tl-pen { display: inline-flex; align-items: center; background: none; border: 0; padding: .2rem; border-radius: 6px; color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .15s; }
+.tl-item:hover .tl-pen, .tl-pen:focus-visible, .tl-pen[aria-expanded="true"] { opacity: .8; }
+@media (hover: none) { .tl-pen { opacity: .7; } }
 .tl-pen:hover, .tl-pen[aria-expanded="true"] { opacity: 1; background: var(--chip); color: var(--ink); }
 .tl-pop { position: absolute; top: 100%; left: 0; z-index: 20; min-width: 6.5rem; margin-top: .2rem; padding: .25rem; display: grid; background: var(--panel); border: 1px solid var(--border, rgba(128,128,128,.25)); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.18); }
 .tl-pop button { text-align: left; background: none; border: 0; padding: .35rem .6rem; border-radius: 6px; font-size: .85rem; color: inherit; cursor: pointer; }
