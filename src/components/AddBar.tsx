@@ -46,7 +46,7 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
       if (mode === 'todo') await store.addTask(target || null, parsed.title, when || null)
       else if (mode === 'deadline') await store.addDeadline(target, parsed.title, when)
       else await store.addUpdate(target, parsed.title)
-      setSaved(mode === 'todo' ? 'To-do added' : mode === 'deadline' ? 'Deadline added' : `Logged to ${projects.find(p => p.id === target)?.name}`)
+      setSaved(mode === 'todo' ? '' : mode === 'deadline' ? 'Deadline added' : `Logged to ${projects.find(p => p.id === target)?.name}`)
       setText(''); setDate(''); onDone(); notify.added()
       setTimeout(() => setSaved(''), 3000)
     } catch (er) { onError(friendlyError(er)) }
