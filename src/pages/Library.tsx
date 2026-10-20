@@ -7,6 +7,7 @@ import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
 import { firstSurname, isConfident, lookupDoi, searchByTitle } from '../lib/crossref'
 import ReadingDashboard from '../components/ReadingDashboard'
+import PaperTimeline, { type TimelineLanes } from '../components/PaperTimeline'
 import type { Paper, PaperLink, PaperStatus, Project } from '../types'
 
 const STATUS: { id: PaperStatus; label: string }[] = [
@@ -32,6 +33,10 @@ export default function Library() {
   const [doiOpen, setDoiOpen] = useState(false)
   const [doiText, setDoiText] = useState('')
   const [progress, setProgress] = useState('')
+  const [view, setViewState] = useState<'list' | 'timeline'>(() => { try { const v = localStorage.getItem('tm-lib-view'); if (v === 'list' || v === 'timeline') return v } catch { /* ignore */ } return 'list' })
+  const setView = (v: 'list' | 'timeline') => { setViewState(v); try { localStorage.setItem('tm-lib-view', v) } catch { /* ignore */ } }
+  const [lanes, setLanesState] = useState<TimelineLanes>(() => { try { const v = localStorage.getItem('tm-lib-lanes'); if (v === 'category' || v === 'status') return v } catch { /* ignore */ } return 'category' })
+  const setLanes = (v: TimelineLanes) => { setLanesState(v); try { localStorage.setItem('tm-lib-lanes', v) } catch { /* ignore */ } }
   const cancel = useRef(false)
   const pdfInput = useRef<HTMLInputElement>(null)
   const listInput = useRef<HTMLInputElement>(null)
@@ -183,6 +188,17 @@ export default function Library() {
           <button key={s.id} className={status === s.id ? 'on' : ''} onClick={() => setStatus(s.id)}>{s.label}</button>
         ))}
         <label className="check"><input type="checkbox" checked={pdfOnly} onChange={e => setPdfOnly(e.target.checked)} /> Has PDF</label>
+        <span className="spacer" />
+        <div className="seg" role="group" aria-label="View">
+          <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>List</button>
+          <button className={view === 'timeline' ? 'on' : ''} onClick={() => setView('timeline')}>Timeline</button>
+        </div>
+        {view === 'timeline' && (
+          <div className="seg" role="group" aria-label="Group timeline by">
+            <button className={lanes === 'category' ? 'on' : ''} onClick={() => setLanes('category')}>Category</button>
+            <button className={lanes === 'status' ? 'on' : ''} onClick={() => setLanes('status')}>Status</button>
+          </div>
+        )}
       </div>
       <div className="filters">
         {allTags.length > 0 && (
@@ -222,7 +238,9 @@ export default function Library() {
         </div>
       )}
 
-      {groups.map(g => (
+      {view === 'timeline' && <PaperTimeline papers={list} lanes={lanes} />}
+
+      {view === 'list' && groups.map(g => (
         <section key={g.name} className="group">
           <h2 className="group-title">{g.name} <span className="muted small">{g.papers.length}</span></h2>
           <div className="list">

@@ -918,3 +918,21 @@ main.is-scrolling { pointer-events: none; }
 .rich .rt-h { font-weight: 700; margin: .3rem 0 .1rem; } .rich .rt-h1 { font-size: 1.2em; } .rich .rt-h2 { font-size: 1.1em; }
 .rich .rt-todos { list-style: none; padding-left: .2rem; } .rich .rt-todos li.done span { text-decoration: line-through; opacity: .6; }
 .rich .rt-todos input { margin-right: .3rem; cursor: pointer; }
+
+/* Reading pane timeline */
+.ptl-wrap { margin: .5rem 0 1rem; }
+.ptl-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); -webkit-overflow-scrolling: touch; }
+.ptl-grid { display: grid; min-width: max-content; width: 100%; }
+.ptl-row { display: contents; }
+.ptl-corner, .ptl-year { padding: .55rem .6rem; font-size: .8rem; font-weight: 600; color: var(--muted); border-bottom: 2px solid var(--line); position: relative; display: flex; align-items: baseline; gap: .4rem; }
+.ptl-year::before { content: ''; position: absolute; left: .6rem; bottom: -6px; width: 10px; height: 10px; border-radius: 50%; background: var(--panel); border: 3px solid var(--accent); }
+.ptl-gap { font-weight: 400; font-size: .7rem; opacity: .8; }
+.ptl-lane { position: sticky; left: 0; z-index: 1; background: var(--panel); padding: .7rem .6rem; font-size: .82rem; font-weight: 600; border-top: 1px solid var(--line); border-right: 1px solid var(--line); overflow-wrap: anywhere; }
+.ptl-corner { position: sticky; left: 0; z-index: 2; background: var(--panel); }
+.ptl-cell { display: flex; flex-direction: column; gap: .3rem; padding: .55rem .5rem; border-top: 1px solid var(--line); border-left: 1px dashed var(--line); min-width: 0; }
+.ptl-chip { display: grid; gap: .1rem; padding: .35rem .5rem; border-radius: 8px; text-decoration: none; color: var(--ink); background: var(--chip); border-left: 3px solid var(--muted); font-size: .78rem; line-height: 1.25; }
+.ptl-chip:hover { box-shadow: 0 0 0 2px var(--accent); }
+.ptl-chip.st-read { border-left-color: var(--ok-ink); } .ptl-chip.st-reading { border-left-color: var(--warn-ink); } .ptl-chip.st-to-read { border-left-color: var(--accent); } .ptl-chip.st-unavailable { border-left-color: var(--danger); }
+.ptl-chip.st-read, .ptl-chip.st-reading, .ptl-chip.st-unavailable { color: var(--ink); background: var(--chip); }
+.ptl-t { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-weight: 500; }
+.ptl-a { color: var(--muted); font-size: .72rem; }
