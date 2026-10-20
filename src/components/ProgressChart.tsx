@@ -1,154 +1,155 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { STAGES } from '../lib/manuscript'
-import type { Paper, Project, ProjectTask, ProjectUpdate } from '../types'
+import { usePrefs } from '../lib/prefs'
+import { fmtMinutes } from '../lib/util'
+import type { Paper, Project, ProjectTask, ProjectUpdate, TimeEntry } from '../types'
 
 const WEEKS = 10
-const SERIES = [
-  { id: 'reading', label: 'Papers read', color: 'var(--accent)' },
-  { id: 'projects', label: 'Project activity', color: 'var(--t-data)' },
-  { id: 'manuscripts', label: 'Manuscript activity', color: 'var(--t-manuscript)' },
+const METRICS = [
+  { id: 'tasks', label: 'Tasks done', unit: 'tasks', fmt: (n: number) => String(n) },
+  { id: 'papers', label: 'Papers read', unit: 'papers', fmt: (n: number) => String(n) },
+  { id: 'updates', label: 'Updates logged', unit: 'updates', fmt: (n: number) => String(n) },
+  { id: 'focus', label: 'Focus time', unit: 'focus time', fmt: (n: number) => fmtMinutes(n) },
 ] as const
-type SeriesId = typeof SERIES[number]['id']
+type MetricId = typeof METRICS[number]['id']
 
-const weekStart = (d: Date) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x }
-const addWeeks = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n * 7)
+const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
 
-/** Weekly activity for the last 10 weeks, plus progress meters for reading, projects and manuscripts. */
-export default function ProgressChart({ updates, projects, papers, tasks }: {
-  updates: ProjectUpdate[]; projects: Project[]; papers: Paper[]; tasks: ProjectTask[]
+/** How the last ten weeks went (tiles you can click to chart), what got your attention this week, and where reading and manuscripts stand. */
+export default function ProgressChart({ updates, projects, papers, tasks, time }: {
+  updates: ProjectUpdate[]; projects: Project[]; papers: Paper[]; tasks: ProjectTask[]; time: TimeEntry[]
 }) {
-  const [shown, setShown] = useState<Set<SeriesId>>(new Set(['reading', 'projects', 'manuscripts']))
-  // draw at the real width so text stays readable on phones and bars don't stretch on big screens
-  const wrap = useRef<HTMLDivElement>(null)
-  const [width, setWidth] = useState(640)
-  useEffect(() => {
-    const el = wrap.current; if (!el) return
-    const ro = new ResizeObserver(() => setWidth(Math.round(el.clientWidth)))
-    ro.observe(el); setWidth(Math.round(el.clientWidth)); return () => ro.disconnect()
-  }, [])
+  const { weekStart } = usePrefs()
+  const [metric, setMetric] = useState<MetricId>('tasks')
+  const [ready, setReady] = useState(false) // lets the bars grow in from the baseline
+  useEffect(() => { const r = requestAnimationFrame(() => setReady(true)); return () => cancelAnimationFrame(r) }, [])
 
-  const { weeks, max, hasData } = useMemo(() => {
-    const thisWeek = weekStart(new Date())
-    const starts = Array.from({ length: WEEKS }, (_, i) => addWeeks(thisWeek, i - (WEEKS - 1)))
+  const data = useMemo(() => {
+    const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const thisWeek = addDays(today, -((today.getDay() - weekStart + 7) % 7))
+    const starts = Array.from({ length: WEEKS }, (_, i) => addDays(thisWeek, (i - (WEEKS - 1)) * 7))
+    const end = addDays(thisWeek, 7)
     const index = (iso: string | null | undefined) => {
       if (!iso) return -1
       const t = new Date(iso).getTime()
-      return starts.findIndex((s, i) => t >= s.getTime() && t < (i + 1 < starts.length ? starts[i + 1].getTime() : addWeeks(s, 1).getTime()))
+      return t >= end.getTime() ? -1 : starts.findLastIndex(s => t >= s.getTime())
     }
+    const series: Record<MetricId, number[]> = { tasks: Array(WEEKS).fill(0), papers: Array(WEEKS).fill(0), updates: Array(WEEKS).fill(0), focus: Array(WEEKS).fill(0) }
+    for (const t of tasks) { const i = t.done ? index(t.done_at) : -1; if (i >= 0) series.tasks[i]++ }
+    for (const p of papers) { const i = p.status === 'read' ? index(p.read_at) : -1; if (i >= 0) series.papers[i]++ }
+    for (const u of updates) { const i = u.kind === 'commit' ? -1 : index(u.created_at); if (i >= 0) series.updates[i]++ }
+    for (const e of time) { const i = index(e.started_at); if (i >= 0) series.focus[i] += e.minutes }
+
+    // what got attention this week: updates logged plus tasks finished, per project
     const byId = new Map(projects.map(p => [p.id, p]))
-    const weeks = starts.map(s => ({ start: s, reading: 0, projects: 0, manuscripts: 0 }))
-    for (const p of papers) { const i = p.status === 'read' ? index(p.read_at) : -1; if (i >= 0) weeks[i].reading++ }
-    for (const u of updates) {
-      const i = index(u.created_at); if (i < 0) continue
-      const pr = byId.get(u.project_id); if (!pr) continue
-      weeks[i][pr.type === 'manuscript' ? 'manuscripts' : 'projects']++
-    }
-    for (const t of tasks) {
-      const i = t.done ? index(t.done_at) : -1; if (i < 0) continue
-      const pr = t.project_id ? byId.get(t.project_id) : undefined; if (!pr) continue
-      weeks[i][pr.type === 'manuscript' ? 'manuscripts' : 'projects']++
-    }
-    const max = Math.max(1, ...weeks.flatMap(w => SERIES.map(s => w[s.id])))
-    const hasData = weeks.some(w => w.reading + w.projects + w.manuscripts > 0)
-    return { weeks, max, hasData }
-  }, [updates, projects, papers, tasks])
+    const per = new Map<string, number>()
+    const bump = (id: string | null) => { if (id && byId.has(id)) per.set(id, (per.get(id) ?? 0) + 1) }
+    for (const u of updates) if (u.kind !== 'commit' && index(u.created_at) === WEEKS - 1) bump(u.project_id)
+    for (const t of tasks) if (t.done && index(t.done_at) === WEEKS - 1) bump(t.project_id)
+    const busiest = [...per].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id, n]) => ({ p: byId.get(id)!, n }))
+    return { starts, series, busiest }
+  }, [updates, projects, papers, tasks, time, weekStart])
+
+  const m = METRICS.find(x => x.id === metric)!
+  const vals = data.series[metric]
+  const max = Math.max(1, ...vals)
+  const past = vals.slice(0, -1)
+  const avg = past.length ? past.reduce((a, b) => a + b, 0) / past.length : 0
+  const label = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const any = METRICS.some(x => data.series[x.id].some(v => v > 0))
 
   const core = papers.filter(p => p.priority === 'Core')
   const coreRead = core.filter(p => p.status === 'read').length
-  const week = weeks[weeks.length - 1]
   const ms = projects.filter(p => p.type === 'manuscript')
-  const stageCounts = STAGES.map(s => ({ ...s, n: ms.filter(p => (p.stage ?? 'drafting') === s.id).length })).filter(s => s.n > 0)
-  const activeProjects = projects.filter(p => p.type !== 'manuscript' && p.status === 'active')
-  const openTasks = tasks.filter(t => !t.done).length
-  const doneThisWeek = tasks.filter(t => t.done && t.done_at && new Date(t.done_at) >= weeks[weeks.length - 1].start).length
-
-  // chart geometry
-  const W = Math.max(260, width), H = 200, L = 28, R = 4, T = 8, B = 26
-  const iw = W - L - R, ih = H - T - B
-  const active = SERIES.filter(s => shown.has(s.id))
-  const groupW = iw / WEEKS
-  const barW = Math.max(3, Math.min(16, (groupW - 8) / Math.max(1, active.length)))
-  const tick = max <= 4 ? 1 : Math.ceil(max / 4)
-  const ticks = Array.from({ length: Math.floor(max / tick) + 1 }, (_, i) => i * tick)
-  const y = (v: number) => T + ih - (v / (ticks[ticks.length - 1] || 1)) * ih
-  const top = ticks[ticks.length - 1] || 1
-
-  const toggle = (id: SeriesId) => setShown(s => { const n = new Set(s); if (n.has(id)) { if (n.size > 1) n.delete(id) } else n.add(id); return n })
-  const label = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const stages = STAGES.map(s => ({ ...s, n: ms.filter(p => (p.stage ?? 'drafting') === s.id).length }))
+  const inProgress = ms.filter(p => (p.stage ?? 'drafting') !== 'accepted').length
+  const bMax = Math.max(1, ...data.busiest.map(b => b.n))
 
   return (
     <section className="card progress">
-      <div className="card-head">
-        <h2>Your progress</h2>
-        <div className="legend" role="group" aria-label="Choose what to show">
-          {SERIES.map(s => (
-            <button key={s.id} className={shown.has(s.id) ? 'on-soft' : ''} onClick={() => toggle(s.id)} style={{ ['--c' as string]: s.color }} aria-pressed={shown.has(s.id)}>
-              <i style={{ background: s.color }} />{s.label}
+      <div className="card-head"><h2>Your progress</h2><span className="muted small">Last {WEEKS} weeks</span></div>
+
+      <div className="pg-tiles" role="tablist" aria-label="Choose what to chart">
+        {METRICS.map(x => {
+          const s = data.series[x.id], now = s[WEEKS - 1], prev = s[WEEKS - 2], d = now - prev, tMax = Math.max(1, ...s)
+          return (
+            <button key={x.id} role="tab" aria-selected={metric === x.id} className={`pg-tile ${metric === x.id ? 'on' : ''}`} onClick={() => setMetric(x.id)}>
+              <span className="pg-label">{x.label}</span>
+              <span className="pg-num"><b>{x.fmt(now)}</b><small>this week</small></span>
+              <span className={`pg-delta ${d > 0 ? 'up' : d < 0 ? 'down' : ''}`}>
+                {d === 0 ? (prev ? 'Same as last week' : 'Nothing yet') : `${d > 0 ? '▲' : '▼'} ${x.id === 'focus' ? fmtMinutes(Math.abs(d)) : Math.abs(d)} vs last week`}
+              </span>
+              <span className="pg-spark" aria-hidden>{s.map((v, i) => <i key={i} className={i === WEEKS - 1 ? 'now' : ''} style={{ height: ready ? `${Math.max(v ? 12 : 4, (v / tMax) * 100)}%` : '4%' }} />)}</span>
             </button>
-          ))}
-        </div>
+          )
+        })}
       </div>
 
-      <div ref={wrap} className="chart-wrap">
-      {hasData ? (
-        <svg className="chart" width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img"
-          aria-label={`Weekly activity for the last ${WEEKS} weeks. This week: ${week.reading} papers read, ${week.projects} project actions, ${week.manuscripts} manuscript actions.`}>
-          {ticks.map(t => (
-            <g key={t}>
-              <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} className="grid-line" />
-              <text x={L - 6} y={y(t) + 4} textAnchor="end" className="axis">{t}</text>
-            </g>
-          ))}
-          {weeks.map((w, i) => {
-            const gx = L + i * groupW + (groupW - barW * active.length) / 2
-            const isNow = i === WEEKS - 1
-            return (
-              <g key={i}>
-                <title>{`Week of ${label(w.start)}: ${w.reading} read, ${w.projects} project, ${w.manuscripts} manuscript`}</title>
-                {active.map((s, k) => {
-                  const v = w[s.id]; const h = (v / top) * ih
-                  return <rect key={s.id} x={gx + k * barW} y={T + ih - h} width={barW - 2} height={Math.max(h, v ? 2 : 0)} rx="3" fill={s.color} opacity={isNow ? 1 : 0.8} />
-                })}
-                {((W < 420 ? i % 3 === (WEEKS - 1) % 3 : i % 2 === (WEEKS - 1) % 2) || isNow) && (
-                  <text x={isNow ? W - R : L + i * groupW + groupW / 2} y={H - 8} textAnchor={isNow ? 'end' : 'middle'} className={`axis ${isNow ? 'now' : ''}`}>{isNow ? 'This week' : label(w.start)}</text>
-                )}
-              </g>
-            )
-          })}
-        </svg>
-      ) : (
-        <p className="muted chart-empty">Your progress will show up here as you log updates, finish tasks and read papers.</p>
-      )}
-      </div>
-
-      <div className="meters">
-        <div className="meter-block">
-          <span className="meter-label">Reading</span>
-          <b>{week.reading}<small> read this week</small></b>
-          {core.length > 0 ? (
-            <>
-              <div className="meter"><i style={{ width: `${(coreRead / core.length) * 100}%`, background: 'var(--accent)' }} /></div>
-              <small className="muted">{coreRead} of {core.length} Core papers read</small>
-            </>
-          ) : <small className="muted">{papers.filter(p => p.status === 'read').length} of {papers.length} papers read</small>}
-        </div>
-        <div className="meter-block">
-          <span className="meter-label">Projects</span>
-          <b>{doneThisWeek}<small> tasks done this week</small></b>
-          <div className="meter"><i style={{ width: `${tasks.length ? ((tasks.length - openTasks) / tasks.length) * 100 : 0}%`, background: 'var(--t-data)' }} /></div>
-          <small className="muted">{activeProjects.length} active project{activeProjects.length === 1 ? '' : 's'}, {openTasks} open task{openTasks === 1 ? '' : 's'}</small>
-        </div>
-        <div className="meter-block">
-          <span className="meter-label">Manuscripts</span>
-          <b>{ms.filter(p => (p.stage ?? 'drafting') !== 'accepted').length}<small> in progress</small></b>
-          {ms.length > 0 ? (
-            <>
-              <div className="stagebar" role="img" aria-label={stageCounts.map(s => `${s.n} ${s.label}`).join(', ')}>
-                {stageCounts.map((s, i) => <i key={s.id} style={{ flex: s.n, opacity: 0.45 + 0.55 * (i + 1) / stageCounts.length, background: 'var(--t-manuscript)' }} title={`${s.label}: ${s.n}`} />)}
+      {any ? (
+        <div className="pg-chart" aria-label={`${m.label} per week for the last ${WEEKS} weeks`}>
+          <div className="pg-chart-head">
+            <b>{m.label} per week</b>
+            <span className="muted small">{avg > 0 ? `Dashed line: your usual ${m.id === 'focus' ? fmtMinutes(Math.round(avg)) : avg >= 10 ? Math.round(avg) : Math.round(avg * 10) / 10} a week` : 'Building your baseline'}</span>
+          </div>
+          <div className="pg-bars">
+            {avg > 0 && <span className="pg-avgzone" aria-hidden><i className="pg-avg" style={{ bottom: `${Math.min(100, (avg / max) * 100)}%` }} /></span>}
+            {vals.map((v, i) => (
+              <div key={i} className={`pg-col ${i === WEEKS - 1 ? 'now' : ''}`} title={`Week of ${label(data.starts[i])}: ${m.fmt(v)} ${m.unit}`}>
+                <span className="pg-val">{v ? m.fmt(v) : ''}</span>
+                <span className="pg-bar"><i style={{ height: ready ? `${Math.max(v ? 3 : 0, (v / max) * 100)}%` : '0%' }} /></span>
+                <small>{i === WEEKS - 1 ? 'This week' : label(data.starts[i])}</small>
               </div>
-              <small className="muted">{stageCounts.map(s => `${s.n} ${s.label.toLowerCase()}`).join(' · ')}</small>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="muted chart-empty">Your progress will show up here as you finish tasks, log updates, read papers and focus.</p>
+      )}
+
+      <div className="pg-panels">
+        <div className="pg-panel">
+          <span className="meter-label">Most active this week</span>
+          {data.busiest.length ? (
+            <ul className="pg-busy">
+              {data.busiest.map(b => (
+                <li key={b.p.id}>
+                  <Link to={`/project/${b.p.id}`} className="pg-busy-name">{b.p.name}</Link>
+                  <span className="pg-busy-bar"><i className={`t-${b.p.type}`} style={{ width: ready ? `${(b.n / bMax) * 100}%` : '0%' }} /></span>
+                  <small className="muted">{b.n}</small>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="muted small">Nothing logged on a project yet this week. Finish a task or add an update and it shows here.</p>}
+        </div>
+
+        <div className="pg-panel">
+          <span className="meter-label">Manuscripts</span>
+          {ms.length ? (
+            <>
+              <div className="pg-pipe">
+                {stages.map(s => (
+                  <div key={s.id} className={`pg-stage ${s.n ? 'has' : ''}`} title={`${s.label}: ${s.n}`}>
+                    <b>{s.n}</b><small>{s.id === 'submitted' ? 'Review' : s.id === 'internal' ? 'Internal' : s.id === 'accepted' ? 'Done' : s.label}</small>
+                  </div>
+                ))}
+              </div>
+              <small className="muted">{inProgress} in progress</small>
             </>
-          ) : <small className="muted">No manuscripts yet</small>}
+          ) : <p className="muted small">No manuscripts yet.</p>}
+        </div>
+
+        <div className="pg-panel">
+          <span className="meter-label">Reading</span>
+          {core.length ? (
+            <>
+              <div className="pg-core"><b>{coreRead}</b><span className="muted"> of {core.length} Core papers read</span></div>
+              <div className="meter"><i style={{ width: ready ? `${(coreRead / core.length) * 100}%` : '0%', transition: 'width .8s cubic-bezier(.3,1,.4,1)' }} /></div>
+            </>
+          ) : (
+            <div className="pg-core"><b>{papers.filter(p => p.status === 'read').length}</b><span className="muted"> of {papers.length} papers read</span></div>
+          )}
+          {core.length > 0 && coreRead < core.length && <small className="muted">{core.length - coreRead} to go</small>}
         </div>
       </div>
     </section>

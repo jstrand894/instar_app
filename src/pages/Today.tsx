@@ -51,7 +51,7 @@ export default function Today() {
     pinned: <PinnedProjects key="pinned" d={d} />,
     add: <AddBar key="add" projects={d.projects} onDone={d.reload} onError={d.setError} />,
     deadlines: <Deadlines key="deadlines" d={d} />, todos: <Todos key="todos" d={d} />,
-    progress: <ProgressChart key="progress" updates={d.updates} projects={d.projects} papers={d.papers} tasks={d.tasks} />,
+    progress: <ProgressChart key="progress" updates={d.updates} projects={d.projects} papers={d.papers} tasks={d.tasks} time={d.time} />,
     completed: <Completed key="completed" d={d} />, time: <FocusTime key="time" d={d} />, reading: <Reading key="reading" d={d} />,
     attention: <Attention key="attention" d={d} />, activity: <Activity key="activity" d={d} />, picture: <Picture key="picture" />,
   }
