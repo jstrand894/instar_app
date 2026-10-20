@@ -39,6 +39,35 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
   const fromText = manual === null ? smart.projectId : null
   const target = manual ?? fromText ?? chosen ?? (projects.some(p => p.id === remembered) ? remembered : '')
   const bigField = useRef<HTMLTextAreaElement>(null)
+  const fieldBox = useRef<HTMLDivElement>(null)
+  const backRef = useRef<HTMLDivElement>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  const still = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  // the transform that squeezes the open box back down onto the one-line field it grew from
+  const fromField = () => {
+    const f = fieldBox.current?.getBoundingClientRect(), m = modalRef.current?.getBoundingClientRect()
+    if (!f || !m || !m.width || !m.height) return null
+    return `translate(${f.left + f.width / 2 - (m.left + m.width / 2)}px, ${f.top + f.height / 2 - (m.top + m.height / 2)}px) scale(${f.width / m.width}, ${f.height / m.height})`
+  }
+  // open: the line grows into the box; the contents fade in once it is mostly there
+  useLayoutEffect(() => {
+    if (!big) return
+    const m = modalRef.current, back = backRef.current, from = fromField()
+    if (!m || !back || !from || still()) return
+    const ease = 'cubic-bezier(.22,1,.36,1)'
+    back.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: 'ease-out' })
+    m.animate([{ transform: from, borderRadius: '28px' }, { transform: 'none', borderRadius: '16px' }], { duration: 440, easing: ease })
+    Array.from(m.children).forEach(c => c.animate([{ opacity: 0 }, { opacity: 0, offset: .35 }, { opacity: 1 }], { duration: 440, easing: 'ease-out' }))
+  }, [big]) // eslint-disable-line react-hooks/exhaustive-deps
+  // close: shrink back into the line, then remove it
+  const closeBig = () => {
+    const m = modalRef.current, back = backRef.current, to = fromField()
+    if (!m || !back || !to || still()) { setBig(false); return }
+    back.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, easing: 'ease-in', fill: 'forwards' })
+    Array.from(m.children).forEach(c => c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: 'forwards' }))
+    m.animate([{ transform: 'none', borderRadius: '16px' }, { transform: to, borderRadius: '28px' }], { duration: 260, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }).finished.then(() => setBig(false), () => setBig(false))
+    setTimeout(() => setBig(false), 500) // if the browser is not drawing frames, still close
+  }
   useEffect(() => { if (big) setTimeout(() => bigField.current?.focus(), 30) }, [big])
   const modesRef = useRef<HTMLDivElement>(null)
   const bubble = useRef<HTMLSpanElement>(null)
@@ -77,7 +106,7 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
       else if (mode === 'deadline') await store.addDeadline(target, parsed.title, when)
       else await store.addUpdate(target, parsed.title, big ? kind : 'update', big ? fromLocalInput(at) : undefined)
       setSaved(mode === 'todo' ? '' : mode === 'deadline' ? 'Deadline added' : `Logged to ${projects.find(p => p.id === target)?.name}`)
-      setText(''); setDate(''); setAt(''); setManual(null); setDateOpen(false); if (!again) setBig(false); onDone(); notify.added()
+      setText(''); setDate(''); setAt(''); setManual(null); setDateOpen(false); if (!again) closeBig(); onDone(); notify.added()
       setTimeout(() => setSaved(''), 3000)
     } catch (er) { onError(friendlyError(er)) }
   }
@@ -89,7 +118,7 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
           <span className="addbar-bubble" ref={bubble} aria-hidden />
           {MODES.map(m => <button type="button" role="tab" aria-selected={mode === m.id} key={m.id} className={mode === m.id ? 'on' : ''} onClick={() => setMode(m.id)}>{m.label}</button>)}
         </div>
-        <div className="addbar-field">
+        <div className="addbar-field" ref={fieldBox}>
           <input placeholder={MODES.find(m => m.id === mode)!.hint} value={text} onChange={e => change(e.target.value)} aria-label="Text" />
           <button type="button" className="addbar-pop" onClick={() => setBig(true)} aria-label="Pop out into a larger box" title="Pop out into a larger box">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" /></svg>
@@ -116,10 +145,10 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
       )}
       {saved && <span className="ok small" role="status">{saved}</span>}
       {big && createPortal(
-        <div className="modal-back capture-back" onMouseDown={e => { if (e.target === e.currentTarget) setBig(false) }}
-          onKeyDown={e => { if (e.key === 'Escape') setBig(false); if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit(e) }}>
-          <div className="modal addbar-big" role="dialog" aria-modal="true" aria-label="Add">
-            <div className="modal-head"><h2>Add</h2><button type="button" className="close-x" onClick={() => setBig(false)} aria-label="Close">×</button></div>
+        <div className="modal-back capture-back" ref={backRef} onMouseDown={e => { if (e.target === e.currentTarget) closeBig() }}
+          onKeyDown={e => { if (e.key === 'Escape') closeBig(); if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit(e) }}>
+          <div className="modal addbar-big" ref={modalRef} role="dialog" aria-modal="true" aria-label="Add">
+            <div className="modal-head"><h2>Add</h2><button type="button" className="close-x" onClick={closeBig} aria-label="Close">×</button></div>
             <div className="modal-body">
               <div className="seg" role="tablist">
                 {MODES.map(m => <button type="button" role="tab" aria-selected={mode === m.id} key={m.id} className={mode === m.id ? 'on' : ''} onClick={() => setMode(m.id)}>{m.label}</button>)}

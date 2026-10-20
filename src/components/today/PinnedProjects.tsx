@@ -45,7 +45,7 @@ export default function PinnedProjects({ d }: { d: TodayData }) {
         <h2><Icon name="star" size={16} filled className="pin-ico" /> Pinned projects {pinned.length > 0 && <span className="count-pill">{pinned.length}</span>}</h2>
         {others.length > 0 && (
           <span className="when-menu" ref={menu}>
-            <button type="button" className="pin-plus" onClick={() => setAdding(a => !a)} aria-haspopup="menu" aria-expanded={adding} aria-label="Pin a project" title="Pin a project">+</button>
+            <button type="button" className="pin-plus" onClick={() => setAdding(a => !a)} aria-haspopup="menu" aria-expanded={adding} aria-label="Pin a project" title="Pin a project"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="M6 1.5v9M1.5 6h9" /></svg></button>
             {adding && (
               <div className="when-pop pin-pop" role="menu" style={{ left: 0, right: 'auto' }}>
                 {others.map(p => <button key={p.id} type="button" role="menuitem" onClick={() => { setAdding(false); setPinned(p, true) }}>{p.name}</button>)}
