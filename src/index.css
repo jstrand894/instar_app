@@ -1127,7 +1127,11 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 /* Pinned projects on Today: plain cards in a row (no box around them), scroll with the arrows */
 .pin-section { display: grid; grid-template-columns: minmax(0, 1fr); gap: .7rem; }
 .pin-section h2 { margin: 0; font-size: 1rem; display: flex; align-items: center; gap: .4rem; }
-.pin-add { max-width: 220px; font-size: .85rem; }
+.pin-head { display: flex; align-items: center; gap: .5rem; }
+.pin-plus { width: 26px; height: 26px; min-height: 0; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--chip); color: var(--ink); font-size: 1.1rem; line-height: 1; }
+.pin-plus:hover { background: var(--accent); color: var(--accent-ink); }
+.pin-pop { max-height: 280px; overflow-y: auto; min-width: 200px; }
+.pin-head .when-menu { position: relative; }
 .pin-wrap { position: relative; }
 .pin-row { display: flex; gap: .9rem; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: .35rem .15rem 1rem; margin: -.35rem -.15rem -.6rem; }
 .pin-row::-webkit-scrollbar { display: none; }
@@ -1149,3 +1153,10 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .today > * { min-width: 0; }
 .today > .addbar, .today > .focus-now, .today > .routine-card, .today .today-grid, .today .today-top { margin-bottom: 0; }
 .today > .group-label { margin: .75rem 0 -.5rem; }
+
+.pin-todos { list-style: none; margin: .1rem 0 0; padding: 0; display: grid; gap: .3rem; }
+.pin-todos li { display: flex; align-items: flex-start; gap: .5rem; font-size: .88rem; line-height: 1.3; }
+.pin-todos .tick { margin-top: .1rem; flex: none; }
+.pin-todo-title { overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pin-todos li.leaving { opacity: .4; text-decoration: line-through; transition: opacity .3s; }
+.pin-more a { color: var(--accent); text-decoration: none; }

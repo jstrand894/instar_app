@@ -20,10 +20,19 @@ export default function PinnedProjects({ d }: { d: TodayData }) {
   const open = d.projects.filter(p => p.status !== 'done')
   const pinned = open.filter(p => p.pinned).sort((a, b) => rank(a) - rank(b) || touched(b).localeCompare(touched(a)))
   const others = open.filter(p => !p.pinned).sort((a, b) => a.name.localeCompare(b.name))
-  const tasksOf = (p: Project) => d.openTasks.filter(t => t.project_id === p.id).length
+  const todosOf = (p: Project) => d.openTasks.filter(t => t.project_id === p.id)
 
   const setPinned = (p: Project, pinned: boolean) => store.patchProject(p.id, { pinned }).then(d.reload).catch(e => d.setError(friendlyError(e)))
 
+  const [adding, setAdding] = useState(false)
+  const menu = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!adding) return
+    const away = (e: MouseEvent) => { if (!menu.current?.contains(e.target as Node)) setAdding(false) }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setAdding(false) }
+    document.addEventListener('mousedown', away); document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc) }
+  }, [adding])
   const row = useRef<HTMLDivElement>(null)
   const [edge, setEdge] = useState({ left: false, right: false })
   const measure = () => { const el = row.current; if (el) setEdge({ left: el.scrollLeft > 4, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 }) }
@@ -32,7 +41,19 @@ export default function PinnedProjects({ d }: { d: TodayData }) {
 
   return (
     <section className="pin-section">
-      <h2><Icon name="star" size={16} filled className="pin-ico" /> Pinned projects {pinned.length > 0 && <span className="count-pill">{pinned.length}</span>}</h2>
+      <div className="pin-head">
+        <h2><Icon name="star" size={16} filled className="pin-ico" /> Pinned projects {pinned.length > 0 && <span className="count-pill">{pinned.length}</span>}</h2>
+        {others.length > 0 && (
+          <span className="when-menu" ref={menu}>
+            <button type="button" className="pin-plus" onClick={() => setAdding(a => !a)} aria-haspopup="menu" aria-expanded={adding} aria-label="Pin a project" title="Pin a project">+</button>
+            {adding && (
+              <div className="when-pop pin-pop" role="menu" style={{ left: 0, right: 'auto' }}>
+                {others.map(p => <button key={p.id} type="button" role="menuitem" onClick={() => { setAdding(false); setPinned(p, true) }}>{p.name}</button>)}
+              </div>
+            )}
+          </span>
+        )}
+      </div>
       {pinned.length > 0 && (
         <div className="pin-wrap">
           <button type="button" className="pin-arrow left" onClick={() => go(-1)} disabled={!edge.left} aria-label="Scroll left">‹</button>
@@ -40,8 +61,20 @@ export default function PinnedProjects({ d }: { d: TodayData }) {
             {pinned.map(p => (
               <article className={`pin-card t-${p.type}`} key={p.id}>
                 <Link to={`/project/${p.id}`} className="pin-name">{p.name}</Link>
-                <span className="pin-meta"><span className="pin-chip">{p.stage ? p.stage : p.type}</span>{tasksOf(p) > 0 && <span className="muted small">{tasksOf(p)} open to-do{tasksOf(p) === 1 ? '' : 's'}</span>}</span>
-                {lastBody.get(p.id) && <p className="pin-last small">{lastBody.get(p.id)}</p>}
+                <span className="pin-meta"><span className="pin-chip">{p.stage ? p.stage : p.type}</span></span>
+                {todosOf(p).length > 0
+                  ? (
+                    <ul className="pin-todos">
+                      {todosOf(p).slice(0, 4).map(t => (
+                        <li key={t.id} className={d.leaving.has('t' + t.id) ? 'leaving' : ''}>
+                          <input type="checkbox" className="tick" checked={d.leaving.has('t' + t.id)} onChange={() => d.checkOff(t.id)} aria-label={`Mark "${t.title}" done`} />
+                          <span className="pin-todo-title">{t.title}</span>
+                        </li>
+                      ))}
+                      {todosOf(p).length > 4 && <li className="muted small pin-more"><Link to={`/project/${p.id}`}>+{todosOf(p).length - 4} more</Link></li>}
+                    </ul>
+                  )
+                  : lastBody.get(p.id) && <p className="pin-last small">{lastBody.get(p.id)}</p>}
                 <span className="task-fill" />
                 <div className="row between">
                   <span className="muted small">touched {ago(touched(p))}</span>
@@ -54,12 +87,6 @@ export default function PinnedProjects({ d }: { d: TodayData }) {
         </div>
       )}
       {!pinned.length && <p className="muted">Pin the projects you want to keep coming back to. They stay here until you unpin them.</p>}
-      {others.length > 0 && (
-        <select className="pin-add" value="" onChange={e => { const p = others.find(x => x.id === e.target.value); if (p) setPinned(p, true) }} aria-label="Pin a project">
-          <option value="">Pin a project…</option>
-          {others.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-      )}
     </section>
   )
 }
