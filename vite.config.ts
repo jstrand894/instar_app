@@ -14,6 +14,16 @@ function recentChanges(): { id: string; text: string }[] {
 }
 const changes = recentChanges()
 
+// major.minor come from package.json; the patch is the number of commits, so every push gets a new 1.0.x
+function appVersion(): string {
+  try {
+    const n = parseInt(execSync('git rev-list --count HEAD', { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(), 10)
+    const [major, minor] = pkg.version.split('.')
+    if (n > 0) return `${major}.${minor}.${n}`
+  } catch { /* not a git checkout: use package.json as is */ }
+  return pkg.version
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   base: './', // relative paths, so it works from a sub-folder such as GitHub Pages
@@ -21,7 +31,7 @@ export default defineConfig({
   // 127.0.0.1 (not "localhost", which Vite binds to ::1 only) so Firefox and other IPv4 clients can reach the dev server
   server: { host: '127.0.0.1', port: 5173 },
   preview: { host: '127.0.0.1' },
-  define: { __APP_VERSION__: JSON.stringify(pkg.version), __BUILD_ID__: JSON.stringify(changes[0]?.id ?? ''), __CHANGES__: JSON.stringify(changes) },
+  define: { __APP_VERSION__: JSON.stringify(appVersion()), __BUILD_ID__: JSON.stringify(changes[0]?.id ?? ''), __CHANGES__: JSON.stringify(changes) },
   build: {
     rollupOptions: {
       output: {

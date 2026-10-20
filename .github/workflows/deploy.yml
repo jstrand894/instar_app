@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 30 # enough history for the "app updated" notice
+          fetch-depth: 0 # full history: the "app updated" notice and the version number (1.0.<commit count>)
       - uses: actions/setup-node@v4
         with:
           node-version: 22
