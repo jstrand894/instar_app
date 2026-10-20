@@ -7,7 +7,8 @@ const cacheKey = () => `tm-potd-nasa-${day()}`
 const NASA_KEY = (import.meta.env.VITE_NASA_API_KEY as string | undefined) || 'DEMO_KEY'
 
 async function nasa(): Promise<Pic> {
-  const r = await fetch(`https://api.nasa.gov/planetary/apod?api_key=${NASA_KEY}&thumbs=true`)
+  // NASA's APOD service sometimes hangs without answering, so give up after a while instead of spinning forever
+  const r = await fetch(`https://api.nasa.gov/planetary/apod?api_key=${NASA_KEY}&thumbs=true`, { signal: AbortSignal.timeout(12000) })
   if (!r.ok) throw new Error(r.status === 429 ? 'NASA rate limit reached. Add your own free key.' : 'NASA is not responding')
   const j = await r.json()
   const video = j.media_type === 'video'; const src = video ? j.thumbnail_url : j.url
@@ -15,37 +16,48 @@ async function nasa(): Promise<Pic> {
   return { src, w: 0, h: 0, title: j.title, caption: j.title, credit: j.copyright ? String(j.copyright).replace(/\s+/g, ' ').trim() : '', page: video ? j.url : (j.hdurl || j.url), sourceName: 'NASA APOD', video }
 }
 
-/** NASA's Astronomy Picture of the Day. Cached for the day. */
+const LAST = 'tm-potd-nasa-last'
+const readLast = (): Pic | null => { try { return JSON.parse(localStorage.getItem(LAST) || 'null') } catch { return null } }
+
+/** NASA's Astronomy Picture of the Day. Cached for the day; if NASA is not answering, shows the last picture it loaded. */
 export default function Picture() {
   const [pic, setPic] = useState<Pic | null>(() => { try { return JSON.parse(localStorage.getItem(cacheKey()) || 'null') } catch { return null } })
   const [err, setErr] = useState('')
+  const [tries, setTries] = useState(0)
 
   useEffect(() => {
     if (pic) return
     let off = false
     nasa().then(p => {
       if (off) return
-      setPic(p)
-      try { localStorage.setItem(cacheKey(), JSON.stringify(p)) } catch { /* ignore */ }
-    }).catch(e => { if (!off) setErr(String(e?.message ?? '') || 'Could not load the picture right now.') })
+      setPic(p); setErr('')
+      try { localStorage.setItem(cacheKey(), JSON.stringify(p)); localStorage.setItem(LAST, JSON.stringify(p)) } catch { /* ignore */ }
+    }).catch(e => {
+      if (off) return
+      setErr(e?.name === 'TimeoutError' || e?.name === 'AbortError' ? "NASA's picture service isn't answering right now." : String(e?.message ?? '') || 'Could not load the picture right now.')
+    })
     return () => { off = true }
-  }, [pic])
+  }, [pic, tries])
 
-  if (err && !pic) return <section className="card picture wide slim"><h2>Picture of the day</h2><p className="muted">{err}</p></section>
+  const shown = pic ?? (err ? readLast() : null)
   return (
     <section className="card picture wide">
-      <h2>Picture of the day</h2>
-      {pic ? (
+      <div className="card-head">
+        <h2>Picture of the day</h2>
+        {err && <button className="link small" onClick={() => { setErr(''); setTries(t => t + 1) }}>Try again</button>}
+      </div>
+      {err && <p className="muted small" style={{ margin: 0 }}>{err}{shown ? ' Showing the last picture that loaded.' : ''}</p>}
+      {shown ? (
         <figure>
-          <a href={pic.page} target="_blank" rel="noreferrer" aria-label="Open on NASA">
-            <img src={pic.src} alt={pic.caption} loading="lazy" />
+          <a href={shown.page} target="_blank" rel="noreferrer" aria-label="Open on NASA">
+            <img src={shown.src} alt={shown.caption} loading="lazy" decoding="async" />
           </a>
           <figcaption>
-            <span>{pic.caption}{pic.video ? ' (video)' : ''}</span>
-            <span className="muted small">{pic.credit && `${pic.credit} · `}<a href={pic.page} target="_blank" rel="noreferrer">{pic.sourceName}</a></span>
+            <span>{shown.caption}{shown.video ? ' (video)' : ''}</span>
+            <span className="muted small">{shown.credit && `${shown.credit} · `}<a href={shown.page} target="_blank" rel="noreferrer">{shown.sourceName}</a></span>
           </figcaption>
         </figure>
-      ) : <div className="sk" style={{ height: 240, borderRadius: 12 }} aria-busy="true" />}
+      ) : !err ? <div className="sk" style={{ height: 240, borderRadius: 12 }} aria-busy="true" /> : null}
     </section>
   )
 }

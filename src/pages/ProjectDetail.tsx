@@ -10,7 +10,7 @@ import TaskList from '../components/TaskList'
 import TagEditor from '../components/TagEditor'
 import GithubLink from '../components/GithubLink'
 import EntryBody from '../components/EntryBody'
-import LinkTextarea from '../components/LinkTextarea'
+import RichTextarea from '../components/RichText'
 import LinkedText from '../components/LinkedText'
 import { parsePieces, useLinks } from '../lib/links'
 import type { Area, Deadline, ProjectTask, TimeEntry, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
@@ -23,6 +23,8 @@ const TYPES: { id: ProjectType; label: string }[] = [
 const fmt = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) +
   ' · ' + new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+
+const meetingTemplate = () => `## Meeting — ${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}\n**Attendees:** \n\n**Agenda**\n- [ ] \n\n**Notes**\n- \n\n**Action items**\n- [ ] `
 
 export default function ProjectDetail() {
   const { id } = useParams()
@@ -47,6 +49,7 @@ export default function ProjectDetail() {
   const [evWeekly, setEvWeekly] = useState(false)
   const [kind, setKind] = useState<'update' | 'note'>('update')
   const [text, setText] = useState('')
+  const isMeeting = kind === 'note' && text.startsWith('## Meeting')
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
@@ -157,9 +160,10 @@ export default function ProjectDetail() {
       <form className="card composer" onSubmit={add}>
         <div className="seg" role="tablist">
           <button type="button" className={kind === 'update' ? 'on' : ''} onClick={() => setKind('update')}>Update</button>
-          <button type="button" className={kind === 'note' ? 'on' : ''} onClick={() => setKind('note')}>Note</button>
+          <button type="button" className={kind === 'note' && !isMeeting ? 'on' : ''} onClick={() => { setKind('note'); if (isMeeting) setText('') }}>Note</button>
+          <button type="button" className={isMeeting ? 'on' : ''} onClick={() => { setKind('note'); if (!text.trim()) setText(meetingTemplate()) }}>Meeting</button>
         </div>
-        <LinkTextarea
+        <RichTextarea
           placeholder={kind === 'update' ? 'What happened? e.g. “Resubmitted with revisions”' : 'Write a longer note. Type [[ to link a project or paper, # to tag.'}
           rows={kind === 'note' ? 5 : 2}
           value={text} onChange={setText}
@@ -188,7 +192,7 @@ export default function ProjectDetail() {
               </div>
             ) : u.kind === 'note' ? (
               <div className="note-box">
-                <span className="tag">Note</span>
+                <span className="tag">{u.body.startsWith('## Meeting') ? 'Meeting' : 'Note'}</span>
                 <EntryBody note body={u.body} onSave={v => saveEntry(u, v)} />
               </div>
             ) : (
