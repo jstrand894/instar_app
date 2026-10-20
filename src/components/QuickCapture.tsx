@@ -5,15 +5,15 @@ import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
 import type { Project } from '../types'
 
-type Tab = 'update' | 'note' | 'task' | 'deadline' | 'paper'
+type Tab = 'update' | 'note' | 'task' | 'deadline' | 'event' | 'paper'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'update', label: 'Update' }, { id: 'note', label: 'Note' }, { id: 'task', label: 'Task' },
-  { id: 'deadline', label: 'Deadline' }, { id: 'paper', label: 'Paper' },
+  { id: 'deadline', label: 'Deadline' }, { id: 'event', label: 'Event' }, { id: 'paper', label: 'Paper' },
 ]
 const LAST = 'tm-last-project'
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-/** The floating + button and the sheet it opens: add an update, note, task, deadline or paper from anywhere. */
+/** The floating + button and the sheet it opens: add an update, note, task, deadline, event or paper from anywhere. */
 export default function QuickCapture() {
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<Tab>('update')
@@ -21,6 +21,8 @@ export default function QuickCapture() {
   const [projectId, setProjectId] = useState('')
   const [text, setText] = useState('')
   const [date, setDate] = useState('')
+  const [time, setTime] = useState('09:00')
+  const [weekly, setWeekly] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const field = useRef<HTMLTextAreaElement | HTMLInputElement>(null)
@@ -30,7 +32,7 @@ export default function QuickCapture() {
 
   const show = (t: Tab = 'update', pid?: string) => {
     setTab(t); setText(''); setErr('')
-    const d = new Date(); d.setDate(d.getDate() + 7); setDate(t === 'deadline' ? iso(d) : '')
+    const d = new Date(); d.setDate(d.getDate() + 7); setDate(t === 'deadline' ? iso(d) : t === 'event' ? iso(new Date()) : ''); setTime('09:00'); setWeekly(false)
     setProjectId(pid || onProject || (() => { try { return localStorage.getItem(LAST) ?? '' } catch { return '' } })())
     setOpen(true)
   }
@@ -59,7 +61,7 @@ export default function QuickCapture() {
   }), [projects])
 
   const needsProject = tab !== 'paper' && tab !== 'task' // a task can be a general to-do, with no project
-  const ready = !!text.trim() && (!needsProject || !!projectId) && (tab !== 'deadline' || !!date)
+  const ready = !!text.trim() && (!needsProject || !!projectId) && (tab !== 'deadline' || !!date) && (tab !== 'event' || (!!date && !!time))
   const close = () => setOpen(false)
 
   async function save(e?: React.FormEvent) {
@@ -72,6 +74,11 @@ export default function QuickCapture() {
       if (tab === 'update' || tab === 'note') { const r = await store.addUpdate(projectId, text.trim(), tab); undo = () => store.deleteUpdate(r.id); what = tab === 'note' ? 'Note' : 'Update' }
       else if (tab === 'task') { const r = await store.addTask(projectId || null, text.trim(), date || null); undo = () => store.deleteTask(r.id); what = 'Task' }
       else if (tab === 'deadline') { const r = await store.addDeadline(projectId, text.trim(), date); undo = () => store.deleteDeadline(r.id); what = 'Deadline' }
+      else if (tab === 'event') {
+        const starts = new Date(`${date}T${time}`)
+        if (isNaN(starts.getTime())) throw new Error('Pick a valid date and time')
+        const r = await store.addEvent(projectId, text.trim(), starts.toISOString(), weekly ? 'weekly' : 'none'); undo = () => store.deleteEvent(r.id); what = 'Event'
+      }
       else {
         const { lookupDoi } = await import('../lib/crossref')
         const m = await lookupDoi(text)
@@ -103,7 +110,7 @@ export default function QuickCapture() {
             <div className="modal-head"><h2>Quick add</h2><button type="button" className="close-x" onClick={close} aria-label="Close">×</button></div>
             <div className="modal-body">
               <div className="seg" role="tablist">
-                {TABS.map(t => <button type="button" key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'on' : ''} onClick={() => { setTab(t.id); setErr(''); if (t.id === 'deadline' && !date) { const d = new Date(); d.setDate(d.getDate() + 7); setDate(iso(d)) } }}>{t.label}</button>)}
+                {TABS.map(t => <button type="button" key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'on' : ''} onClick={() => { setTab(t.id); setErr(''); if (t.id === 'deadline' && !date) { const d = new Date(); d.setDate(d.getDate() + 7); setDate(iso(d)) } if (t.id === 'event' && !date) setDate(iso(new Date())) }}>{t.label}</button>)}
               </div>
               {tab !== 'paper' && (
                 <select value={projectId} onChange={e => setProjectId(e.target.value)} aria-label="Project">
@@ -118,10 +125,17 @@ export default function QuickCapture() {
                   placeholder={tab === 'note' ? 'Plans, reviewer comments, methods, links…' : 'What did you do or decide?'} />
               ) : (
                 <input ref={field as React.RefObject<HTMLInputElement>} value={text} onChange={e => setText(e.target.value)}
-                  placeholder={tab === 'task' ? 'What needs doing?' : tab === 'deadline' ? "What's due?" : 'Paste a DOI, e.g. 10.2307/3894934'} />
+                  placeholder={tab === 'task' ? 'What needs doing?' : tab === 'deadline' ? "What's due?" : tab === 'event' ? 'What? e.g. Team meeting' : 'Paste a DOI, e.g. 10.2307/3894934'} />
               )}
               {(tab === 'task' || tab === 'deadline') && (
                 <label className="cap-date">{tab === 'task' ? 'Due (optional)' : 'Due date'}<input type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
+              )}
+              {tab === 'event' && (
+                <div className="row wrap">
+                  <input type="date" value={date} onChange={e => setDate(e.target.value)} aria-label="Date" />
+                  <input type="time" value={time} onChange={e => setTime(e.target.value)} aria-label="Time" />
+                  <label className="check"><input type="checkbox" checked={weekly} onChange={e => setWeekly(e.target.checked)} />Repeats weekly</label>
+                </div>
               )}
               {err && <p className="error small">{err}</p>}
               <div className="row between">

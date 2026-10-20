@@ -63,7 +63,7 @@ export default function CommandPalette() {
     act('today', 'Go to Today', 'Your day at a glance', go('/')); act('projects', 'Go to Projects', '', go('/projects'))
     act('ms', 'Go to Manuscripts', '', go('/manuscripts')); act('reading', 'Go to Reading', 'Papers and reading stats', go('/library'))
     act('upd', 'New update', 'Log what you did', capture('update')); act('note', 'New note', 'Write a longer note', capture('note'))
-    act('task', 'New task', 'Add a to-do to a project', capture('task')); act('dl', 'New deadline', 'Something due on a date', capture('deadline'))
+    act('task', 'New task', 'Add a to-do to a project', capture('task')); act('dl', 'New deadline', 'Something due on a date', capture('deadline')); act('ev', 'New event', 'A meeting or something at a set time', capture('event'))
     act('routine', 'Edit weekly routine', 'Grading, check-ins and other weekly things', () => { nav('/'); close(); setTimeout(() => window.dispatchEvent(new Event('tm-routines')), 120) })
     act('doi', 'Add paper by DOI', 'Look it up and add it', capture('paper'))
     act('theme', 'Toggle dark mode', 'Switch between light and dark', () => { const p = getPrefs(); setPrefs({ theme: p.theme === 'dark' ? 'light' : 'dark' }); close() })

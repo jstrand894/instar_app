@@ -1108,3 +1108,4 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .hist-back:hover:not(:disabled) { color: var(--ink); background: var(--chip); }
 .hist-back:disabled { opacity: .4; cursor: default; }
 .title-row .back-link { margin-bottom: 0; } .detail > .title-row { margin-bottom: .6rem; }
+.capture .seg { display: flex; width: auto; } .capture .seg button { flex: 1; padding-inline: .3rem; }
