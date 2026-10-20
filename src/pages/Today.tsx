@@ -20,6 +20,7 @@ import Activity from '../components/today/Activity'
 import Completed from '../components/today/Completed'
 import Picture from '../components/today/Picture'
 import Customize from '../components/today/Customize'
+import { CARD_META, orderedIds } from '../components/today/layout'
 
 export default function Today() {
   const d = useTodayData()
@@ -35,9 +36,41 @@ export default function Today() {
     return () => { window.removeEventListener('tm-routines', routines); window.removeEventListener('tm-customize-today', cust) }
   }, [])
 
-  const showFocus = show('focus') && d.focusItems.length > 0
-  const showDay = show('day')
-  const plan = ['deadlines', 'todos'].filter(show), progress = ['completed', 'time', 'reading'].filter(show), watch = ['attention', 'activity', 'picture'].filter(show)
+  const prefs = usePrefs()
+  const showFocus = d.focusItems.length > 0
+  const nodes: Record<string, React.ReactNode> = {
+    weather: <WeatherCard key="weather" />,
+    started: <GettingStarted key="started" projects={d.projects} updates={d.updates} papers={d.papers} />,
+    focus: showFocus ? <FocusNow key="focus" d={d} /> : d.allClear ? <p key="focus" className="all-clear"><Icon name="check" size={14} /> Everything due is handled</p> : null,
+    day: <RoutineCard key="day" routines={d.routines} checks={d.checks} projects={d.projects} events={d.upcoming} tasks={d.dueNow} leaving={d.leaving}
+      onTask={d.checkOff} onRename={d.rename} onDue={d.setDue} onManage={() => setManage(true)} onChange={d.reload} />,
+    add: <AddBar key="add" projects={d.projects} onDone={d.reload} onError={d.setError} />,
+    deadlines: <Deadlines key="deadlines" d={d} />, todos: <Todos key="todos" d={d} />,
+    progress: <ProgressChart key="progress" updates={d.updates} projects={d.projects} papers={d.papers} tasks={d.tasks} />,
+    completed: <Completed key="completed" d={d} />, time: <FocusTime key="time" d={d} />, reading: <Reading key="reading" d={d} />,
+    attention: <Attention key="attention" d={d} />, activity: <Activity key="activity" d={d} />, picture: <Picture key="picture" />,
+  }
+  // lay the cards out in your chosen order: full-width ones alone, the top pair side by side, tiles in grids, with a label when the group changes
+  const blocks: React.ReactNode[] = []
+  let run: React.ReactNode[] = [], runShape: 'top' | 'grid' | null = null, lastGroup: string | undefined
+  const flush = () => {
+    if (!run.length) return
+    blocks.push(runShape === 'top'
+      ? <div key={`r${blocks.length}`} className={`today-top ${run.length > 1 ? '' : 'solo'}`}>{run}</div>
+      : <div key={`r${blocks.length}`} className="today-grid">{run}</div>)
+    run = []; runShape = null
+  }
+  for (const id of orderedIds(prefs.todayOrder).filter(show)) {
+    const node = nodes[id], meta = CARD_META[id]
+    if (!node || !meta) continue
+    const group = meta.group
+    if (group !== lastGroup) { flush(); if (group) blocks.push(<h2 key={`g${group}${blocks.length}`} className="group-label">{group}</h2>) }
+    lastGroup = group
+    if (meta.shape === 'full') { flush(); blocks.push(node); continue }
+    if (runShape !== meta.shape) flush()
+    runShape = meta.shape; run.push(node)
+  }
+  flush()
 
   return (
     <div className="page today">
@@ -60,32 +93,7 @@ export default function Today() {
         <div className="today-skel" aria-busy="true" aria-label="Loading"><div className="sk sk-row" /><div className="sk sk-card" /><div className="sk-grid"><div className="sk sk-card" /><div className="sk sk-card" /></div></div>
       ) : (
         <>
-          {show('weather') && <WeatherCard />}
-          {show('started') && <GettingStarted projects={d.projects} updates={d.updates} papers={d.papers} />}
-
-          {show('focus') && !showFocus && d.allClear && <p className="all-clear"><Icon name="check" size={14} /> Everything due is handled</p>}
-          {(showFocus || showDay) && (
-            <div className={`today-top ${showFocus && showDay ? '' : 'solo'}`}>
-              {showFocus && <FocusNow d={d} />}
-              {showDay && <RoutineCard routines={d.routines} checks={d.checks} projects={d.projects} events={d.upcoming} tasks={d.dueNow} leaving={d.leaving}
-                onTask={d.checkOff} onRename={d.rename} onDue={d.setDue} onManage={() => setManage(true)} onChange={d.reload} />}
-            </div>
-          )}
-          {show('add') && <AddBar projects={d.projects} onDone={d.reload} onError={d.setError} />}
-
-          {plan.length > 0 && <>
-            <h2 className="group-label">Plan ahead</h2>
-            <div className="today-grid">{show('deadlines') && <Deadlines d={d} />}{show('todos') && <Todos d={d} />}</div>
-          </>}
-          {(show('progress') || progress.length > 0) && <>
-            <h2 className="group-label">Progress</h2>
-            {show('progress') && <ProgressChart updates={d.updates} projects={d.projects} papers={d.papers} tasks={d.tasks} />}
-            {progress.length > 0 && <div className="today-grid">{show('completed') && <Completed d={d} />}{show('time') && <FocusTime d={d} />}{show('reading') && <Reading d={d} />}</div>}
-          </>}
-          {watch.length > 0 && <>
-            <h2 className="group-label">Keep an eye on</h2>
-            <div className="today-grid">{show('attention') && <Attention d={d} />}{show('activity') && <Activity d={d} />}{show('picture') && <Picture />}</div>
-          </>}
+          {blocks}
         </>
       )}
 

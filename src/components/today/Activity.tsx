@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom'
 import { ago, commitHeadline } from '../../lib/util'
 import Icon from '../Icon'
+import { FoldBody, FoldHead, useFold } from './Fold'
 import type { TodayData } from '../../lib/useTodayData'
 
 export default function Activity({ d }: { d: TodayData }) {
+  const [open, toggle] = useFold('activity', false)
   return (
-    <section className={`card wide ${d.recent.length ? '' : 'slim'}`}>
-      <h2>Recent activity</h2>
+    <section className={`card wide ${open && d.recent.length ? '' : 'slim'}`}>
+      <FoldHead title={<>Recent activity {d.recent.length > 0 && <span className="count-pill">{d.recent.length}</span>}</>} open={open} onToggle={toggle} />
+      <FoldBody open={open}>
       {d.recent.map(u => {
         const pr = d.byId.get(u.project_id)
         const first = u.kind === 'commit' ? commitHeadline(u.body) : u.body
@@ -19,6 +22,7 @@ export default function Activity({ d }: { d: TodayData }) {
         )
       })}
       {!d.recent.length && <p className="muted">No activity yet.</p>}
+      </FoldBody>
     </section>
   )
 }

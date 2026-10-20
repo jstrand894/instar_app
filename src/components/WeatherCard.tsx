@@ -128,6 +128,8 @@ export default function WeatherCard() {
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
   const [sel, setSel] = useState(0)
+  const [open, setOpenState] = useState(() => { try { return localStorage.getItem('tm-weather-open') === '1' } catch { return false } })
+  const setOpen = (o: boolean) => { setOpenState(o); try { localStorage.setItem('tm-weather-open', o ? '1' : '0') } catch { /* ignore */ } }
 
   // settings changed (units or location): drop the cache and fetch again
   useEffect(() => {
@@ -182,8 +184,21 @@ export default function WeatherCard() {
   const [ico, label] = describe(wx.code)
   const tip = advice(wx)
   const m = mood(wx.code, wx.day) + (!wx.day && mood(wx.code, wx.day) !== 'storm' ? ' is-night' : '')
+  if (!open) return (
+    <section className={`weather wx-strip wx-${m}`} aria-label="Current weather">
+      <button type="button" className="wx-strip-btn" aria-expanded="false" onClick={() => setOpen(true)} title="Show the forecast">
+        <span className="wx-ico" aria-hidden><Icon name={ico} size={26} /></span>
+        <b className="wx-strip-temp">{wx.temp}°</b>
+        <span className="wx-strip-cond">{label} · {wx.place}</span>
+        <span className="wx-strip-chips"><span><Icon name="up" size={12} /> {wx.hi}°</span><span><Icon name="down" size={12} /> {wx.lo}°</span><span><Icon name="drop" size={12} /> {wx.rain}%</span></span>
+        {tip && <span className="wx-strip-tip">{tip}</span>}
+        <span className="wx-strip-more">Forecast <Icon name="chevDown" size={14} /></span>
+      </button>
+    </section>
+  )
   return (
     <section className={`weather wx-${m}`} aria-label="Current weather">
+      <button type="button" className="wx-collapse" onClick={() => setOpen(false)} aria-label="Collapse the forecast" title="Collapse"><Icon name="chevDown" size={16} /></button>
       <div className="wx-left">
         <div className="wx-now">
           <span className="wx-ico" aria-hidden><Icon name={ico} size={52} /></span>

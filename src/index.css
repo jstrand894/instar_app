@@ -993,3 +993,35 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .wx-edit { display: inline-flex; vertical-align: -.15em; margin-left: .2rem; padding: .15rem; background: none; border: 0; min-height: 0; border-radius: 6px; color: inherit; opacity: 0; cursor: pointer; transition: opacity .15s; text-shadow: inherit; }
 .weather:hover .wx-edit, .wx-edit:focus-visible { opacity: .85; } .wx-edit:hover { opacity: 1; background: rgba(255,255,255,.2); }
 @media (hover: none) { .wx-edit { opacity: .8; } }
+.cust-list li { cursor: grab; border-radius: 10px; } .cust-list li.dragging { opacity: .4; } .cust-list li.drop { box-shadow: 0 -2px 0 0 var(--accent); }
+.cust-list .cust-name { display: grid; flex: 1; min-width: 0; } .cust-grip { color: var(--muted); letter-spacing: -.15em; user-select: none; font-size: .9rem; }
+.cust-move { display: inline-flex; gap: .1rem; } .cust-move button { background: none; border: 0; padding: .1rem .3rem; min-height: 0; font-size: .6rem; color: var(--muted); border-radius: 5px; cursor: pointer; } .cust-move button:hover:not(:disabled) { background: var(--chip); color: var(--ink); } .cust-move button:disabled { opacity: .25; cursor: default; }
+
+/* Today: foldable calm cards, emphasized cards, entrance */
+.fold-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.fold-btn { display: inline-flex; align-items: center; gap: .4rem; background: none; border: 0; padding: 0; min-height: 0; color: inherit; cursor: pointer; text-align: left; }
+.fold-btn h2 { margin: 0; } .fold-chev { display: inline-flex; color: var(--muted); transition: transform .25s ease; transform: rotate(-90deg); } .fold-chev.open { transform: none; }
+.fold-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.4, 0, .2, 1); } .fold-body.open { grid-template-rows: 1fr; }
+.fold-inner { overflow: hidden; min-height: 0; } .fold-body:not(.open) .fold-inner { visibility: hidden; transition: visibility 0s .3s; }
+.today .card.slim:has(.fold-head) { padding: .65rem 1rem; }
+.today .card.attn { border-left: 4px solid var(--warn, #d9822b); background: color-mix(in srgb, var(--warn, #d9822b) 6%, var(--panel)); }
+.count-pill.warn { background: color-mix(in srgb, var(--warn, #d9822b) 18%, transparent); color: var(--warn, #b9651a); }
+@keyframes today-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.today > :not(.page-head):not(.errbar):not(.group-label):not(.today-grid) { animation: today-in .45s ease both; }
+.today > :nth-child(4) { animation-delay: .04s; } .today > :nth-child(5) { animation-delay: .08s; } .today > :nth-child(6) { animation-delay: .12s; } .today > :nth-child(7) { animation-delay: .16s; } .today > :nth-child(n+8) { animation-delay: .2s; }
+.today-grid > .card { animation: today-in .45s .1s ease both; } .today-grid > .card:nth-child(2) { animation-delay: .16s; } .today-grid > .card:nth-child(n+3) { animation-delay: .22s; }
+.todo-by { margin-left: auto; } .todo-by button { padding: .1rem .6rem; min-height: 24px; font-size: .78rem; }
+.todo-group { display: flex; align-items: center; gap: .5rem; margin: .5rem 0 .1rem; font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.todo-group span { font-weight: 600; opacity: .7; } .todo-group.late { color: var(--bad, #c0392b); }
+.todo-more { animation: today-in .3s ease both; }
+.weather { position: relative; }
+.weather.wx-strip { display: block; padding: 0; min-height: 0; }
+.wx-strip-btn { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: .8rem; width: 100%; padding: .6rem 1.1rem; cursor: pointer; border-radius: inherit; text-shadow: inherit; }
+.wx-strip-btn:focus-visible { outline: 2px solid #fff; outline-offset: -3px; }
+.wx-strip-temp { font-size: 1.5rem; letter-spacing: -.02em; } .wx-strip-cond { font-weight: 600; white-space: nowrap; }
+.wx-strip-chips { display: inline-flex; gap: .35rem; } .wx-strip-chips span { display: inline-flex; align-items: center; gap: .2rem; background: rgba(255,255,255,.18); border-radius: 99px; padding: .05rem .55rem; font-size: .8rem; }
+.wx-strip-tip { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .85rem; opacity: .92; }
+.wx-strip-more { margin-left: auto; display: inline-flex; align-items: center; gap: .2rem; font-size: .8rem; opacity: .85; white-space: nowrap; } .wx-strip-btn:hover .wx-strip-more { opacity: 1; }
+.wx-strip-btn:hover { background: rgba(255,255,255,.08); }
+.wx-collapse { position: absolute; top: .5rem; right: .6rem; z-index: 2; display: inline-flex; padding: .25rem; background: rgba(255,255,255,.18); border: 0; min-height: 0; border-radius: 8px; color: inherit; cursor: pointer; transform: rotate(180deg); } .wx-collapse:hover { background: rgba(255,255,255,.3); }
+@media (max-width: 760px) { .wx-strip-tip, .wx-strip-chips { display: none; } }

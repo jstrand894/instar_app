@@ -2,9 +2,10 @@ import { Link } from 'react-router-dom'
 import type { TodayData } from '../../lib/useTodayData'
 
 export default function Deadlines({ d }: { d: TodayData }) {
+  const late = d.dueItems.filter(x => x.info.tone === 'overdue').length
   return (
-    <section className="card">
-      <div className="card-head"><h2>Deadlines {d.dueItems.length > 0 && <span className="count-pill">{d.dueItems.length}</span>}</h2></div>
+    <section className={`card ${late ? 'attn' : ''}`}>
+      <div className="card-head"><h2>Deadlines {d.dueItems.length > 0 && <span className="count-pill">{d.dueItems.length}</span>} {late > 0 && <span className="count-pill warn">{late} overdue</span>}</h2></div>
       {d.dueItems.map(x => (
         <div className={`trow ${x.id && d.leaving.has('d' + x.id) ? 'leaving' : ''}`} key={x.key}>
           {x.id

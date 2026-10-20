@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { FoldBody, FoldHead, useFold } from './Fold'
 
 interface Pic { src: string; w: number; h: number; title: string; caption: string; credit: string; page: string; sourceName: string; video?: boolean }
 
@@ -24,6 +25,7 @@ export default function Picture() {
   const [pic, setPic] = useState<Pic | null>(() => { try { return JSON.parse(localStorage.getItem(cacheKey()) || 'null') } catch { return null } })
   const [err, setErr] = useState('')
   const [tries, setTries] = useState(0)
+  const [open, toggle] = useFold('picture', false)
 
   useEffect(() => {
     if (pic) return
@@ -41,11 +43,10 @@ export default function Picture() {
 
   const shown = pic ?? (err ? readLast() : null)
   return (
-    <section className="card picture wide">
-      <div className="card-head">
-        <h2>Picture of the day</h2>
-        {err && <button className="link small" onClick={() => { setErr(''); setTries(t => t + 1) }}>Try again</button>}
-      </div>
+    <section className={`card picture wide ${open ? '' : 'slim'}`}>
+      <FoldHead title="Picture of the day" open={open} onToggle={toggle}
+        extra={err && open ? <button className="link small" onClick={() => { setErr(''); setTries(t => t + 1) }}>Try again</button> : null} />
+      <FoldBody open={open}>
       {err && <p className="muted small" style={{ margin: 0 }}>{err}{shown ? ' Showing the last picture that loaded.' : ''}</p>}
       {shown ? (
         <figure>
@@ -58,6 +59,7 @@ export default function Picture() {
           </figcaption>
         </figure>
       ) : !err ? <div className="sk" style={{ height: 240, borderRadius: 12 }} aria-busy="true" /> : null}
+      </FoldBody>
     </section>
   )
 }
