@@ -1247,3 +1247,5 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 @keyframes focus-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(2px); } }
 @media (prefers-reduced-motion: reduce) { .focus-more { animation: none; } }
 .focus-more.up { margin: 0 0 .25rem; animation: none; }
+.focus-more { transition: opacity .2s; }
+.focus-more.off { opacity: 0; pointer-events: none; animation: none; }
