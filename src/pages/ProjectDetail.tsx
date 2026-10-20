@@ -2,7 +2,7 @@ import Icon from '../components/Icon'
 import BackButton from '../components/BackButton'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { store } from '../lib/store'
+import { store, type ProjectPage } from '../lib/store'
 import { notify } from '../lib/notify'
 import { forgetOpen, rememberOpen } from '../lib/resume'
 import { friendlyError } from '../lib/errors'
@@ -78,18 +78,21 @@ export default function ProjectDetail() {
   const [error, setError] = useState('')
   const [when, setWhen] = useState('')
   const [shown, setShown] = useState(5)
+  const [total, setTotal] = useState(0)
+  const [pushes, setPushes] = useState<{ n: number; last?: string }>({ n: 0 })
   const [timeId, setTimeId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
-      const [ps, us, evs, pp, ls, dls, tks, tes] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[]), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[]), store.timeEntries().catch(() => [] as TimeEntry[])])
+      const [ps, us, evs, pp, ls, dls, tks, tes] = await Promise.all([store.projects(), id ? store.projectUpdates(id, shown) : Promise.resolve({ rows: [], total: 0, commits: 0 } as ProjectPage), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[]), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[]), store.timeEntries().catch(() => [] as TimeEntry[])])
       setEvents(evs.filter(e => e.project_id === id)); setPapers(pp); setLinks(ls.filter(l => l.project_id === id)); setDeadlines(dls.filter(d => d.project_id === id)); setTasks(tks.filter(t => t.project_id === id)); setTime(tes.filter(t => t.project_id === id))
       const p = ps.find(x => x.id === id) ?? null
-      setProject(p); setAllUpdates(us)
-      setEntries(us.filter(u => u.project_id === id).sort((a, b) => b.created_at.localeCompare(a.created_at)))
+      setProject(p); setTotal(us.total); setPushes({ n: us.commits, last: us.lastPush })
+      setEntries(us.rows)
+      setAllUpdates(p ? await store.mentionsOf(p.name, p.id).catch(() => []) : [])
       if (!p) setError('Project not found.')
     } catch (e) { setError(friendlyError(e)) }
-  }, [id])
+  }, [id, shown])
   useEffect(() => { load() }, [load])
   useEffect(() => { window.addEventListener('tm-data', load); return () => window.removeEventListener('tm-data', load) }, [load])
 
@@ -216,7 +219,7 @@ export default function ProjectDetail() {
       </form>
 
       <ol className="tl">
-        {entries.slice(0, shown).map(u => (
+        {entries.map(u => (
           <li key={u.id} className={`tl-item ${u.kind}`}>
             <span className="tl-dot" />
             <div className="tl-meta">
@@ -255,13 +258,13 @@ export default function ProjectDetail() {
             )}
           </li>
         ))}
-        {entries.length > shown && (
+        {total > entries.length && (
           <li className="tl-empty row">
             <button type="button" className="link small" onClick={() => setShown(n => n + 5)}>Show 5 more</button>
-            <button type="button" className="link small" onClick={() => setShown(entries.length)}>Show all ({entries.length - shown} more)</button>
+            <button type="button" className="link small" onClick={() => setShown(Math.max(total, 5))}>Show all ({total - entries.length} more)</button>
           </li>
         )}
-        {!entries.length && <li className="tl-empty"><b>Nothing logged yet.</b> <span className="muted">This timeline fills in as you add updates and notes, so you can look back at what happened and when.</span> <button className="link" onClick={() => document.querySelector<HTMLTextAreaElement>('.composer textarea')?.focus()}>Log the first update</button></li>}
+        {!entries.length && !total && <li className="tl-empty"><b>Nothing logged yet.</b> <span className="muted">This timeline fills in as you add updates and notes, so you can look back at what happened and when.</span> <button className="link" onClick={() => document.querySelector<HTMLTextAreaElement>('.composer textarea')?.focus()}>Log the first update</button></li>}
       </ol>
 
       <button className="link small danger" onClick={() => {
@@ -271,7 +274,7 @@ export default function ProjectDetail() {
       }}>Delete project</button>
         </div>
         <aside className="col-side">
-          <GithubLink repo={project.github_repo ?? null} lastPush={entries.find(u => u.kind === 'commit')?.created_at} pushes={entries.filter(u => u.kind === 'commit').length} onChange={r => patch({ github_repo: r })} />
+          <GithubLink repo={project.github_repo ?? null} lastPush={pushes.last} pushes={pushes.n} onChange={r => patch({ github_repo: r })} />
       {project.type === 'manuscript' && (
         <section className="card ms-panel">
           <h2>Manuscript</h2>

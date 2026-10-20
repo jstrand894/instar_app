@@ -68,6 +68,14 @@ const demoFiles = new Map<string, string>() // path -> blob url (session only)
 const local = {
   async projects() { return load().projects },
   async updates() { return load().updates },
+  async projectUpdates(project_id: string, limit: number): Promise<ProjectPage> {
+    const all = load().updates.filter(u => u.project_id === project_id).sort((a, b) => b.created_at.localeCompare(a.created_at))
+    const commits = all.filter(u => u.kind === 'commit')
+    return { rows: all.slice(0, limit), total: all.length, commits: commits.length, lastPush: commits[0]?.created_at }
+  },
+  async mentionsOf(name: string, exceptId: string) {
+    return load().updates.filter(u => u.project_id !== exceptId && u.body.toLowerCase().includes(`[[${name.toLowerCase()}]]`)).slice(0, 50)
+  },
   async addProject(p: Pick<Project, 'name' | 'type' | 'description'> & Partial<Pick<Project, 'area' | 'stage' | 'journal'>>) {
     const d = load(); const row: Project = { id: uid(), status: 'active', area: 'work', notes: '', created_at: now(), ...p }
     d.projects.push(row); save(d); return row
@@ -214,6 +222,7 @@ const local = {
 
 // ---------- supabase backend ----------
 const sb = () => supabase!
+export interface ProjectPage { rows: ProjectUpdate[]; total: number; commits: number; lastPush?: string }
 function ok<T>(r: { data: T | null; error: { message: string } | null }): T {
   if (r.error) throw new Error(r.error.message)
   return r.data as T
@@ -228,6 +237,21 @@ async function uploadPdf(file: File) {
 const remote: typeof local = {
   async projects() { return ok(await sb().from('projects').select('*').order('created_at')) },
   async updates() { return ok(await sb().from('project_updates').select('*').order('created_at', { ascending: false }).limit(500)) },
+  async projectUpdates(project_id, limit) {
+    const q = () => sb().from('project_updates')
+    const [rows, total, commits, last] = await Promise.all([
+      q().select('*').eq('project_id', project_id).order('created_at', { ascending: false }).limit(limit),
+      q().select('id', { count: 'exact', head: true }).eq('project_id', project_id),
+      q().select('id', { count: 'exact', head: true }).eq('project_id', project_id).eq('kind', 'commit'),
+      q().select('created_at').eq('project_id', project_id).eq('kind', 'commit').order('created_at', { ascending: false }).limit(1),
+    ])
+    if (total.error) throw new Error(total.error.message)
+    return { rows: ok(rows) as ProjectUpdate[], total: total.count ?? 0, commits: commits.count ?? 0, lastPush: (ok(last) as { created_at: string }[])[0]?.created_at }
+  },
+  async mentionsOf(name, exceptId) {
+    const esc = name.replace(/[\\%_]/g, m => '\\' + m)
+    return ok(await sb().from('project_updates').select('*').neq('project_id', exceptId).ilike('body', `%[[${esc}]]%`).order('created_at', { ascending: false }).limit(50)) as ProjectUpdate[]
+  },
   async addProject(p) { return ok(await sb().from('projects').insert(p).select().single()) },
   async patchProject(id, patch) { ok(await sb().from('projects').update(patch).eq('id', id)) },
   async importProjects(items) {
