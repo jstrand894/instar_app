@@ -1,10 +1,12 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
 import { splitWhen } from '../lib/util'
 import type { Project } from '../types'
 
+type Kind = 'update' | 'note'
 type Mode = 'todo' | 'deadline' | 'update'
 const MODES: { id: Mode; label: string; hint: string }[] = [
   { id: 'todo', label: 'To-do', hint: 'Add a to-do… e.g. "email reviewer fri"' },
@@ -26,6 +28,11 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
   const [date, setDate] = useState('')
   const [saved, setSaved] = useState('')
   const [dateOpen, setDateOpen] = useState(false)
+  const [big, setBig] = useState(false)
+  const [kind, setKind] = useState<Kind>('update')
+  const [again, setAgain] = useState(false)
+  const bigField = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => { if (big) setTimeout(() => bigField.current?.focus(), 30) }, [big])
   const modesRef = useRef<HTMLDivElement>(null)
   const bubble = useRef<HTMLSpanElement>(null)
   // slide the white bubble under whichever mode is selected
@@ -49,7 +56,7 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
     setText(v)
   }
 
-  const parsed = mode === 'update' ? { title: text.trim(), date: null } : splitWhen(text)
+  const parsed = mode === 'update' ? { title: text.trim(), date: null } : splitWhen(text.replace(/\s*\n\s*/g, ' '))
   const when = date || parsed.date || ''
   const needsProject = mode !== 'todo'
   const ready = !!parsed.title && (!needsProject || !!target) && (mode !== 'deadline' || !!when)
@@ -62,9 +69,9 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
     try {
       if (mode === 'todo') await store.addTask(target || null, parsed.title, when || null)
       else if (mode === 'deadline') await store.addDeadline(target, parsed.title, when)
-      else await store.addUpdate(target, parsed.title)
+      else await store.addUpdate(target, parsed.title, big ? kind : 'update')
       setSaved(mode === 'todo' ? '' : mode === 'deadline' ? 'Deadline added' : `Logged to ${projects.find(p => p.id === target)?.name}`)
-      setText(''); setDate(''); setDateOpen(false); onDone(); notify.added()
+      setText(''); setDate(''); setDateOpen(false); if (!again) setBig(false); onDone(); notify.added()
       setTimeout(() => setSaved(''), 3000)
     } catch (er) { onError(friendlyError(er)) }
   }
@@ -76,7 +83,12 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
           <span className="addbar-bubble" ref={bubble} aria-hidden />
           {MODES.map(m => <button type="button" role="tab" aria-selected={mode === m.id} key={m.id} className={mode === m.id ? 'on' : ''} onClick={() => setMode(m.id)}>{m.label}</button>)}
         </div>
-        <input placeholder={MODES.find(m => m.id === mode)!.hint} value={text} onChange={e => change(e.target.value)} aria-label="Text" />
+        <div className="addbar-field">
+          <input placeholder={MODES.find(m => m.id === mode)!.hint} value={text} onChange={e => change(e.target.value)} aria-label="Text" />
+          <button type="button" className="addbar-pop" onClick={() => setBig(true)} aria-label="Pop out into a larger box" title="Pop out into a larger box">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" /></svg>
+          </button>
+        </div>
         <select value={target} onChange={e => setTarget(e.target.value)} aria-label="Project">
           <option value="">{needsProject ? 'For which project…' : 'No project'}</option>
           {group('Manuscripts', open.filter(p => p.type === 'manuscript'))}
@@ -89,6 +101,45 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
         <button className="primary" disabled={!ready}>Add</button>
       </div>
       {saved && <span className="ok small" role="status">{saved}</span>}
+      {big && createPortal(
+        <div className="modal-back capture-back" onMouseDown={e => { if (e.target === e.currentTarget) setBig(false) }}
+          onKeyDown={e => { if (e.key === 'Escape') setBig(false); if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit(e) }}>
+          <div className="modal addbar-big" role="dialog" aria-modal="true" aria-label="Add">
+            <div className="modal-head"><h2>Add</h2><button type="button" className="close-x" onClick={() => setBig(false)} aria-label="Close">×</button></div>
+            <div className="modal-body">
+              <div className="seg" role="tablist">
+                {MODES.map(m => <button type="button" role="tab" aria-selected={mode === m.id} key={m.id} className={mode === m.id ? 'on' : ''} onClick={() => setMode(m.id)}>{m.label}</button>)}
+              </div>
+              <textarea ref={bigField} rows={10} value={text} onChange={e => change(e.target.value)} aria-label="Text"
+                placeholder={mode === 'update' ? (kind === 'note' ? 'Plans, reviewer comments, methods, links…' : 'What did you do or decide?') : MODES.find(m => m.id === mode)!.hint} />
+              <div className="addbar-big-opts">
+                <label>Project
+                  <select value={target} onChange={e => setTarget(e.target.value)} aria-label="Project">
+                    <option value="">{needsProject ? 'For which project…' : 'No project'}</option>
+                    {group('Manuscripts', open.filter(p => p.type === 'manuscript'))}
+                    {group('Work', open.filter(p => p.type !== 'manuscript' && (p.area ?? 'work') === 'work'))}
+                    {group('Home', open.filter(p => p.type !== 'manuscript' && p.area === 'home'))}
+                  </select>
+                </label>
+                {mode !== 'update' && <label>{mode === 'deadline' ? 'Due date' : 'Due (optional)'}<input type="date" value={when} onChange={e => setDate(e.target.value)} /></label>}
+                {mode === 'update' && (
+                  <label>Type
+                    <select value={kind} onChange={e => setKind(e.target.value as Kind)} aria-label="Type">
+                      <option value="update">Update (a quick line in the log)</option><option value="note">Note (longer writing)</option>
+                    </select>
+                  </label>
+                )}
+              </div>
+              <div className="row between">
+                <label className="check addbar-again"><input type="checkbox" checked={again} onChange={e => setAgain(e.target.checked)} />Keep open to add another</label>
+                <span className="row">
+                  <span className="muted small cap-hint"><kbd>⌘</kbd><kbd>↵</kbd></span>
+                  <button type="button" className="primary" disabled={!ready} onClick={submit}>Add</button>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>, document.body)}
     </form>
   )
 }
