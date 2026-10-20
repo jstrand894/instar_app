@@ -207,6 +207,7 @@ export default function WeatherCard() {
           </div>
         </div>
         <div className="wx-chips"><span><Icon name="up" size={12} /> {wx.hi}°</span><span><Icon name="down" size={12} /> {wx.lo}°</span><span><Icon name="wind" size={12} /> {wx.wind}</span><span><Icon name="drop" size={12} /> {wx.rain}%</span></div>
+        <a className="wx-src" href="https://open-meteo.com/" target="_blank" rel="noreferrer">Weather data: Open-Meteo</a>
         {tip && <p className="wx-tip">{tip}</p>}
         {picker}
         {msg && <span className="wx-err">{msg}</span>}

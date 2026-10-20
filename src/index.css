@@ -1101,3 +1101,4 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .rt-list li.task-row > .task-proj, .rt-list li.task-row > .when-menu { grid-row: 2; margin-left: 0; }
 .rt-list li.task-row > .task-x { grid-column: 6; grid-row: 1; }
 .rt-list li.task-row:not(:has(.when-menu)):not(:has(.task-proj)) > .tick { grid-row: 1; }
+.wx-src { font-size: .7rem; color: inherit; opacity: .7; text-decoration: none; width: fit-content; } .wx-src:hover { opacity: 1; text-decoration: underline; }
