@@ -914,6 +914,8 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .entry-view .rich, .rich { white-space: normal; }
 .rich p { margin: 0; white-space: pre-wrap; }
 .rich ul, .rich ol { margin: .25rem 0; padding-left: 1.4rem; }
+.rich li > ul, .rich li > ol { margin: .1rem 0; }
+.rich li > ul:not(.rt-todos) { list-style: circle; }
 .rich code { background: var(--chip); border-radius: 4px; padding: 0 .3em; font-size: .9em; }
 .rich .rt-h { font-weight: 700; margin: .3rem 0 .1rem; } .rich .rt-h1 { font-size: 1.2em; } .rich .rt-h2 { font-size: 1.1em; }
 .rich .rt-todos { list-style: none; padding-left: .2rem; } .rich .rt-todos li.done span { text-decoration: line-through; opacity: .6; }

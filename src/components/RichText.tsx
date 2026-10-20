@@ -25,31 +25,63 @@ function inline(s: string, k = 0): ReactNode[] {
   return out
 }
 
+type LItem = { i: number; indent: number; kind: 'ul' | 'ol' | 'todo'; done: boolean; t: string }
+type LNode = LItem & { kids: LNode[] }
+const LIST_RE = /^(\s*)(?:([-*•])\s+\[( |x)\]\s+|([-*•])\s+|\d+[.)]\s+)(.*)$/i
+
+function listItems(lines: string[], from: number): LItem[] {
+  const out: LItem[] = []
+  for (let i = from; i < lines.length; i++) {
+    const m = LIST_RE.exec(lines[i]); if (!m) break
+    out.push({ i, indent: m[1].replace(/\t/g, '  ').length, kind: m[2] ? 'todo' : m[4] ? 'ul' : 'ol', done: m[3] === 'x' || m[3] === 'X', t: m[5] })
+  }
+  return out
+}
+
+function buildTree(items: LItem[]): LNode[] {
+  const root: LNode[] = [], stack: LNode[] = []
+  for (const it of items) {
+    const node = { ...it, kids: [] }
+    while (stack.length && stack[stack.length - 1].indent >= it.indent) stack.pop()
+    ;(stack.length ? stack[stack.length - 1].kids : root).push(node)
+    stack.push(node)
+  }
+  return root
+}
+
+function renderTree(nodes: LNode[], lines: string[], onToggle: ((next: string) => void) | undefined, key0: number): ReactNode[] {
+  const out: ReactNode[] = []
+  for (let j = 0; j < nodes.length;) {
+    const kind = nodes[j].kind
+    const group: LNode[] = []
+    while (j < nodes.length && nodes[j].kind === kind) group.push(nodes[j++])
+    const lis = group.map(n => (
+      <li key={n.i} className={n.done ? 'done' : ''}>
+        {kind === 'todo' && <><input type="checkbox" checked={n.done} onClick={e => e.stopPropagation()} onChange={() => {
+          const next = [...lines]; next[n.i] = lines[n.i].replace(/\[( |x)\]/i, n.done ? '[ ]' : '[x]'); onToggle?.(next.join('\n'))
+        }} /> </>}
+        <span>{inline(n.t, n.i)}</span>
+        {n.kids.length > 0 && renderTree(n.kids, lines, onToggle, n.i)}
+      </li>))
+    const k = `${key0}-${out.length}`
+    out.push(kind === 'ol' ? <ol key={k}>{lis}</ol> : <ul key={k} className={kind === 'todo' ? 'rt-todos' : undefined}>{lis}</ul>)
+  }
+  return out
+}
+
 export function RichView({ text, onToggle }: { text: string; onToggle?: (next: string) => void }) {
   const lines = text.split('\n')
   const blocks: ReactNode[] = []
   for (let i = 0; i < lines.length;) {
     const line = lines[i]
-    const todo = /^\s*[-*]\s+\[( |x)\]\s+(.*)$/i.exec(line)
-    if (todo) {
-      const items: { i: number; done: boolean; t: string }[] = []
-      while (i < lines.length) { const mm = /^\s*[-*]\s+\[( |x)\]\s+(.*)$/i.exec(lines[i]); if (!mm) break; items.push({ i, done: mm[1] !== ' ', t: mm[2] }); i++ }
-      blocks.push(<ul key={blocks.length} className="rt-todos">{items.map(it => (
-        <li key={it.i} className={it.done ? 'done' : ''}>
-          <input type="checkbox" checked={it.done} onClick={e => e.stopPropagation()} onChange={() => {
-            const next = [...lines]; next[it.i] = lines[it.i].replace(/\[( |x)\]/i, it.done ? '[ ]' : '[x]'); onToggle?.(next.join('\n'))
-          }} /> <span>{inline(it.t, it.i)}</span>
-        </li>))}</ul>)
+    const items = listItems(lines, i)
+    if (items.length) {
+      i += items.length
+      blocks.push(...renderTree(buildTree(items), lines, onToggle, blocks.length))
       continue
     }
-    const ul = /^\s*[-*•]\s+(.*)$/.exec(line), ol = /^\s*\d+[.)]\s+(.*)$/.exec(line), h = /^(#{1,3})\s+(.*)$/.exec(line)
-    if (ul || ol) {
-      const re = ul ? /^\s*[-*•]\s+(.*)$/ : /^\s*\d+[.)]\s+(.*)$/
-      const items: string[] = []
-      while (i < lines.length) { const mm = re.exec(lines[i]); if (!mm) break; items.push(mm[1]); i++ }
-      const lis = items.map((t, j) => <li key={j}>{inline(t, j)}</li>)
-      blocks.push(ul ? <ul key={blocks.length}>{lis}</ul> : <ol key={blocks.length}>{lis}</ol>)
-    } else if (h) {
+    const h = /^(#{1,3})\s+(.*)$/.exec(line)
+    if (h) {
       blocks.push(<p key={blocks.length} className={`rt-h rt-h${h[1].length}`}>{inline(h[2])}</p>); i++
     } else { blocks.push(<p key={blocks.length}>{line ? inline(line) : <br />}</p>); i++ }
   }
@@ -84,8 +116,21 @@ export default function RichTextarea({ value, onChange, onKeyDown, ...rest }: TA
     let end = v.indexOf('\n', b); if (end < 0) end = v.length
     const lines = v.slice(start, end).split('\n')
     const all = lines.every(l => strip.test(l))
-    const next = lines.map((l, i) => all ? l.replace(strip, '') : make(i) + l.replace(/^\s*([-*•]|\d+[.)]|#{1,3})\s+(\[[ x]\]\s+)?/i, '')).join('\n')
+    const next = lines.map((l, i) => all ? l.replace(strip, '') : (/^\s*/.exec(l)?.[0] ?? '') + make(i) + l.replace(/^\s*([-*•]|\d+[.)]|#{1,3})\s+(\[[ x]\]\s+)?/i, '')).join('\n')
     return { v: v.slice(0, start) + next + v.slice(end), a: start, b: start + next.length }
+  })
+
+  const indentLines = (dir: 1 | -1) => apply((v, a, b) => {
+    const start = v.lastIndexOf('\n', a - 1) + 1
+    let end = v.indexOf('\n', b); if (end < 0) end = v.length
+    let first = 0, total = 0
+    const next = v.slice(start, end).split('\n').map((l, i) => {
+      const r = dir > 0 ? '  ' + l : l.replace(/^( {1,2}|\t)/, '')
+      if (i === 0) first = r.length - l.length
+      total += r.length - l.length
+      return r
+    }).join('\n')
+    return { v: v.slice(0, start) + next + v.slice(end), a: Math.max(start, a + first), b: b + total }
   })
 
   const bar: { label: ReactNode; title: string; run: () => void }[] = [
@@ -97,6 +142,8 @@ export default function RichTextarea({ value, onChange, onKeyDown, ...rest }: TA
     { label: '•', title: 'Bulleted list', run: () => prefixLines(() => '- ', /^\s*[-*•]\s+/) },
     { label: '☑', title: 'Checklist', run: () => prefixLines(() => '- [ ] ', /^\s*[-*]\s+\[[ x]\]\s+/i) },
     { label: '1.', title: 'Numbered list', run: () => prefixLines(i => `${i + 1}. `, /^\s*\d+[.)]\s+/) },
+    { label: '⇥', title: 'Indent (Tab)', run: () => indentLines(1) },
+    { label: '⇤', title: 'Outdent (⇧Tab)', run: () => indentLines(-1) },
     { label: '</>', title: 'Code', run: () => wrapSel('`') },
   ]
 
@@ -107,6 +154,10 @@ export default function RichTextarea({ value, onChange, onKeyDown, ...rest }: TA
       if (k === 'b') { e.preventDefault(); wrapSel('**'); return }
       if (k === 'i') { e.preventDefault(); wrapSel('*'); return }
       if (k === 'u') { e.preventDefault(); wrapSel('__'); return }
+    }
+    if (e.key === 'Tab' && !mod && !e.altKey) {
+      const el = e.currentTarget, ls = value.lastIndexOf('\n', el.selectionStart - 1) + 1
+      if (LIST_RE.test(value.slice(ls).split('\n')[0]) || e.shiftKey && /^( |\t)/.test(value.slice(ls))) { e.preventDefault(); indentLines(e.shiftKey ? -1 : 1); return }
     }
     if (e.key === 'Enter' && !mod && !e.shiftKey) {
       const el = e.currentTarget, pos = el.selectionStart
