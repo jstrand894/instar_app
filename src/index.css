@@ -1274,5 +1274,6 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 /* profile picture */
 img.avatar { object-fit: cover; background: var(--chip); }
 .pic-row { display: flex; gap: .5rem; flex-wrap: wrap; }
-.account-pic { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex: none; margin: -2px; box-shadow: 0 0 0 1px var(--line); }
-@media (max-width: 760px) { .nav .account-pic { width: 22px; height: 22px; } }
+.account-pic { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex: none; margin: -7px; box-shadow: 0 0 0 1px var(--line); }
+@media (max-width: 760px) { .nav .account-pic { width: 28px; height: 28px; margin: -5px; } }
+.account-btn:has(.account-pic) .unread-dot { left: 46px; top: 3px; }
