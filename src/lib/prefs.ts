@@ -17,6 +17,7 @@ export interface Prefs {
   theme: Theme
   accent: string
   name: string
+  avatar: string // profile picture as a small data URL ('' = none)
   pomo: { focus: number; short: number; long: number }
   units: Units
   weekStart: 0 | 1 // 0 = Sunday, 1 = Monday
@@ -28,7 +29,7 @@ export interface Prefs {
 }
 
 const KEY = 'tm-prefs-v1'
-const DEFAULTS: Prefs = { theme: 'system', accent: 'forest', name: '', pomo: { focus: 25, short: 5, long: 15 }, units: 'auto', weekStart: 1, density: 'comfortable', motion: 'system', todayHidden: [], todayOrder: [], resumeLast: true }
+const DEFAULTS: Prefs = { theme: 'system', accent: 'forest', name: '', avatar: '', pomo: { focus: 25, short: 5, long: 15 }, units: 'auto', weekStart: 1, density: 'comfortable', motion: 'system', todayHidden: [], todayOrder: [], resumeLast: true }
 
 export function getPrefs(): Prefs {
   try {

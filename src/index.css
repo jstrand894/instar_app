@@ -1249,3 +1249,9 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .focus-more.up { margin: 0 0 .25rem; animation: none; }
 .focus-more { transition: opacity .2s; }
 .focus-more.off { opacity: 0; pointer-events: none; animation: none; }
+
+/* profile picture */
+img.avatar { object-fit: cover; background: var(--chip); }
+.pic-row { display: flex; gap: .5rem; flex-wrap: wrap; }
+.account-pic { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex: none; margin: -2px; box-shadow: 0 0 0 1px var(--line); }
+@media (max-width: 760px) { .nav .account-pic { width: 22px; height: 22px; } }

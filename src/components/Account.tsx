@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { guest, supabase } from '../lib/supabase'
-import { ACCENTS, getPrefs, setPrefs, type Theme, type Units } from '../lib/prefs'
+import { ACCENTS, getPrefs, setPrefs, usePrefs, type Theme, type Units } from '../lib/prefs'
 import { isDesktop } from '../lib/util'
 import Logo from './Logo'
 import { markRead, useWhatsNew } from '../lib/whatsNew'
@@ -11,10 +11,26 @@ const PersonIcon = () => (
   </svg>
 )
 
+/** Centre-crops a picked image to a small square JPEG, so it stays tiny in storage. */
+function toAvatar(file: File, size = 192): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image()
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = c.height = size
+      const side = Math.min(img.width, img.height)
+      c.getContext('2d')!.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size)
+      URL.revokeObjectURL(url); resolve(c.toDataURL('image/jpeg', 0.85))
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file is not an image I can read.')) }
+    img.src = url
+  })
+}
+
 export default function Account({ signOut }: { signOut: (() => void) | null }) {
   const [open, setOpen] = useState(false)
   const [start, setStart] = useState<Tab>('profile')
   const { unread } = useWhatsNew()
+  const { avatar } = usePrefs()
   useEffect(() => {
     const on = (e: Event) => { setStart((e as CustomEvent<{ tab?: Tab }>).detail?.tab ?? 'profile'); setOpen(true) }
     window.addEventListener('tm-open-account', on); return () => window.removeEventListener('tm-open-account', on)
@@ -22,7 +38,7 @@ export default function Account({ signOut }: { signOut: (() => void) | null }) {
   return (
     <>
       <button className="account-btn" onClick={() => { setStart('profile'); setOpen(true) }} aria-haspopup="dialog">
-        <PersonIcon /><span>Account</span>{unread && <i className="unread-dot" aria-label="New updates" />}
+        {avatar ? <img className="account-pic" src={avatar} alt="" /> : <PersonIcon />}<span>Account</span>{unread && <i className="unread-dot" aria-label="New updates" />}
       </button>
       {open && <AccountDialog start={start} signOut={signOut} onClose={() => setOpen(false)} />}
     </>
@@ -48,6 +64,12 @@ function AccountDialog({ start, signOut, onClose }: { start: Tab; signOut: (() =
   const saveName = async (v: string) => {
     const name = v.trim(); setPrefs({ name }); setLocal(getPrefs())
     if (supabase) await supabase.auth.updateUser({ data: { display_name: name } }).catch(() => {})
+  }
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [picErr, setPicErr] = useState('')
+  const pickPhoto = async (f: File | undefined) => {
+    if (!f) return
+    try { setPicErr(''); setPrefs({ avatar: await toAvatar(f) }); setLocal(getPrefs()) } catch (e) { setPicErr((e as Error).message) }
   }
   const update = (patch: Parameters<typeof setPrefs>[0]) => { setPrefs(patch); setLocal(getPrefs()) }
   const pomo = (k: 'focus' | 'short' | 'long', v: string) => {
@@ -78,9 +100,19 @@ function AccountDialog({ start, signOut, onClose }: { start: Tab; signOut: (() =
           {tab === 'profile' && (
             <div className="set-pane">
               <div className="who">
-                <span className="avatar">{(email ?? '?')[0].toUpperCase()}</span>
+                {prefs.avatar ? <img className="avatar" src={prefs.avatar} alt="Your profile picture" /> : <span className="avatar">{(email ?? '?')[0].toUpperCase()}</span>}
                 <div><b>{email ?? 'Demo mode'}</b><div className="muted small">{email ? 'Signed in' : 'Data stays in this browser only'}</div></div>
               </div>
+              <section>
+                <h3>Profile picture</h3>
+                <div className="pic-row">
+                  <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => { pickPhoto(e.target.files?.[0]); e.target.value = '' }} />
+                  <button onClick={() => fileRef.current?.click()}>{prefs.avatar ? 'Change photo' : 'Upload a photo'}</button>
+                  {prefs.avatar && <button onClick={() => { update({ avatar: '' }); setPicErr('') }}>Remove</button>}
+                </div>
+                <p className="muted small">Shown in place of the icon on the Account button. Saved on this device only.</p>
+                {picErr && <p className="error small" role="alert">{picErr}</p>}
+              </section>
               <section>
                 <h3>Your name</h3>
                 <input key={prefs.name} defaultValue={prefs.name} placeholder="Used in your Today greeting" autoComplete="given-name" onBlur={e => saveName(e.target.value)} />
