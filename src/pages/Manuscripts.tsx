@@ -86,10 +86,10 @@ export default function Manuscripts() {
     if (p && to && STAGES.some(s => s.id === to) && to !== stageOf(p)) setStage(p, to)
   }
   const dragged = ms.find(p => p.id === dragId)
-  const cardFor = (p: Project) => (
+  const cardFor = (p: Project, menu = false) => (
     <ManuscriptCard p={p} last={latest.get(p.id)} next={nextEvent(p.id)}
       papers={links.filter(l => l.project_id === p.id).length} openTasks={tasks.filter(t => t.project_id === p.id && !t.done).length}
-      onStage={s => setStage(p, s)} onPin={() => togglePin(p)} />
+      onStage={menu ? s => setStage(p, s) : undefined} onPin={() => togglePin(p)} />
   )
 
   return (
@@ -206,7 +206,7 @@ function NewManuscript({ onClose, onCreated }: { onClose: () => void; onCreated:
 
 function ManuscriptCard({ p, last, next, papers, openTasks, onStage, onPin }: {
   openTasks: number; p: Project; last?: ProjectUpdate; next?: { e: ProjectEvent; when: Date | null }; papers: number
-  onStage: (s: Stage) => void; onPin: () => void
+  onStage?: (s: Stage) => void; onPin: () => void
 }) {
   const nav = useNavigate()
   const dl = deadlineInfo(p.deadline)
@@ -218,9 +218,11 @@ function ManuscriptCard({ p, last, next, papers, openTasks, onStage, onPin }: {
         <span className="card-tools">
           <button className={`star ${p.pinned ? 'on' : ''}`} onClick={onPin} aria-pressed={!!p.pinned} title={p.pinned ? 'Unpin' : 'Pin to top'}><Icon name="star" size={18} filled={!!p.pinned} /></button>
         </span>
-        <select className="status" value={p.stage ?? 'drafting'} onChange={e => onStage(e.target.value as Stage)} aria-label="Stage">
-          {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-        </select>
+        {onStage && (
+          <select className="status" value={p.stage ?? 'drafting'} onChange={e => onStage(e.target.value as Stage)} aria-label="Stage">
+            {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+          </select>
+        )}
       </div>
       <h2><Link to={`/project/${p.id}`} className="plink">{p.name}</Link></h2>
       {(p.tags?.length ?? 0) > 0 && <div className="card-tags">{p.tags!.map(t => <a key={t} href="#search" onClick={e => { e.preventDefault(); window.dispatchEvent(new CustomEvent('tm-search', { detail: '#' + t })) }}>#{t}</a>)}</div>}
