@@ -75,7 +75,8 @@ export default function RoutineCard({ routines, checks, projects, events, tasks,
   const overdue = tasks.filter(t => t.due_on && t.due_on < todayIso)
   const taskRow = (t: ProjectTask, late: boolean) => (
     <TaskRow as="li" key={t.id} task={t} late={late} project={t.project_id ? byId.get(t.project_id) : undefined} leaving={leaving.has('t' + t.id)}
-      onToggle={onTask} onRename={onRename} onDue={onDue} />
+      onToggle={onTask} onRename={onRename} onDue={onDue}
+      onDelete={() => notify.undoable(`Deleted task "${t.title}"`, () => store.deleteTask(t.id), [t.id])} />
   )
   const tomorrow = addDays(base, 1)
   const todayEvents = events.filter(e => e.when < tomorrow)
