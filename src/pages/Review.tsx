@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import BackButton from '../components/BackButton'
 import { Link } from 'react-router-dom'
 import { store } from '../lib/store'
 import { usePrefs } from '../lib/prefs'
@@ -61,7 +62,7 @@ export default function Review() {
   return (
     <div className="page review">
       <header className="page-head">
-        <div><h1>Weekly review</h1><p className="muted today-date">{offset === 0 ? 'This week' : offset === 1 ? 'Last week' : `${offset} weeks ago`} · {label}</p></div>
+        <div><div className="title-row"><h1>Weekly review</h1><BackButton /></div><p className="muted today-date">{offset === 0 ? 'This week' : offset === 1 ? 'Last week' : `${offset} weeks ago`} · {label}</p></div>
         <div className="seg" role="group" aria-label="Week">
           <button onClick={() => setOffset(offset + 1)} aria-label="Previous week">← Earlier</button>
           <button onClick={() => setOffset(0)} className={offset === 0 ? 'on' : ''}>This week</button>

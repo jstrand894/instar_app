@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import BackButton from '../components/BackButton'
 import { greeting } from '../lib/util'
 import { firstName } from '../lib/user'
 import { usePrefs } from '../lib/prefs'
@@ -76,7 +77,7 @@ export default function Today() {
     <div className="page today">
       <header className="page-head">
         <div>
-          <h1>{greeting(d.now.getHours())}{name ? `, ${name}` : ''}</h1>
+          <div className="title-row"><h1>{greeting(d.now.getHours())}{name ? `, ${name}` : ''}</h1><BackButton /></div>
           <p className="muted today-date">{d.now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} · {d.tone}</p>
         </div>
         <div className="today-actions">

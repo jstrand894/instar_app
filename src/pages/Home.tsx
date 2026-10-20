@@ -1,4 +1,5 @@
 import Icon from '../components/Icon'
+import BackButton from '../components/BackButton'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
@@ -140,7 +141,7 @@ export default function Home() {
   return (
     <div className="page">
       <header className="page-head">
-        <h1>Projects</h1>
+        <div className="title-row"><h1>Projects</h1><BackButton /></div>
         <div className="rocker" data-area={area} role="group" aria-label="Work or home projects">
           <i className="thumb" />
           <button className={area === 'work' ? 'on' : ''} onClick={() => setArea('work')} aria-pressed={area === 'work'}>Work <small>{areaCount('work')}</small></button>

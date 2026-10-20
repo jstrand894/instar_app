@@ -1,4 +1,5 @@
 import Icon from '../components/Icon'
+import BackButton from '../components/BackButton'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { DndContext, DragOverlay, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
@@ -95,7 +96,7 @@ export default function Manuscripts() {
   return (
     <div className="page wide-page">
       <header className="page-head">
-        <h1>Manuscripts</h1>
+        <div className="title-row"><h1>Manuscripts</h1><BackButton /></div>
         <div className="seg" role="group" aria-label="View">
           <button className={view === 'board' ? 'on' : ''} onClick={() => setView('board')}>Board</button>
           <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>List</button>

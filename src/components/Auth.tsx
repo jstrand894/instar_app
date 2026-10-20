@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
+import { guest, setGuest, supabase } from '../lib/supabase'
 
 export default function AuthGate({ children }: { children: (signOut: (() => void) | null) => ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(supabase ? undefined : null)
@@ -12,7 +12,7 @@ export default function AuthGate({ children }: { children: (signOut: (() => void
     return () => sub.subscription.unsubscribe()
   }, [])
 
-  if (!supabase) return <>{children(null)}</>
+  if (!supabase) return <>{children(guest ? () => setGuest(false) : null)}</>
   if (session === undefined) return <div className="center muted">Loading…</div>
   if (!session) return <SignIn />
   return <>{children(() => { supabase!.auth.signOut() })}</>
@@ -63,6 +63,7 @@ function SignIn() {
           autoComplete={mode === 'in' ? 'current-password' : 'new-password'} />
         <button className="primary" disabled={busy}>{mode === 'in' ? 'Sign in' : 'Sign up'}</button>
         {msg && <p className="error">{msg}</p>}
+        <button type="button" className="link" onClick={() => setGuest(true)}>Continue without signing in</button>
         <button type="button" className="link" onClick={() => setMode(mode === 'in' ? 'up' : 'in')}>
           {mode === 'in' ? 'Need an account? Sign up' : 'Have an account? Sign in'}
         </button>

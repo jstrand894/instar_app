@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { guest, supabase } from '../lib/supabase'
 import { ACCENTS, getPrefs, setPrefs, type Theme, type Units } from '../lib/prefs'
 import { isDesktop } from '../lib/util'
 import Logo from './Logo'
@@ -59,7 +59,7 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
             {tabs.map(([id, label]) => <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}
           </div>
           <div className="set-nav-foot">
-            {signOut && <button className="danger-btn" onClick={signOut}>Sign out</button>}
+            {signOut && <button className="danger-btn" onClick={signOut}>{guest ? 'Sign in' : 'Sign out'}</button>}
           </div>
         </nav>
 

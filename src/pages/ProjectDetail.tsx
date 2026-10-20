@@ -1,4 +1,5 @@
 import Icon from '../components/Icon'
+import BackButton from '../components/BackButton'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { store } from '../lib/store'
@@ -146,7 +147,7 @@ export default function ProjectDetail() {
 
   return (
     <div className="page detail">
-      <Link to={project.type === 'manuscript' ? '/manuscripts' : '/projects'} className="link back-link" onClick={() => forgetOpen(project.type === 'manuscript' ? 'manuscripts' : 'projects')}>← {project.type === 'manuscript' ? 'Manuscripts' : 'Projects'}</Link>
+      <div className="title-row"><BackButton /><Link to={project.type === 'manuscript' ? '/manuscripts' : '/projects'} className="link back-link" onClick={() => forgetOpen(project.type === 'manuscript' ? 'manuscripts' : 'projects')}>← {project.type === 'manuscript' ? 'Manuscripts' : 'Projects'}</Link></div>
       <header className="detail-head">
         <button className={`star big ${project.pinned ? 'on' : ''}`} onClick={() => patch({ pinned: !project.pinned })} aria-pressed={!!project.pinned} title={project.pinned ? 'Unpin' : 'Pin to top'}><Icon name="star" size={20} filled={!!project.pinned} /></button>
         <input className="title-input" defaultValue={project.name} aria-label="Project name"

@@ -33,7 +33,7 @@ const Library = lazy(() => import('./pages/Library'))
 const Reader = lazy(() => import('./pages/Reader'))
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'))
 const Review = lazy(() => import('./pages/Review'))
-import { demoMode } from './lib/supabase'
+import { demoMode, guest } from './lib/supabase'
 import { isDesktop } from './lib/util'
 
 const Icon = ({ d }: { d: string }) => (
@@ -100,7 +100,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
         <OfflineBar />
         {demoMode && !bannerOff && (
           <div className="banner">
-            <span>Demo mode: data is saved only in this browser. Add your Supabase keys to <code>.env</code> to sync across devices.</span>
+            {guest ? <span>You're not signed in: data is saved only in this browser. Sign in from Account to sync across devices.</span> : <span>Demo mode: data is saved only in this browser. Add your Supabase keys to <code>.env</code> to sync across devices.</span>}
             <button className="link" onClick={() => { sessionStorage.setItem('tm-banner', '1'); setBannerOff(true) }} aria-label="Dismiss">×</button>
           </div>
         )}
