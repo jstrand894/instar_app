@@ -1109,3 +1109,10 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .hist-back:disabled { opacity: .4; cursor: default; }
 .title-row .back-link { margin-bottom: 0; } .detail > .title-row { margin-bottom: .6rem; }
 .capture .seg { display: flex; width: auto; } .capture .seg button { flex: 1; padding-inline: .3rem; }
+
+/* On desktop the back button hangs in the page's left margin, so the title never moves; on phones it sits inline. */
+@media (min-width: 761px) {
+  .page { padding-left: 3.25rem; }
+  .title-row { position: relative; }
+  .hist-back { position: absolute; right: 100%; top: 50%; transform: translateY(-50%); margin-right: .5rem; }
+}
