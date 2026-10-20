@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import Icon, { type IconName } from './Icon'
 import { getPrefs } from '../lib/prefs'
 
-interface Wx { place: string; temp: number; code: number; hi: number; lo: number; wind: number; rain: number; day: boolean; days: { d: string; code: number; hi: number }[] }
+interface Day { d: string; code: number; hi: number; lo: number; rain: number; wind: number; temps: number[]; sunrise: string; sunset: string }
+interface Wx { place: string; temp: number; code: number; hi: number; lo: number; wind: number; rain: number; day: boolean; hour: number; days: Day[] }
 interface City { name: string; lat: number; lon: number }
 
-const KEY = 'tm-weather2'; const CITY = 'tm-weather-city'
+const KEY = 'tm-weather3'; const CITY = 'tm-weather-city'
 const TTL = 30 * 6e4
 const usUnits = () => { const u = getPrefs().units; return u === 'f' || (u === 'auto' && (navigator.language || '').toLowerCase().startsWith('en-us')) }
 
@@ -52,15 +53,65 @@ function savedCity(): City | null { try { return JSON.parse(localStorage.getItem
 
 async function fetchWx(lat: number, lon: number, place?: string): Promise<Wx> {
   const [f, g] = await Promise.all([
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=6${usUnits() ? '&temperature_unit=fahrenheit&wind_speed_unit=mph' : ''}`).then(r => r.json()),
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m,is_day&hourly=temperature_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,sunrise,sunset&timezone=auto&forecast_days=6${usUnits() ? '&temperature_unit=fahrenheit&wind_speed_unit=mph' : ''}`).then(r => r.json()),
     place ? Promise.resolve({ city: place }) : fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`).then(r => r.json()).catch(() => ({})),
   ])
   return {
     place: g.city || g.locality || g.principalSubdivision || 'Your location',
     temp: Math.round(f.current.temperature_2m), code: f.current.weather_code, wind: Math.round(f.current.wind_speed_10m), day: !!f.current.is_day,
     hi: Math.round(f.daily.temperature_2m_max[0]), lo: Math.round(f.daily.temperature_2m_min[0]), rain: Math.round(f.daily.precipitation_probability_max?.[0] ?? 0),
-    days: [1, 2, 3, 4, 5].map(i => ({ d: new Date(f.daily.time[i] + 'T12:00').toLocaleDateString(undefined, { weekday: 'short' }), code: f.daily.weather_code[i], hi: Math.round(f.daily.temperature_2m_max[i]) })),
+    hour: Number(String(f.current.time).slice(11, 13)) || 0,
+    days: [0, 1, 2, 3, 4, 5].map(i => ({
+      d: i === 0 ? 'Today' : new Date(f.daily.time[i] + 'T12:00').toLocaleDateString(undefined, { weekday: 'short' }),
+      code: f.daily.weather_code[i], hi: Math.round(f.daily.temperature_2m_max[i]), lo: Math.round(f.daily.temperature_2m_min[i]),
+      rain: Math.round(f.daily.precipitation_probability_max?.[i] ?? 0), wind: Math.round(f.daily.wind_speed_10m_max?.[i] ?? 0),
+      temps: (f.hourly.temperature_2m as number[]).slice(i * 24, i * 24 + 24).map(Math.round),
+      sunrise: String(f.daily.sunrise?.[i] ?? ''), sunset: String(f.daily.sunset?.[i] ?? ''),
+    })),
   }
+}
+
+const hourLabel = (h: number) => `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`
+const clock = (iso: string) => { const m = /T(\d+):(\d+)/.exec(iso); return m ? `${+m[1] % 12 || 12}:${m[2]}${+m[1] < 12 ? 'a' : 'p'}` : '' }
+
+/** The day's temperature hour by hour, as a line you can scrub across. */
+function TempLine({ day, nowHour }: { day: Day; nowHour: number | null }) {
+  const [hover, setHover] = useState<number | null>(null)
+  const W = 600, H = 120, PX = 14, PT = 24, PB = 22
+  const t = day.temps
+  if (t.length < 2) return null
+  const lo = Math.min(...t), hi = Math.max(...t), span = Math.max(hi - lo, 1)
+  const x = (i: number) => PX + (i / (t.length - 1)) * (W - PX * 2)
+  const y = (v: number) => PT + (1 - (v - lo) / span) * (H - PT - PB)
+  const pts = t.map((v, i) => [x(i), y(v)] as const)
+  let line = `M${pts[0][0]},${pts[0][1]}`
+  for (let i = 1; i < pts.length; i++) { const mx = (pts[i - 1][0] + pts[i][0]) / 2; line += ` C${mx},${pts[i - 1][1]} ${mx},${pts[i][1]} ${pts[i][0]},${pts[i][1]}` }
+  const area = `${line} L${pts[pts.length - 1][0]},${H - PB} L${pts[0][0]},${H - PB} Z`
+  const hiI = t.indexOf(hi), loI = t.indexOf(lo)
+  const at = (e: React.PointerEvent<SVGSVGElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    setHover(Math.max(0, Math.min(t.length - 1, Math.round(((e.clientX - r.left) / r.width * W - PX) / (W - PX * 2) * (t.length - 1)))))
+  }
+  const hv = hover !== null ? hover : nowHour
+  const tipX = hv !== null ? Math.min(Math.max(x(hv), 40), W - 40) : 0
+  return (
+    <svg className="wx-line-chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Temperature through ${day.d === 'Today' ? 'today' : day.d}: low ${day.lo}°, high ${day.hi}°`}
+      onPointerMove={at} onPointerDown={at} onPointerLeave={() => setHover(null)}>
+      <defs><linearGradient id="wx-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity=".35" /><stop offset="1" stopColor="#fff" stopOpacity="0" /></linearGradient></defs>
+      {[0, 6, 12, 18, 23].map(h => <text key={h} x={x(h)} y={H - 6} className="wx-ax" textAnchor={h === 0 ? 'start' : h === 23 ? 'end' : 'middle'}>{h === 23 ? '11p' : hourLabel(h)}</text>)}
+      <path d={area} fill="url(#wx-fill)" />
+      <path d={line} className="wx-ln" />
+      {hv !== null && <line x1={x(hv)} x2={x(hv)} y1={PT - 6} y2={H - PB} className="wx-cursor" />}
+      {hover === null && <>
+        <text x={x(hiI)} y={y(hi) - 8} className="wx-pt" textAnchor="middle">{hi}°</text>
+        <text x={x(loI)} y={y(lo) + 15} className="wx-pt" textAnchor="middle">{lo}°</text>
+      </>}
+      {hv !== null && <>
+        <circle cx={x(hv)} cy={y(t[hv])} r="4.5" className="wx-dot" />
+        <text x={tipX} y={14} className="wx-pt" textAnchor="middle">{hover === null ? 'Now' : hourLabel(hv)} · {t[hv]}°</text>
+      </>}
+    </svg>
+  )
 }
 
 /** Weather for where you are (or a city you pick): the first thing on Today. Open-Meteo, no key needed. */
@@ -71,6 +122,7 @@ export default function WeatherCard() {
   const [edit, setEdit] = useState(false)
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
+  const [sel, setSel] = useState(0)
 
   // settings changed (units or location): drop the cache and fetch again
   useEffect(() => {
@@ -141,7 +193,22 @@ export default function WeatherCard() {
         {msg && <span className="wx-err">{msg}</span>}
       </div>
       <div className="wx-days">
-        {wx.days.map(d => <div className="wx-d" key={d.d}><span>{d.d}</span><Icon name={describe(d.code)[0]} size={24} /><b>{d.hi}°</b></div>)}
+        {wx.days.map((d, i) => (
+          <button type="button" className={`wx-d ${i === sel ? 'on' : ''}`} key={d.d} aria-pressed={i === sel} onClick={() => setSel(i)} title={`${describe(d.code)[1]}, ${d.hi}° / ${d.lo}°`}>
+            <span>{d.d}</span><Icon name={describe(d.code)[0]} size={24} /><b>{d.hi}°</b><small>{d.lo}°</small>
+          </button>
+        ))}
+      </div>
+      <div className="wx-detail">
+        <div className="wx-detail-head">
+          <b>{sel === 0 ? 'Today' : wx.days[sel].d}</b>
+          <span>{describe(wx.days[sel].code)[1]}</span>
+          <span><Icon name="up" size={12} /> {wx.days[sel].hi}° <Icon name="down" size={12} /> {wx.days[sel].lo}°</span>
+          <span><Icon name="drop" size={12} /> {wx.days[sel].rain}%</span>
+          <span><Icon name="wind" size={12} /> {wx.days[sel].wind}</span>
+          {wx.days[sel].sunrise && <span><Icon name="sun" size={12} /> {clock(wx.days[sel].sunrise)} – {clock(wx.days[sel].sunset)}</span>}
+        </div>
+        <TempLine day={wx.days[sel]} nowHour={sel === 0 ? wx.hour : null} />
       </div>
     </section>
   )
