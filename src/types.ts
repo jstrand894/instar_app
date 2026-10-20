@@ -86,7 +86,6 @@ export interface PaperLink { project_id: string; paper_id: string; created_at: s
 export interface Deadline { id: string; project_id: string; title: string; due_on: string; done: boolean; created_at: string }
 
 export interface ProjectTask { id: string; project_id: string | null; title: string; done: boolean; due_on: string | null; done_at?: string | null; created_at: string }
-export interface Pin { id: string; title: string; notes: string; project_id: string | null; sort_order: number; done: boolean; done_at?: string | null; created_at: string }
 export interface TimeEntry { id: string; project_id: string | null; minutes: number; started_at: string; created_at: string }
 
 export interface Routine { id: string; title: string; notes: string; weekdays: number[]; project_id: string | null; active: boolean; created_at: string }

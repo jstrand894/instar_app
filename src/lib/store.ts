@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { trackMutation } from './sync'
 import { isPendingDelete } from './notify'
 import type {
-  Deadline, Highlight, InkPage, Paper, PaperInput, PaperLink, Pin, ProjectTask, Routine, RoutineCheck, TimeEntry, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
+  Deadline, Highlight, InkPage, Paper, PaperInput, PaperLink, ProjectTask, Routine, RoutineCheck, TimeEntry, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
 } from '../types'
 
 const blankPaper = { authors: '', year: '', status: 'to-read', notes: '', doi: '', category: '', priority: '', source: '', why: '' } as const
@@ -32,13 +32,13 @@ const now = () => new Date().toISOString()
 // ---------- local demo backend ----------
 const LS = 'tm-demo-v1'
 interface Db {
-  projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; links: PaperLink[]; deadlines: Deadline[]; tasks: ProjectTask[]; time: TimeEntry[]; routines: Routine[]; checks: RoutineCheck[]; pins: Pin[]; papers: Paper[]
+  projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; links: PaperLink[]; deadlines: Deadline[]; tasks: ProjectTask[]; time: TimeEntry[]; routines: Routine[]; checks: RoutineCheck[]; papers: Paper[]
   highlights: Highlight[]; ink: InkPage[]
 }
 function load(): Db {
   try {
     const raw = localStorage.getItem(LS)
-    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.links ??= []; d.deadlines ??= []; d.tasks ??= []; d.time ??= []; d.routines ??= []; d.checks ??= []; d.pins ??= []; return d }
+    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.links ??= []; d.deadlines ??= []; d.tasks ??= []; d.time ??= []; d.routines ??= []; d.checks ??= []; return d }
   } catch { /* ignore */ }
   const d = seed()
   localStorage.setItem(LS, JSON.stringify(d))
@@ -61,7 +61,7 @@ function seed(): Db {
     { id: 'u4', kind: 'update', project_id: 'p3', body: 'Added gap-filling step, tests passing', created_at: t(0.2) },
     { id: 'u5', kind: 'update', project_id: 'p4', body: 'Waiting on calibration files', created_at: t(9) },
   ]
-  return { projects, updates, events: [], links: [], deadlines: [], tasks: [], time: [], routines: [], checks: [], pins: [], papers: [], highlights: [], ink: [] }
+  return { projects, updates, events: [], links: [], deadlines: [], tasks: [], time: [], routines: [], checks: [], papers: [], highlights: [], ink: [] }
 }
 const demoFiles = new Map<string, string>() // path -> blob url (session only)
 
@@ -117,14 +117,6 @@ const local = {
     const d = load(); d.tasks = d.tasks.map(x => x.id === id ? { ...x, ...taskPatch(patch) } : x); save(d)
   },
   async deleteTask(id: string) { const d = load(); d.tasks = d.tasks.filter(x => x.id !== id); save(d) },
-  async pins() { return load().pins.filter(p => !p.done).sort((a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at)) },
-  async addPin(p: { title: string; project_id: string | null }) {
-    const d = load(); const row: Pin = { id: uid(), notes: '', sort_order: Math.max(-1, ...d.pins.map(x => x.sort_order)) + 1, done: false, created_at: now(), ...p }
-    d.pins.push(row); save(d); return row
-  },
-  async patchPin(id: string, patch: Partial<Pin>) { const d = load(); d.pins = d.pins.map(x => x.id === id ? { ...x, ...patch } : x); save(d) },
-  async deletePin(id: string) { const d = load(); d.pins = d.pins.filter(x => x.id !== id); save(d) },
-  async reorderPins(ids: string[]) { const d = load(); d.pins = d.pins.map(p => ({ ...p, sort_order: ids.includes(p.id) ? ids.indexOf(p.id) : p.sort_order })); save(d) },
   async routines() { return load().routines },
   async addRoutine(r: { title: string; weekdays: number[]; project_id: string | null; notes: string }) {
     const d = load(); const row: Routine = { id: uid(), active: true, created_at: now(), ...r }
@@ -291,14 +283,6 @@ const remote: typeof local = {
   async addTask(project_id, title, due_on) { return ok(await sb().from('project_tasks').insert({ project_id, title, due_on }).select().single()) },
   async patchTask(id, patch) { ok(await sb().from('project_tasks').update(taskPatch(patch)).eq('id', id)) },
   async deleteTask(id) { ok(await sb().from('project_tasks').delete().eq('id', id)) },
-  async pins() { return ok(await sb().from('pins').select('*').eq('done', false).order('sort_order').order('created_at')) },
-  async addPin(p) {
-    const top = ok(await sb().from('pins').select('sort_order').order('sort_order', { ascending: false }).limit(1)) as { sort_order: number }[]
-    return ok(await sb().from('pins').insert({ ...p, sort_order: (top[0]?.sort_order ?? -1) + 1 }).select().single())
-  },
-  async patchPin(id, patch) { ok(await sb().from('pins').update(patch).eq('id', id)) },
-  async deletePin(id) { ok(await sb().from('pins').delete().eq('id', id)) },
-  async reorderPins(ids) { await Promise.all(ids.map((id, i) => sb().from('pins').update({ sort_order: i }).eq('id', id).then(r => ok(r)))) },
   async routines() { return ok(await sb().from('routines').select('*').order('created_at')) },
   async addRoutine(r) { return ok(await sb().from('routines').insert(r).select().single()) },
   async patchRoutine(id, patch) { ok(await sb().from('routines').update(patch).eq('id', id)) },

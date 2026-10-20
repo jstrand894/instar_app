@@ -6,9 +6,9 @@ import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
 import type { Project } from '../types'
 
-type Tab = 'update' | 'note' | 'task' | 'pin' | 'deadline' | 'event' | 'paper'
+type Tab = 'update' | 'note' | 'task' | 'deadline' | 'event' | 'paper'
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'update', label: 'Update' }, { id: 'note', label: 'Note' }, { id: 'task', label: 'Task' }, { id: 'pin', label: 'Next up' },
+  { id: 'update', label: 'Update' }, { id: 'note', label: 'Note' }, { id: 'task', label: 'Task' },
   { id: 'deadline', label: 'Deadline' }, { id: 'event', label: 'Event' }, { id: 'paper', label: 'Paper' },
 ]
 const LAST = 'tm-last-project'
@@ -62,7 +62,7 @@ export default function QuickCapture() {
     home: projects.filter(p => p.type !== 'manuscript' && p.area === 'home'),
   }), [projects])
 
-  const needsProject = tab !== 'paper' && tab !== 'task' && tab !== 'pin' // a task can be a general to-do, with no project
+  const needsProject = tab !== 'paper' && tab !== 'task' // a task can be a general to-do, with no project
   const ready = !!text.trim() && (!needsProject || !!projectId) && (tab !== 'deadline' || !!date) && (tab !== 'event' || (!!date && !!time))
   const close = () => setOpen(false)
 
@@ -74,7 +74,6 @@ export default function QuickCapture() {
       const pr = projects.find(p => p.id === projectId)
       let undo: () => Promise<unknown>, what: string
       if (tab === 'update' || tab === 'note') { const r = await store.addUpdate(projectId, text.trim(), tab, fromLocalInput(when)); undo = () => store.deleteUpdate(r.id); what = tab === 'note' ? 'Note' : 'Update' }
-      else if (tab === 'pin') { const r = await store.addPin({ title: text.trim(), project_id: projectId || null }); undo = () => store.deletePin(r.id); what = 'Next up item' }
       else if (tab === 'task') { const r = await store.addTask(projectId || null, text.trim(), date || null); undo = () => store.deleteTask(r.id); what = 'Task' }
       else if (tab === 'deadline') { const r = await store.addDeadline(projectId, text.trim(), date); undo = () => store.deleteDeadline(r.id); what = 'Deadline' }
       else if (tab === 'event') {
@@ -117,7 +116,7 @@ export default function QuickCapture() {
               </div>
               {tab !== 'paper' && (
                 <select value={projectId} onChange={e => setProjectId(e.target.value)} aria-label="Project">
-                  <option value="">{tab === 'task' || tab === 'pin' ? 'No project (optional)' : 'Which project or manuscript?'}</option>
+                  <option value="">{tab === 'task' ? 'No project (general to-do)' : 'Which project or manuscript?'}</option>
                   {groups.ms.length > 0 && <optgroup label="Manuscripts">{opt(groups.ms)}</optgroup>}
                   {groups.work.length > 0 && <optgroup label="Work">{opt(groups.work)}</optgroup>}
                   {groups.home.length > 0 && <optgroup label="Home">{opt(groups.home)}</optgroup>}
@@ -128,7 +127,7 @@ export default function QuickCapture() {
                   placeholder={tab === 'note' ? 'Plans, reviewer comments, methods, links…' : 'What did you do or decide?'} />
               ) : (
                 <input ref={field as React.RefObject<HTMLInputElement>} value={text} onChange={e => setText(e.target.value)}
-                  placeholder={tab === 'pin' ? 'What do you want to work on next?' : tab === 'task' ? 'What needs doing?' : tab === 'deadline' ? "What's due?" : tab === 'event' ? 'What? e.g. Team meeting' : 'Paste a DOI, e.g. 10.2307/3894934'} />
+                  placeholder={tab === 'task' ? 'What needs doing?' : tab === 'deadline' ? "What's due?" : tab === 'event' ? 'What? e.g. Team meeting' : 'Paste a DOI, e.g. 10.2307/3894934'} />
               )}
               {(tab === 'update' || tab === 'note') && (
                 <label className="cap-date">When (blank = now)<input type="datetime-local" value={when} max={toLocalInput(new Date().toISOString())} onChange={e => setWhen(e.target.value)} /></label>
