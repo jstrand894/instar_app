@@ -942,3 +942,10 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 /* scrolling: skip hover shadow/transform repaints and cheap-render off-screen cards */
 .project, .paper, .tl-body { contain: layout style; }
 @media (hover: hover) { main { scroll-behavior: auto; } }
+.fmt-wrap { outline: none; }
+.fmt-switch { margin-left: auto; }
+.fmt-switch button { min-width: 0; height: 1.8rem; font-size: .8rem; }
+.fmt-preview { min-height: 3rem; padding: .5rem .65rem; border: 1px solid var(--border, transparent); border-radius: 8px; cursor: text; }
+.fmt-bar .fmt-switch button { background: none; border: 0; padding: 0 .7rem; }
+.fmt-bar .fmt-switch button.on { background: var(--panel); color: var(--ink); }
+.fmt-bar .fmt-switch button:not(.on):hover { background: none; color: var(--ink); }

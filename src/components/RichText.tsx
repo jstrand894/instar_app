@@ -1,4 +1,4 @@
-import { useRef, type ReactNode, type TextareaHTMLAttributes } from 'react'
+import { useRef, useState, type FocusEvent, type ReactNode, type TextareaHTMLAttributes } from 'react'
 import LinkedText from './LinkedText'
 import LinkTextarea from './LinkTextarea'
 
@@ -91,8 +91,25 @@ export function RichView({ text, onToggle }: { text: string; onToggle?: (next: s
 type TA = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'> & { value: string; onChange: (v: string) => void }
 
 /** The note editor: a formatting bar over the link-aware textarea, with ⌘B / ⌘I / ⌘U shortcuts and bullet continuation. */
-export default function RichTextarea({ value, onChange, onKeyDown, ...rest }: TA) {
+const PRETTY_KEY = 'notes-pretty'
+function loadPretty() { try { return localStorage.getItem(PRETTY_KEY) === '1' } catch { return false } }
+
+export default function RichTextarea({ value, onChange, onKeyDown, onBlur, ...rest }: TA) {
   const wrap = useRef<HTMLDivElement>(null)
+  const [pretty, setPretty] = useState(loadPretty)
+  function setMode(next: boolean) {
+    if (next === pretty) return
+    try { localStorage.setItem(PRETTY_KEY, next ? '1' : '0') } catch { /* ignore */ }
+    if (next) wrap.current?.focus()
+    setPretty(next)
+    if (!next) setTimeout(() => { const el = wrap.current?.querySelector('textarea'); el?.focus(); el?.setSelectionRange(el.value.length, el.value.length) }, 0)
+  }
+  const switcher = (
+    <div className="seg fmt-switch" role="group" aria-label="Note view">
+      <button type="button" className={!pretty ? 'on' : ''} onMouseDown={e => e.preventDefault()} onClick={() => setMode(false)} title="Show the markdown as typed">Raw</button>
+      <button type="button" className={pretty ? 'on' : ''} onMouseDown={e => e.preventDefault()} onClick={() => setMode(true)} title="Show bold, italics, lists and headings as formatted">Pretty</button>
+    </div>
+  )
   const ta = () => wrap.current?.querySelector('textarea') ?? null
 
   function apply(fn: (v: string, a: number, b: number) => { v: string; a: number; b: number }) {
@@ -179,14 +196,25 @@ export default function RichTextarea({ value, onChange, onKeyDown, ...rest }: TA
     onKeyDown?.(e)
   }
 
+  const leave = (e: FocusEvent<HTMLDivElement>) => {
+    if (e.relatedTarget instanceof Node && wrap.current?.contains(e.relatedTarget)) return
+    onBlur?.(e as unknown as FocusEvent<HTMLTextAreaElement>)
+  }
+  const esc = (e: React.KeyboardEvent<HTMLDivElement>) => { if (pretty && e.target === e.currentTarget) onKeyDown?.(e as unknown as React.KeyboardEvent<HTMLTextAreaElement>) }
+
   return (
-    <div className="fmt-wrap" ref={wrap}>
+    <div className="fmt-wrap" ref={wrap} tabIndex={-1} onBlur={leave} onKeyDown={esc}>
       <div className="fmt-bar" role="toolbar" aria-label="Formatting">
-        {bar.map((b, i) => (
+        {!pretty && bar.map((b, i) => (
           <button key={i} type="button" title={b.title} aria-label={b.title} onMouseDown={e => e.preventDefault()} onClick={b.run}>{b.label}</button>
         ))}
+        {switcher}
       </div>
-      <LinkTextarea {...rest} value={value} onChange={onChange} onKeyDown={keys} />
+      {pretty
+        ? <div className="fmt-preview" title="Click to edit" onClick={e => { if (!(e.target as HTMLElement).closest('a, input')) setMode(false) }}>
+            {value.trim() ? <RichView text={value} onToggle={onChange} /> : <span className="muted">Nothing here yet.</span>}
+          </div>
+        : <LinkTextarea {...rest} value={value} onChange={onChange} onKeyDown={keys} />}
     </div>
   )
 }
