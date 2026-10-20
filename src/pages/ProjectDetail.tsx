@@ -49,7 +49,19 @@ export default function ProjectDetail() {
   const [evWeekly, setEvWeekly] = useState(false)
   type Mode = 'update' | 'note' | 'meeting'
   const [mode, setMode] = useState<Mode>('update')
-  const [drafts, setDrafts] = useState<Record<Mode, string>>({ update: '', note: '', meeting: '' })
+  const loadDrafts = (pid?: string): Record<Mode, string> => {
+    try { return { update: '', note: '', meeting: '', ...JSON.parse(localStorage.getItem(`draft:${pid}`) ?? '{}') } } catch { return { update: '', note: '', meeting: '' } }
+  }
+  const [drafts, setDraftsRaw] = useState(() => loadDrafts(id))
+  const [draftsFor, setDraftsFor] = useState(id)
+  if (draftsFor !== id) { setDraftsFor(id); setDraftsRaw(loadDrafts(id)); setMode('update') }
+  const setDrafts = (fn: (d: Record<Mode, string>) => Record<Mode, string>) => {
+    const next = fn(drafts); setDraftsRaw(next)
+    try {
+      const keep = Object.fromEntries(Object.entries(next).filter(([k, v]) => v.trim() && !(k === 'meeting' && v === meetingTemplate())))
+      if (Object.keys(keep).length) localStorage.setItem(`draft:${id}`, JSON.stringify(keep)); else localStorage.removeItem(`draft:${id}`)
+    } catch { /* storage unavailable */ }
+  }
   const [editingId, setEditingId] = useState<string | null>(null)
   const text = drafts[mode], kind = mode === 'update' ? 'update' : 'note', isMeeting = mode === 'meeting'
   const setText = (v: string) => setDrafts(d => ({ ...d, [mode]: v }))
