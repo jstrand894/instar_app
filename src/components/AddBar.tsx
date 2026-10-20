@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
-import { fromLocalInput, splitWhen, toLocalInput } from '../lib/util'
+import { fromLocalInput, isoDay, splitWhen, toLocalInput } from '../lib/util'
 import type { Project } from '../types'
 
 type Kind = 'update' | 'note'
@@ -58,7 +58,7 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
   }
 
   const parsed = mode === 'update' ? { title: text.trim(), date: null } : splitWhen(text.replace(/\s*\n\s*/g, ' '))
-  const when = date || parsed.date || ''
+  const when = date || parsed.date || (mode === 'todo' ? isoDay(new Date()) : '')
   const needsProject = mode !== 'todo'
   const ready = !!parsed.title && (!needsProject || !!target) && (mode !== 'deadline' || !!when)
   const group = (label: string, list: Project[]) => list.length > 0 && <optgroup label={label}>{list.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>

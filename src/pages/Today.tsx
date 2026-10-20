@@ -13,6 +13,7 @@ import RoutineCard from '../components/RoutineCard'
 import RoutineManager from '../components/RoutineManager'
 import FocusNow from '../components/today/FocusNow'
 import Deadlines from '../components/today/Deadlines'
+import Pinned from '../components/today/Pinned'
 import Todos from '../components/today/Todos'
 import FocusTime from '../components/today/FocusTime'
 import Reading from '../components/today/Reading'
@@ -46,6 +47,7 @@ export default function Today() {
     day: <RoutineCard key="day" routines={d.routines} checks={d.checks} projects={d.projects} events={d.upcoming} tasks={d.dueNow} leaving={d.leaving}
       onTask={d.checkOff} onRename={d.rename} onDue={d.setDue} onManage={() => setManage(true)} onChange={d.reload} />,
     add: <AddBar key="add" projects={d.projects} onDone={d.reload} onError={d.setError} />,
+    nextup: <Pinned key="nextup" d={d} />,
     deadlines: <Deadlines key="deadlines" d={d} />, todos: <Todos key="todos" d={d} />,
     progress: <ProgressChart key="progress" updates={d.updates} projects={d.projects} papers={d.papers} tasks={d.tasks} />,
     completed: <Completed key="completed" d={d} />, time: <FocusTime key="time" d={d} />, reading: <Reading key="reading" d={d} />,

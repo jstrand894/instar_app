@@ -192,3 +192,19 @@ alter table projects add column if not exists github_repo text;
 alter table project_updates add column if not exists source_url text;
 alter table project_updates add column if not exists external_id text;
 create unique index if not exists project_updates_external_id on project_updates (project_id, external_id);
+
+-- added later: "Next up" pins, the things to work on that are not to-dos (safe to re-run)
+create table if not exists pins (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  title text not null,
+  notes text not null default '',
+  project_id uuid references projects on delete set null,
+  sort_order int not null default 0,
+  done boolean not null default false,
+  done_at timestamptz,
+  created_at timestamptz not null default now()
+);
+alter table pins enable row level security;
+drop policy if exists "own rows" on pins;
+create policy "own rows" on pins for all using (user_id = auth.uid()) with check (user_id = auth.uid());

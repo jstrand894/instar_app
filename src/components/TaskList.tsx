@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
+import { isoDay } from '../lib/util'
 import TaskRow from './TaskRow'
 import type { ProjectTask } from '../types'
 
@@ -11,7 +12,7 @@ const EXIT_MS = 520
 /** A checklist for one project: add, check off, edit, and delete with undo. */
 export default function TaskList({ projectId, tasks, onChange }: { projectId: string; tasks: ProjectTask[]; onChange: () => void }) {
   const [title, setTitle] = useState('')
-  const [due, setDue] = useState('')
+  const [due, setDue] = useState(() => isoDay(new Date()))
   const [showDone, setShowDone] = useState(false)
   const [opt, setOpt] = useState<Record<string, boolean>>({}) // instant feedback while the save finishes
   const [leaving, setLeaving] = useState<Set<string>>(new Set()) // just checked: play the check-off animation before the row moves
@@ -22,7 +23,7 @@ export default function TaskList({ projectId, tasks, onChange }: { projectId: st
   async function add(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
-    await store.addTask(projectId, title.trim(), due || null); setTitle(''); setDue(''); onChange(); notify.added()
+    await store.addTask(projectId, title.trim(), due || null); setTitle(''); setDue(isoDay(new Date())); onChange(); notify.added()
   }
   async function toggle(t: ProjectTask) {
     const next = !isDone(t)

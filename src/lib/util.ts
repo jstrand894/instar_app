@@ -59,7 +59,7 @@ export function greeting(hour: number): string {
 }
 
 const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
-const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+export const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 /** Pulls a trailing date phrase (today, tomorrow, fri, 3/14, 2026-03-14) off a line: "email reviewer fri" -> title + ISO date. */
 export function splitWhen(line: string, now = new Date()): { title: string; date: string | null } {
