@@ -15,7 +15,7 @@ import EntryBody from '../components/EntryBody'
 import RichTextarea from '../components/RichText'
 import LinkedText from '../components/LinkedText'
 import { parsePieces, useLinks } from '../lib/links'
-import LinkedWork from '../components/LinkedWork'
+import LinkedWork, { linkedTo } from '../components/LinkedWork'
 import type { Area, Deadline, ProjectLink, ProjectTask, TimeEntry, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
@@ -169,6 +169,15 @@ export default function ProjectDetail() {
         <button className={`star big ${project.pinned ? 'on' : ''}`} onClick={() => patch({ pinned: !project.pinned })} aria-pressed={!!project.pinned} title={project.pinned ? 'Unpin' : 'Pin to top'}><Icon name="star" size={20} filled={!!project.pinned} /></button>
         <input className="title-input" defaultValue={project.name} aria-label="Project name"
           onBlur={e => e.target.value.trim() && e.target.value !== project.name && patch({ name: e.target.value.trim() })} />
+        {(() => {
+          const names = linkedTo(project.id, projLinks).map(i => allProjects.find(x => x.id === i)).filter((x): x is Project => !!x)
+          return names.length > 0 && (
+            <div className="head-links" aria-label={`Linked ${project.type === 'manuscript' ? 'projects' : 'manuscripts'}`}>
+              {names.slice(0, 2).map(l => <Link key={l.id} to={`/project/${l.id}`} className="head-link" title={`Linked ${l.type === 'manuscript' ? 'manuscript' : 'project'}: ${l.name}`}><Icon name="link" size={14} /><span>{l.name}</span></Link>)}
+              {names.length > 2 && <a href="#linked-work" className="head-link more" title="See all links" onClick={e => { e.preventDefault(); document.querySelector('.linked-work')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}>+{names.length - 2}</a>}
+            </div>
+          )
+        })()}
         <div className="row wrap">
           <select value={project.area ?? 'work'} onChange={e => patch({ area: e.target.value as Area })} aria-label="Work or home">
             <option value="work">Work</option><option value="home">Home</option>
