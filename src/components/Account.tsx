@@ -38,7 +38,7 @@ export default function Account({ signOut }: { signOut: (() => void) | null }) {
   return (
     <>
       <button className="account-btn" onClick={() => { setStart('profile'); setOpen(true) }} aria-haspopup="dialog">
-        {avatar ? <img className="account-pic" src={avatar} alt="" /> : <PersonIcon />}<span>Account</span>{unread && <i className="unread-dot" aria-label="New updates" />}
+        {avatar ? <span className="account-pic"><img src={avatar} alt="" />{unread && <i className="unread-dot" aria-label="New updates" />}</span> : <PersonIcon />}<span>Account</span>{unread && !avatar && <i className="unread-dot" aria-label="New updates" />}
       </button>
       {open && <AccountDialog start={start} signOut={signOut} onClose={() => setOpen(false)} />}
     </>
