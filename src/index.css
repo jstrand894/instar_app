@@ -1290,3 +1290,6 @@ img.avatar { object-fit: cover; background: var(--chip); }
 .linked-chip { display: inline-flex; align-items: center; gap: .3rem; max-width: 100%; padding: .1rem .55rem; border-radius: 99px; background: var(--chip); color: var(--ink); font-size: .74rem; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .linked-chip::before { content: '↔'; color: var(--accent); font-weight: 700; }
 .linked-chip:hover { background: color-mix(in srgb, var(--accent) 14%, var(--chip)); }
+
+/* the icon of the page you are on is drawn in the accent colour */
+.nav a.active svg { color: var(--accent); stroke-width: 2.1; }
