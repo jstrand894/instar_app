@@ -23,8 +23,10 @@ export default function Account({ signOut }: { signOut: (() => void) | null }) {
   )
 }
 
+type Tab = 'profile' | 'appearance' | 'today' | 'weather' | 'timer' | 'about'
+
 function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onClose: () => void }) {
-  const [view, setView] = useState<'settings' | 'about'>('settings')
+  const [tab, setTab] = useState<Tab>('profile')
   const [email, setEmail] = useState<string | null>(null)
   const [prefs, setLocal] = useState(getPrefs)
 
@@ -43,92 +45,123 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
     const n = Math.min(180, Math.max(1, Math.round(Number(v) || 1))); update({ pomo: { ...prefs.pomo, [k]: n } })
   }
 
+  const tabs = [
+    ['profile', 'Profile'], ['appearance', 'Appearance'], ['today', 'Today'], ['weather', 'Weather & dates'],
+    ...(isDesktop() ? [['timer', 'Timer']] : []), ['about', 'About'],
+  ] as [Tab, string][]
+
   return (
     <div className="modal-back" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="modal wide" role="dialog" aria-modal="true" aria-label="Account">
-        <div className="modal-head">
-          {view === 'about' ? <button className="link" onClick={() => setView('settings')}>← Account</button> : <h2>Account</h2>}
+      <div className="modal settings" role="dialog" aria-modal="true" aria-label="Account">
+        <nav className="set-nav" aria-label="Settings sections">
+          <h2>Account</h2>
+          <div className="set-tabs">
+            {tabs.map(([id, label]) => <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}
+          </div>
+          <div className="set-nav-foot">
+            {signOut && <button className="danger-btn" onClick={signOut}>Sign out</button>}
+          </div>
+        </nav>
+
+        <div className="set-main">
           <button className="close-x" onClick={onClose} aria-label="Close">×</button>
-        </div>
 
-        {view === 'settings' ? (
-          <div className="modal-body">
-            <div className="who">
-              <span className="avatar">{(email ?? '?')[0].toUpperCase()}</span>
-              <div><b>{email ?? 'Demo mode'}</b><div className="muted small">{email ? 'Signed in' : 'Data stays in this browser only'}</div></div>
+          {tab === 'profile' && (
+            <div className="set-pane">
+              <div className="who">
+                <span className="avatar">{(email ?? '?')[0].toUpperCase()}</span>
+                <div><b>{email ?? 'Demo mode'}</b><div className="muted small">{email ? 'Signed in' : 'Data stays in this browser only'}</div></div>
+              </div>
+              <section>
+                <h3>Your name</h3>
+                <input key={prefs.name} defaultValue={prefs.name} placeholder="Used in your Today greeting" autoComplete="given-name" onBlur={e => saveName(e.target.value)} />
+              </section>
+              <section>
+                <h3>Help</h3>
+                <button onClick={() => { onClose(); setTimeout(() => window.dispatchEvent(new Event('tm-tour')), 50) }}>Replay tour</button>
+              </section>
             </div>
+          )}
 
-            <section>
-              <h3>Your name</h3>
-              <input key={prefs.name} defaultValue={prefs.name} placeholder="Used in your Today greeting" autoComplete="given-name" onBlur={e => saveName(e.target.value)} />
-            </section>
+          {tab === 'appearance' && (
+            <div className="set-pane">
+              <section>
+                <h3>Theme</h3>
+                <div className="seg" role="group" aria-label="Theme">
+                  {(['system', 'light', 'dark'] as Theme[]).map(t => (
+                    <button key={t} className={prefs.theme === t ? 'on' : ''} onClick={() => update({ theme: t })}>{t[0].toUpperCase() + t.slice(1)}</button>
+                  ))}
+                </div>
+                <div className="swatches" role="group" aria-label="Accent color">
+                  {ACCENTS.map(a => (
+                    <button key={a.id} className={`swatch ${prefs.accent === a.id ? 'on' : ''}`} style={{ background: a.light }} title={a.label}
+                      onClick={() => update({ accent: a.id })} aria-label={a.label} aria-pressed={prefs.accent === a.id} />
+                  ))}
+                </div>
+                <p className="muted small">Saved on this device, so your Mac, iPad and iPhone can each look different.</p>
+              </section>
+              <section>
+                <div className="set-row">
+                  <span><b>Density</b><span className="muted small">Compact fits more on screen</span></span>
+                  <div className="seg" role="group" aria-label="Density">
+                    {(['comfortable', 'compact'] as const).map(d => <button key={d} className={prefs.density === d ? 'on' : ''} onClick={() => update({ density: d })}>{d[0].toUpperCase() + d.slice(1)}</button>)}
+                  </div>
+                </div>
+                <div className="set-row">
+                  <span><b>Animations</b><span className="muted small">Turn off to reduce motion</span></span>
+                  <div className="seg" role="group" aria-label="Animations">
+                    <button className={prefs.motion === 'system' ? 'on' : ''} onClick={() => update({ motion: 'system' })}>On</button>
+                    <button className={prefs.motion === 'reduce' ? 'on' : ''} onClick={() => update({ motion: 'reduce' })}>Reduced</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
 
-            <section>
-              <h3>Appearance</h3>
-              <div className="seg" role="group" aria-label="Theme">
-                {(['system', 'light', 'dark'] as Theme[]).map(t => (
-                  <button key={t} className={prefs.theme === t ? 'on' : ''} onClick={() => update({ theme: t })}>{t[0].toUpperCase() + t.slice(1)}</button>
-                ))}
-              </div>
-              <div className="swatches" role="group" aria-label="Accent color">
-                {ACCENTS.map(a => (
-                  <button key={a.id} className={`swatch ${prefs.accent === a.id ? 'on' : ''}`} style={{ background: a.light }} title={a.label}
-                    onClick={() => update({ accent: a.id })} aria-label={a.label} aria-pressed={prefs.accent === a.id} />
-                ))}
-              </div>
-              <p className="muted small">These settings are saved on this device, so your Mac, iPad and iPhone can each look different.</p>
-            </section>
+          {tab === 'today' && (
+            <div className="set-pane">
+              <section>
+                <div className="set-row">
+                  <span><b>Today screen</b><span className="muted small">Choose which cards appear{prefs.todayHidden.length ? ` (${prefs.todayHidden.length} hidden)` : ''}</span></span>
+                  <button onClick={() => { onClose(); setTimeout(() => window.dispatchEvent(new Event('tm-customize-today')), 50) }}>Customize…</button>
+                </div>
+                <div className="set-row">
+                  <span><b>Remember where I was</b><span className="muted small">Returning to Projects or Manuscripts reopens the one you last had open</span></span>
+                  <div className="seg" role="group" aria-label="Remember last project">
+                    <button className={prefs.resumeLast ? 'on' : ''} onClick={() => update({ resumeLast: true })}>On</button>
+                    <button className={!prefs.resumeLast ? 'on' : ''} onClick={() => update({ resumeLast: false })}>Off</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
 
-            <section>
-              <h3>Layout</h3>
-              <div className="set-row">
-                <span><b>Density</b><span className="muted small">Compact fits more on screen</span></span>
-                <div className="seg" role="group" aria-label="Density">
-                  {(['comfortable', 'compact'] as const).map(d => <button key={d} className={prefs.density === d ? 'on' : ''} onClick={() => update({ density: d })}>{d[0].toUpperCase() + d.slice(1)}</button>)}
+          {tab === 'weather' && (
+            <div className="set-pane">
+              <section>
+                <div className="set-row">
+                  <span><b>Temperature</b></span>
+                  <div className="seg" role="group" aria-label="Temperature units">
+                    {([['auto', 'Auto'], ['f', '°F'], ['c', '°C']] as [Units, string][]).map(([u, l]) => <button key={u} className={prefs.units === u ? 'on' : ''} onClick={() => update({ units: u })}>{l}</button>)}
+                  </div>
                 </div>
-              </div>
-              <div className="set-row">
-                <span><b>Animations</b><span className="muted small">Turn off to reduce motion</span></span>
-                <div className="seg" role="group" aria-label="Animations">
-                  <button className={prefs.motion === 'system' ? 'on' : ''} onClick={() => update({ motion: 'system' })}>On</button>
-                  <button className={prefs.motion === 'reduce' ? 'on' : ''} onClick={() => update({ motion: 'reduce' })}>Reduced</button>
+                <div className="set-row">
+                  <span><b>Week starts on</b><span className="muted small">For focus time and the weekly review</span></span>
+                  <div className="seg" role="group" aria-label="Week starts on">
+                    <button className={prefs.weekStart === 1 ? 'on' : ''} onClick={() => update({ weekStart: 1 })}>Monday</button>
+                    <button className={prefs.weekStart === 0 ? 'on' : ''} onClick={() => update({ weekStart: 0 })}>Sunday</button>
+                  </div>
                 </div>
-              </div>
-              <div className="set-row">
-                <span><b>Today screen</b><span className="muted small">Choose which cards appear{prefs.todayHidden.length ? ` (${prefs.todayHidden.length} hidden)` : ''}</span></span>
-                <button onClick={() => { onClose(); setTimeout(() => window.dispatchEvent(new Event('tm-customize-today')), 50) }}>Customize…</button>
-              </div>
-              <div className="set-row">
-                <span><b>Remember where I was</b><span className="muted small">Returning to Projects or Manuscripts reopens the one you last had open</span></span>
-                <div className="seg" role="group" aria-label="Remember last project">
-                  <button className={prefs.resumeLast ? 'on' : ''} onClick={() => update({ resumeLast: true })}>On</button>
-                  <button className={!prefs.resumeLast ? 'on' : ''} onClick={() => update({ resumeLast: false })}>Off</button>
+                <div className="set-row">
+                  <span><b>Weather location</b><span className="muted small">Uses your device location unless you pick a city on Today</span></span>
+                  <button onClick={() => { try { localStorage.removeItem('tm-weather-city'); localStorage.removeItem('tm-weather2') } catch { /* ignore */ } update({}) }}>Use my location</button>
                 </div>
-              </div>
-            </section>
+              </section>
+            </div>
+          )}
 
-            <section>
-              <h3>Weather and dates</h3>
-              <div className="set-row">
-                <span><b>Temperature</b></span>
-                <div className="seg" role="group" aria-label="Temperature units">
-                  {([['auto', 'Auto'], ['f', '°F'], ['c', '°C']] as [Units, string][]).map(([u, l]) => <button key={u} className={prefs.units === u ? 'on' : ''} onClick={() => update({ units: u })}>{l}</button>)}
-                </div>
-              </div>
-              <div className="set-row">
-                <span><b>Week starts on</b><span className="muted small">For focus time and the weekly review</span></span>
-                <div className="seg" role="group" aria-label="Week starts on">
-                  <button className={prefs.weekStart === 1 ? 'on' : ''} onClick={() => update({ weekStart: 1 })}>Monday</button>
-                  <button className={prefs.weekStart === 0 ? 'on' : ''} onClick={() => update({ weekStart: 0 })}>Sunday</button>
-                </div>
-              </div>
-              <div className="set-row">
-                <span><b>Weather location</b><span className="muted small">Uses your device location unless you pick a city on Today</span></span>
-                <button onClick={() => { try { localStorage.removeItem('tm-weather-city'); localStorage.removeItem('tm-weather2') } catch { /* ignore */ } update({}) }}>Use my location</button>
-              </div>
-            </section>
-
-            {isDesktop() && (
+          {tab === 'timer' && (
+            <div className="set-pane">
               <section>
                 <h3>Pomodoro timer</h3>
                 <div className="pomo-prefs">
@@ -138,30 +171,21 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
                 </div>
                 <p className="muted small">Minutes. A running timer keeps its length until it is reset.</p>
               </section>
-            )}
+            </div>
+          )}
 
-            <section className="acct-actions">
-              <button onClick={() => setView('about')}>About this app</button>
-              <button onClick={() => { onClose(); setTimeout(() => window.dispatchEvent(new Event('tm-tour')), 50) }}>Replay tour</button>
-              {signOut && <button className="danger-btn" onClick={signOut}>Sign out</button>}
-            </section>
-          </div>
-        ) : (
-          <div className="modal-body about">
-            <div className="about-logo"><Logo size={96} /></div>
-            <h2>Instar</h2>
-            <p className="muted small">Version {__APP_VERSION__}</p>
-            <p>A personal research workspace for keeping track of projects, manuscripts and reading, in one place that works on a Mac, iPad and iPhone.</p>
-            <p className="muted small">An <i>instar</i> is the stage between molts in an insect's growth. Every project and manuscript moves through stages too.</p>
-            <ul>
-              <li><b>Projects and manuscripts</b> with dated timelines, notes, schedules and deadlines</li>
-              <li><b>Reading</b> with a PDF reader, highlights, Apple Pencil notes and a recommended next read</li>
-              <li><b>Today</b> view that pulls it all together</li>
-            </ul>
-            <p className="creator">Made by <b>Jackson Strand</b></p>
-            <p className="muted small">Built with React, Supabase and PDF.js.</p>
-          </div>
-        )}
+          {tab === 'about' && (
+            <div className="set-pane about">
+              <div className="about-logo"><Logo size={64} /></div>
+              <h2>Instar</h2>
+              <p className="muted small">Version {__APP_VERSION__}</p>
+              <p>A personal research workspace for projects, manuscripts and reading, on a Mac, iPad and iPhone.</p>
+              <p className="muted small">An <i>instar</i> is the stage between molts in an insect's growth. Every project and manuscript moves through stages too.</p>
+              <p className="creator">Made by <b>Jackson Strand</b></p>
+              <p className="muted small">Built with React, Supabase and PDF.js.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
