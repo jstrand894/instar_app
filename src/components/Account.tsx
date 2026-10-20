@@ -3,6 +3,7 @@ import { guest, supabase } from '../lib/supabase'
 import { ACCENTS, getPrefs, setPrefs, type Theme, type Units } from '../lib/prefs'
 import { isDesktop } from '../lib/util'
 import Logo from './Logo'
+import { markRead, useWhatsNew } from '../lib/whatsNew'
 
 const PersonIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -12,21 +13,29 @@ const PersonIcon = () => (
 
 export default function Account({ signOut }: { signOut: (() => void) | null }) {
   const [open, setOpen] = useState(false)
-  useEffect(() => { const on = () => setOpen(true); window.addEventListener('tm-open-account', on); return () => window.removeEventListener('tm-open-account', on) }, [])
+  const [start, setStart] = useState<Tab>('profile')
+  const { unread } = useWhatsNew()
+  useEffect(() => {
+    const on = (e: Event) => { setStart((e as CustomEvent<{ tab?: Tab }>).detail?.tab ?? 'profile'); setOpen(true) }
+    window.addEventListener('tm-open-account', on); return () => window.removeEventListener('tm-open-account', on)
+  }, [])
   return (
     <>
-      <button className="account-btn" onClick={() => setOpen(true)} aria-haspopup="dialog">
-        <PersonIcon /><span>Account</span>
+      <button className="account-btn" onClick={() => { setStart('profile'); setOpen(true) }} aria-haspopup="dialog">
+        <PersonIcon /><span>Account</span>{unread && <i className="unread-dot" aria-label="New updates" />}
       </button>
-      {open && <AccountDialog signOut={signOut} onClose={() => setOpen(false)} />}
+      {open && <AccountDialog start={start} signOut={signOut} onClose={() => setOpen(false)} />}
     </>
   )
 }
 
-type Tab = 'profile' | 'appearance' | 'today' | 'weather' | 'timer' | 'about'
+type Tab = 'profile' | 'appearance' | 'today' | 'weather' | 'timer' | 'whatsnew' | 'about'
 
-function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onClose: () => void }) {
-  const [tab, setTab] = useState<Tab>('profile')
+function AccountDialog({ start, signOut, onClose }: { start: Tab; signOut: (() => void) | null; onClose: () => void }) {
+  const [tab, setTab] = useState<Tab>(start)
+  const { releases, unread } = useWhatsNew()
+  const [fresh] = useState(unread ? releases[0]?.build : null) // keep the newest highlighted while you read it
+  useEffect(() => { if (tab === 'whatsnew') markRead() }, [tab])
   const [email, setEmail] = useState<string | null>(null)
   const [prefs, setLocal] = useState(getPrefs)
 
@@ -47,7 +56,7 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
 
   const tabs = [
     ['profile', 'Profile'], ['appearance', 'Appearance'], ['today', 'Today'], ['weather', 'Weather & dates'],
-    ...(isDesktop() ? [['timer', 'Timer']] : []), ['about', 'About'],
+    ...(isDesktop() ? [['timer', 'Timer']] : []), ['whatsnew', "What's new"], ['about', 'About'],
   ] as [Tab, string][]
 
   return (
@@ -56,7 +65,7 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
         <nav className="set-nav" aria-label="Settings sections">
           <h2>Account</h2>
           <div className="set-tabs">
-            {tabs.map(([id, label]) => <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>)}
+            {tabs.map(([id, label]) => <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}{id === 'whatsnew' && unread && tab !== id && <i className="unread-dot" aria-label="New" />}</button>)}
           </div>
           <div className="set-nav-foot">
             {signOut && <button className="danger-btn" onClick={signOut}>{guest ? 'Sign in' : 'Sign out'}</button>}
@@ -170,6 +179,21 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
                   <label>Long break<input type="number" min={1} max={180} value={prefs.pomo.long} onChange={e => pomo('long', e.target.value)} /></label>
                 </div>
                 <p className="muted small">Minutes. A running timer keeps its length until it is reset.</p>
+              </section>
+            </div>
+          )}
+
+          {tab === 'whatsnew' && (
+            <div className="set-pane">
+              <section>
+                <h3>What's new</h3>
+                {!releases.length && <p className="muted">Nothing yet. When the app updates, what changed is kept here.</p>}
+                {releases.map(r => (
+                  <div className={`release ${r.build === fresh ? 'fresh' : ''}`} key={r.build}>
+                    <div className="release-head"><b>Version {r.version}</b><time className="muted small">{new Date(r.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time></div>
+                    <ul>{r.items.map((t, i) => <li key={i}>{t}</li>)}</ul>
+                  </div>
+                ))}
               </section>
             </div>
           )}

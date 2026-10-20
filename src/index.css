@@ -1226,3 +1226,14 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 /* the account dialog lives inside the sidebar, so undo the sidebar link styling on this little "i" */
 .creator a.info-i { display: inline-grid; padding: 0; width: 1.1rem; height: 1.1rem; min-height: 0; gap: 0; background: none; }
 .creator a.info-i:hover { background: none; }
+
+/* update inbox: a quiet dot for unread, and the What's new list */
+.unread-dot { display: inline-block; width: 7px; height: 7px; margin-left: .45rem; border-radius: 50%; background: var(--accent); vertical-align: middle; flex: none; }
+.account-btn { position: relative; } .account-btn .unread-dot { position: absolute; left: 30px; top: 8px; margin: 0; box-shadow: 0 0 0 2px var(--panel); }
+.release { display: grid; gap: .35rem; padding: .8rem 0; border-top: 1px solid var(--line); }
+.release:first-of-type { border-top: 0; padding-top: .2rem; }
+.release-head { display: flex; justify-content: space-between; align-items: baseline; gap: .6rem; }
+.release ul { margin: 0; padding-left: 1.1rem; display: grid; gap: .25rem; font-size: .88rem; color: var(--muted); }
+.release.fresh .release-head b::after { content: 'New'; margin-left: .5rem; padding: .05rem .45rem; border-radius: 99px; font-size: .68rem; font-weight: 700; background: var(--accent); color: var(--accent-ink); vertical-align: .08em; }
+.update-note .update-all { margin-top: .6rem; background: none; border: 0; padding: 0; min-height: 0; font-size: .82rem; color: var(--accent); font-weight: 600; }
+.update-note .update-all:hover { text-decoration: underline; }
