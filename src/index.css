@@ -949,3 +949,8 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .fmt-bar .fmt-switch button { background: none; border: 0; padding: 0 .7rem; }
 .fmt-bar .fmt-switch button.on { background: var(--panel); color: var(--ink); }
 .fmt-bar .fmt-switch button:not(.on):hover { background: none; color: var(--ink); }
+.entry-fold { position: relative; }
+.entry-fold-clip { overflow: hidden; transition: max-height .35s cubic-bezier(.4, 0, .2, 1); }
+.entry-fold.clamped .entry-fold-clip { -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+.entry-fold-btn { margin-top: .25rem; }
+@media (prefers-reduced-motion: reduce) { .entry-fold-clip { transition: none; } }
