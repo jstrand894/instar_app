@@ -1237,3 +1237,12 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .release.fresh .release-head b::after { content: 'New'; margin-left: .5rem; padding: .05rem .45rem; border-radius: 99px; font-size: .68rem; font-weight: 700; background: var(--accent); color: var(--accent-ink); vertical-align: .08em; }
 .update-note .update-all { margin-top: .6rem; background: none; border: 0; padding: 0; min-height: 0; font-size: .82rem; color: var(--accent); font-weight: 600; }
 .update-note .update-all:hover { text-decoration: underline; }
+
+/* Focus now: three tiles at a time, the rest scroll, with an arrow to reveal them */
+.focus-scroll { position: relative; display: grid; align-content: start; }
+.today-top .focus-tiles { flex: none; grid-auto-rows: auto; align-content: start; overflow-y: auto; scrollbar-width: none; overscroll-behavior: contain; }
+.focus-tiles::-webkit-scrollbar { display: none; }
+.focus-more { justify-self: center; margin-top: .25rem; display: grid; place-items: center; width: 34px; height: 24px; min-height: 0; padding: 0; border: 0; border-radius: 99px; background: var(--chip); color: var(--muted); cursor: pointer; animation: focus-bob 1.8s ease-in-out infinite; }
+.focus-more:hover { color: var(--ink); }
+@keyframes focus-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(2px); } }
+@media (prefers-reduced-motion: reduce) { .focus-more { animation: none; } }

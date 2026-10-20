@@ -150,7 +150,7 @@ export function useTodayData() {
     ...dueNow.map(t => ({ key: 't' + t.id, kind: 'To-do', title: t.title, score: deadlineInfo(t.due_on)!.days, pill: deadlineInfo(t.due_on)!, project: t.project_id ? byId.get(t.project_id) : undefined, tick: () => checkOff(t.id), when: '' })),
     ...dueItems.filter(x => x.info.days <= 3).map(x => ({ key: 'd' + x.key, kind: 'Deadline', title: x.title, score: x.info.days, pill: x.info, project: x.project, tick: x.id ? () => finishDeadline(x.id!) : null, when: '' })),
     ...todays.filter(x => x.when.getTime() >= now.getTime() - 36e5).slice(0, 1).map((x, i) => ({ key: 'e' + i, kind: 'Next up', title: x.title, score: 0, pill: null, project: x.project, tick: null, when: x.when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) })),
-  ].sort((a, b) => a.score - b.score).slice(0, 5)
+  ].sort((a, b) => a.score - b.score).slice(0, 12)
 
   return {
     loading, error, setError, reload: load, leaving,
