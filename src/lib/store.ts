@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { trackMutation } from './sync'
 import { isPendingDelete } from './notify'
 import type {
-  Deadline, Highlight, InkPage, Paper, PaperInput, PaperLink, ProjectTask, Routine, RoutineCheck, TimeEntry, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
+  Deadline, Highlight, InkPage, Paper, PaperInput, PaperLink, ProjectLink, ProjectTask, Routine, RoutineCheck, TimeEntry, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
 } from '../types'
 
 const blankPaper = { authors: '', year: '', status: 'to-read', notes: '', doi: '', category: '', priority: '', source: '', why: '' } as const
@@ -27,18 +27,19 @@ const withReadAt = <T extends { status?: string; read_at?: string | null }>(patc
 const taskPatch = <T extends { done?: boolean; done_at?: string | null }>(patch: T): T =>
   patch.done === undefined ? patch : { ...patch, done_at: patch.done ? new Date().toISOString() : null }
 const uid = () => crypto.randomUUID()
+const pairOf = (a: string, b: string): [string, string] => (a < b ? [a, b] : [b, a])
 const now = () => new Date().toISOString()
 
 // ---------- local demo backend ----------
 const LS = 'tm-demo-v1'
 interface Db {
-  projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; links: PaperLink[]; deadlines: Deadline[]; tasks: ProjectTask[]; time: TimeEntry[]; routines: Routine[]; checks: RoutineCheck[]; papers: Paper[]
+  projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; links: PaperLink[]; projectLinks: ProjectLink[]; deadlines: Deadline[]; tasks: ProjectTask[]; time: TimeEntry[]; routines: Routine[]; checks: RoutineCheck[]; papers: Paper[]
   highlights: Highlight[]; ink: InkPage[]
 }
 function load(): Db {
   try {
     const raw = localStorage.getItem(LS)
-    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.links ??= []; d.deadlines ??= []; d.tasks ??= []; d.time ??= []; d.routines ??= []; d.checks ??= []; return d }
+    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.links ??= []; d.projectLinks ??= []; d.deadlines ??= []; d.tasks ??= []; d.time ??= []; d.routines ??= []; d.checks ??= []; return d }
   } catch { /* ignore */ }
   const d = seed()
   localStorage.setItem(LS, JSON.stringify(d))
@@ -61,7 +62,7 @@ function seed(): Db {
     { id: 'u4', kind: 'update', project_id: 'p3', body: 'Added gap-filling step, tests passing', created_at: t(0.2) },
     { id: 'u5', kind: 'update', project_id: 'p4', body: 'Waiting on calibration files', created_at: t(9) },
   ]
-  return { projects, updates, events: [], links: [], deadlines: [], tasks: [], time: [], routines: [], checks: [], papers: [], highlights: [], ink: [] }
+  return { projects, updates, events: [], links: [], projectLinks: [], deadlines: [], tasks: [], time: [], routines: [], checks: [], papers: [], highlights: [], ink: [] }
 }
 const demoFiles = new Map<string, string>() // path -> blob url (session only)
 
@@ -104,6 +105,7 @@ const local = {
     d.updates = d.updates.filter(u => u.project_id !== id)
     d.events = d.events.filter(e => e.project_id !== id)
     d.links = d.links.filter(l => l.project_id !== id)
+    d.projectLinks = d.projectLinks.filter(l => l.project_id !== id && l.linked_id !== id)
     d.deadlines = d.deadlines.filter(x => x.project_id !== id)
     d.tasks = d.tasks.filter(x => x.project_id !== id)
     d.time = d.time.map(x => x.project_id === id ? { ...x, project_id: null } : x); save(d)
@@ -156,6 +158,15 @@ const local = {
   },
   async unlinkPaper(project_id: string, paper_id: string) {
     const d = load(); d.links = d.links.filter(l => !(l.project_id === project_id && l.paper_id === paper_id)); save(d)
+  },
+  async projectLinks() { return load().projectLinks },
+  async linkProject(a: string, b: string) {
+    const [project_id, linked_id] = pairOf(a, b)
+    const d = load(); if (!d.projectLinks.some(l => l.project_id === project_id && l.linked_id === linked_id)) d.projectLinks.push({ project_id, linked_id, created_at: now() }); save(d)
+  },
+  async unlinkProject(a: string, b: string) {
+    const [project_id, linked_id] = pairOf(a, b)
+    const d = load(); d.projectLinks = d.projectLinks.filter(l => !(l.project_id === project_id && l.linked_id === linked_id)); save(d)
   },
   async reorderProjects(ids: string[], reset = false) {
     const d = load(); d.projects = d.projects.map(p => { const i = ids.indexOf(p.id); return i < 0 ? p : { ...p, sort_order: reset ? null : i } }); save(d)
@@ -272,6 +283,9 @@ const remote: typeof local = {
     return { projects, entries }
   },
   async deleteProject(id) { ok(await sb().from('projects').delete().eq('id', id)) },
+  async projectLinks() { return ok(await sb().from('project_links').select('*')) },
+  async linkProject(a, b) { const [project_id, linked_id] = pairOf(a, b); ok(await sb().from('project_links').upsert({ project_id, linked_id }, { onConflict: 'project_id,linked_id' })) },
+  async unlinkProject(a, b) { const [project_id, linked_id] = pairOf(a, b); ok(await sb().from('project_links').delete().eq('project_id', project_id).eq('linked_id', linked_id)) },
   async reorderProjects(ids, reset = false) {
     await Promise.all(ids.map(async (id, i) => ok(await sb().from('projects').update({ sort_order: reset ? null : i }).eq('id', id))))
   },

@@ -98,6 +98,17 @@ create table if not exists project_papers (
 );
 alter table project_papers enable row level security;
 
+-- added later: a project and a manuscript that belong together (one row per pair, smaller id first; safe to re-run)
+create table if not exists project_links (
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  project_id uuid not null references projects on delete cascade,
+  linked_id uuid not null references projects on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (project_id, linked_id),
+  check (project_id < linked_id)
+);
+alter table project_links enable row level security;
+
 -- added later: when a paper was read, and standalone deadlines (safe to re-run)
 alter table papers add column if not exists read_at timestamptz;
 
@@ -172,7 +183,7 @@ alter table ink enable row level security;
 do $$
 declare t text;
 begin
-  foreach t in array array['projects','project_updates','project_events','project_papers','project_deadlines','project_tasks','time_entries','routines','routine_checks','papers','highlights','ink'] loop
+  foreach t in array array['projects','project_updates','project_events','project_papers','project_links','project_deadlines','project_tasks','time_entries','routines','routine_checks','papers','highlights','ink'] loop
     execute format('drop policy if exists "own rows" on %I', t);
     execute format('create policy "own rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
   end loop;

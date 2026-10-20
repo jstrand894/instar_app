@@ -1284,3 +1284,9 @@ img.avatar { object-fit: cover; background: var(--chip); }
 .done-row:hover .done-x, .done-x:focus-visible { opacity: 1; }
 .done-x:hover { background: var(--chip); color: var(--danger); }
 @media (hover: none) { .done-x { opacity: .7; } }
+
+/* links between a project and a manuscript */
+.linked-chips { display: flex; flex-wrap: wrap; gap: .3rem .4rem; align-items: center; margin: .1rem 0 .2rem; }
+.linked-chip { display: inline-flex; align-items: center; gap: .3rem; max-width: 100%; padding: .1rem .55rem; border-radius: 99px; background: var(--chip); color: var(--ink); font-size: .74rem; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.linked-chip::before { content: '↔'; color: var(--accent); font-weight: 700; }
+.linked-chip:hover { background: color-mix(in srgb, var(--accent) 14%, var(--chip)); }

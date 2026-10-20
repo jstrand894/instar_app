@@ -4,11 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { DndContext, DragOverlay, MouseSensor, TouchSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import Empty from '../components/Empty'
+import { LinkedChips, linkedTo } from '../components/LinkedWork'
 import { store } from '../lib/store'
 import { friendlyError } from '../lib/errors'
 import { ago, fmtWhen, nextOccurrence } from '../lib/util'
 import { STAGES, deadlineInfo, stageLabel } from '../lib/manuscript'
-import type { ProjectTask, PaperLink, Project, ProjectEvent, ProjectUpdate, Stage } from '../types'
+import type { ProjectTask, PaperLink, ProjectLink, Project, ProjectEvent, ProjectUpdate, Stage } from '../types'
 
 const stageOf = (p: Project): Stage => p.stage ?? 'drafting'
 
@@ -17,6 +18,7 @@ export default function Manuscripts() {
   const [updates, setUpdates] = useState<ProjectUpdate[]>([])
   const [events, setEvents] = useState<ProjectEvent[]>([])
   const [links, setLinks] = useState<PaperLink[]>([])
+  const [projLinks, setProjLinks] = useState<ProjectLink[]>([])
   const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [filter, setFilter] = useState<Stage | 'all'>('all')
   const [tag, setTag] = useState('')
@@ -35,11 +37,11 @@ export default function Manuscripts() {
 
   const refresh = useCallback(async () => {
     try {
-      const [p, u, ev, l, tk] = await Promise.all([
+      const [p, u, ev, l, tk, pl] = await Promise.all([
         store.projects(), store.updates(),
-        store.events().catch(() => [] as ProjectEvent[]), store.projectPapers().catch(() => [] as PaperLink[]), store.tasks().catch(() => [] as ProjectTask[]),
+        store.events().catch(() => [] as ProjectEvent[]), store.projectPapers().catch(() => [] as PaperLink[]), store.tasks().catch(() => [] as ProjectTask[]), store.projectLinks().catch(() => [] as ProjectLink[]),
       ])
-      setAll(p); setUpdates(u); setEvents(ev); setLinks(l); setTasks(tk)
+      setAll(p); setUpdates(u); setEvents(ev); setLinks(l); setTasks(tk); setProjLinks(pl)
     } catch (e) { setError(friendlyError(e)) }
   }, [])
   useEffect(() => { refresh() }, [refresh])
@@ -89,7 +91,7 @@ export default function Manuscripts() {
   const dragged = ms.find(p => p.id === dragId)
   const cardFor = (p: Project, menu = false) => (
     <ManuscriptCard p={p} last={latest.get(p.id)} next={nextEvent(p.id)}
-      papers={links.filter(l => l.project_id === p.id).length} openTasks={tasks.filter(t => t.project_id === p.id && !t.done).length}
+      linked={linkedTo(p.id, projLinks).map(i => all.find(x => x.id === i)).filter((x): x is Project => !!x)} papers={links.filter(l => l.project_id === p.id).length} openTasks={tasks.filter(t => t.project_id === p.id && !t.done).length}
       onStage={menu ? s => setStage(p, s) : undefined} onPin={() => togglePin(p)} />
   )
 
@@ -154,7 +156,7 @@ export default function Manuscripts() {
           <div className="grid">
             {g.items.map(p => (
               <ManuscriptCard key={p.id} p={p} last={latest.get(p.id)} next={nextEvent(p.id)}
-                papers={links.filter(l => l.project_id === p.id).length} openTasks={tasks.filter(t => t.project_id === p.id && !t.done).length}
+                linked={linkedTo(p.id, projLinks).map(i => all.find(x => x.id === i)).filter((x): x is Project => !!x)} papers={links.filter(l => l.project_id === p.id).length} openTasks={tasks.filter(t => t.project_id === p.id && !t.done).length}
                 onStage={s => setStage(p, s)} onPin={() => togglePin(p)} />
             ))}
           </div>
@@ -205,8 +207,8 @@ function NewManuscript({ onClose, onCreated }: { onClose: () => void; onCreated:
   )
 }
 
-function ManuscriptCard({ p, last, next, papers, openTasks, onStage, onPin }: {
-  openTasks: number; p: Project; last?: ProjectUpdate; next?: { e: ProjectEvent; when: Date | null }; papers: number
+function ManuscriptCard({ p, last, next, papers, openTasks, onStage, onPin, linked }: {
+  linked: Project[]; openTasks: number; p: Project; last?: ProjectUpdate; next?: { e: ProjectEvent; when: Date | null }; papers: number
   onStage?: (s: Stage) => void; onPin: () => void
 }) {
   const nav = useNavigate()
@@ -227,6 +229,7 @@ function ManuscriptCard({ p, last, next, papers, openTasks, onStage, onPin }: {
       </div>
       <h2><Link to={`/project/${p.id}`} className="plink">{p.name}</Link></h2>
       {(p.tags?.length ?? 0) > 0 && <div className="card-tags">{p.tags!.map(t => <a key={t} href="#search" onClick={e => { e.preventDefault(); window.dispatchEvent(new CustomEvent('tm-search', { detail: '#' + t })) }}>#{t}</a>)}</div>}
+      <LinkedChips linked={linked} />
       <p className="muted small ms-sub">{p.journal || 'No journal yet'}{p.coauthors ? ` · with ${p.coauthors}` : ''}</p>
       <div className="ms-meta">
         {dl && <span className={`pill dl-${dl.tone}`}>{dl.text}</span>}

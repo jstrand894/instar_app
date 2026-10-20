@@ -81,6 +81,8 @@ export interface ProjectImport {
   entries: { kind: 'update' | 'note'; body: string; date: string }[]
 }
 
+/** A project and a manuscript that belong together. Stored once per pair, the smaller id first. */
+export interface ProjectLink { project_id: string; linked_id: string; created_at: string }
 export interface PaperLink { project_id: string; paper_id: string; created_at: string }
 
 export interface Deadline { id: string; project_id: string; title: string; due_on: string; done: boolean; created_at: string }

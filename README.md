@@ -24,6 +24,7 @@ Built by Jackson Strand.
 - **Work / Home** switch at the top; each project belongs to one side
 - Pin projects to the top, drag the handle to reorder, collapsible **Completed** section
 - On wide screens a project opens in two columns: the timeline and add-update box on the left, and the schedule, tasks, deadlines, focus time and reading on the right
+- **Link a project to a manuscript** (and back): a Linked manuscripts / Linked projects section on each page, and a small chip on both cards. Needs the `project_links` table from `supabase/schema.sql`
 - Each project opens to a **timeline** of dated updates and editable note boxes, a **task list** (add, check off, edit, delete with undo), **tags**, **focus time**, a **schedule** (one-off or weekly meetings that also show on the card), **deadlines**, and a **Reading** list of linked papers
 
 **Manuscripts** (separate from projects)

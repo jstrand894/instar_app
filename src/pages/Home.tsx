@@ -6,11 +6,12 @@ import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, us
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import Empty from '../components/Empty'
+import { LinkedChips, linkedTo } from '../components/LinkedWork'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError, UserError } from '../lib/errors'
 import { ago, commitHeadline, fmtWhen, nextOccurrence } from '../lib/util'
-import type { ProjectTask, Area, Project, ProjectEvent, ProjectImport, ProjectStatus, ProjectType, ProjectUpdate } from '../types'
+import type { ProjectTask, Area, Project, ProjectEvent, ProjectImport, ProjectStatus, ProjectLink, ProjectType, ProjectUpdate } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
   { id: 'manuscript', label: 'Manuscript' },
@@ -39,6 +40,7 @@ export default function Home() {
   useEffect(() => { if (params.get('new')) { setAdding(true); setParams({}, { replace: true }) } }, [params, setParams])
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
+  const [projLinks, setProjLinks] = useState<ProjectLink[]>([])
   const importInput = useRef<HTMLInputElement>(null)
 
   async function importHistory(file: File) {
@@ -56,8 +58,8 @@ export default function Home() {
 
   const refresh = useCallback(async () => {
     try {
-      const [p, u, ev, tk] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.tasks().catch(() => [] as ProjectTask[])])
-      setProjects(p); setUpdates(u); setEvents(ev); setTasks(tk)
+      const [p, u, ev, tk, pl] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.tasks().catch(() => [] as ProjectTask[]), store.projectLinks().catch(() => [] as ProjectLink[])])
+      setProjects(p); setUpdates(u); setEvents(ev); setTasks(tk); setProjLinks(pl)
     } catch (e) { setError(friendlyError(e)) }
   }, [])
   useEffect(() => { refresh() }, [refresh])
@@ -131,6 +133,7 @@ export default function Home() {
         <div className="grid">
           {list.map(p => (
             <ProjectCard key={p.id} project={p} updates={byProject.get(p.id) ?? []} upcoming={upcomingByProject.get(p.id) ?? []} openTasks={tasks.filter(t => t.project_id === p.id && !t.done)}
+              linked={linkedTo(p.id, projLinks).map(i => projects.find(x => x.id === i)).filter((x): x is Project => !!x)}
               onChange={refresh} onPin={() => togglePin(p)} />
           ))}
         </div>
@@ -238,8 +241,8 @@ function NewProject({ area, onClose, onCreated }: { area: Area; onClose: () => v
 
 const overdueCount = (ts: ProjectTask[]) => ts.filter(t => t.due_on && t.due_on < new Date().toISOString().slice(0, 10)).length
 
-function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks }: {
-  openTasks: ProjectTask[]
+function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks, linked }: {
+  openTasks: ProjectTask[]; linked: Project[]
   project: Project; updates: ProjectUpdate[]; upcoming: { id: string; title: string; when: Date; weekly: boolean }[]; onChange: () => void; onPin: () => void }) {
   const nav = useNavigate()
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: project.id })
@@ -273,6 +276,7 @@ function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks }:
       </div>
       <h2><Link to={`/project/${project.id}`} className="plink">{project.name}</Link></h2>
       {project.description && <p className="muted">{project.description}</p>}
+      <LinkedChips linked={linked} />
       {(project.tags?.length ?? 0) > 0 && (
         <div className="card-tags">{project.tags!.map(t => <a key={t} href="#search" onClick={e => { e.preventDefault(); window.dispatchEvent(new CustomEvent('tm-search', { detail: '#' + t })) }}>#{t}</a>)}</div>
       )}

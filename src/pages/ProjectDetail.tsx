@@ -15,7 +15,8 @@ import EntryBody from '../components/EntryBody'
 import RichTextarea from '../components/RichText'
 import LinkedText from '../components/LinkedText'
 import { parsePieces, useLinks } from '../lib/links'
-import type { Area, Deadline, ProjectTask, TimeEntry, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
+import LinkedWork from '../components/LinkedWork'
+import type { Area, Deadline, ProjectLink, ProjectTask, TimeEntry, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
   { id: 'manuscript', label: 'Manuscript' }, { id: 'data', label: 'Data' },
@@ -37,6 +38,8 @@ export default function ProjectDetail() {
   const [papers, setPapers] = useState<Paper[]>([])
   const [links, setLinks] = useState<PaperLink[]>([])
   const [paperQ, setPaperQ] = useState('')
+  const [allProjects, setAllProjects] = useState<Project[]>([])
+  const [projLinks, setProjLinks] = useState<ProjectLink[]>([])
   const [deadlines, setDeadlines] = useState<Deadline[]>([])
   const [tasks, setTasks] = useState<ProjectTask[]>([])
   const [time, setTime] = useState<TimeEntry[]>([])
@@ -84,7 +87,8 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     try {
-      const [ps, us, evs, pp, ls, dls, tks, tes] = await Promise.all([store.projects(), id ? store.projectUpdates(id, shown) : Promise.resolve({ rows: [], total: 0, commits: 0 } as ProjectPage), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[]), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[]), store.timeEntries().catch(() => [] as TimeEntry[])])
+      const [ps, us, evs, pp, ls, dls, tks, tes, pls] = await Promise.all([store.projects(), id ? store.projectUpdates(id, shown) : Promise.resolve({ rows: [], total: 0, commits: 0 } as ProjectPage), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[]), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[]), store.timeEntries().catch(() => [] as TimeEntry[]), store.projectLinks().catch(() => [] as ProjectLink[])])
+      setAllProjects(ps); setProjLinks(pls)
       setEvents(evs.filter(e => e.project_id === id)); setPapers(pp); setLinks(ls.filter(l => l.project_id === id)); setDeadlines(dls.filter(d => d.project_id === id)); setTasks(tks.filter(t => t.project_id === id)); setTime(tes.filter(t => t.project_id === id))
       const p = ps.find(x => x.id === id) ?? null
       setProject(p); setTotal(us.total); setPushes({ n: us.commits, last: us.lastPush })
@@ -366,6 +370,8 @@ export default function ProjectDetail() {
           )
         })() : <p className="muted">No focus time logged here yet. Pick this project in the sidebar timer and your sessions will be added.</p>}
       </section>
+
+      {project && <LinkedWork project={project} projects={allProjects} links={projLinks} onChange={load} onError={setError} />}
 
       <section className="card reading">
         <h2>Reading</h2>
