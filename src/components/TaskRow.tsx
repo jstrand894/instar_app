@@ -50,10 +50,11 @@ export default function TaskRow({ task, project, leaving, done, as = 'div', late
     <Tag className={`task-row ${as === 'div' ? 'trow' : ''} ${checked ? 'done' : ''} ${leaving ? 'leaving' : ''} ${late ? 'late' : ''}`}>
       <input type="checkbox" className="tick" checked={checked} onChange={() => onToggle(task.id)} aria-label={`Mark "${task.title}" ${done ? 'not done' : 'done'}`} />
       {onRename ? <InlineEdit value={task.title} className="task-title" onSave={v => onRename(task.id, v)} /> : <span className="task-title">{task.title}</span>}
+      {project ? <Link to={`/project/${project.id}`} className="muted small task-proj">{project.name}</Link> : null}
+      <span className="task-fill" />
       {info && (onDue
         ? <WhenMenu due={task.due_on} onPick={d => onDue(task.id, d)}><span className={`pill dl-${info.tone}`}>{info.text}</span></WhenMenu>
         : <span className={`pill dl-${info.tone}`}>{info.text}</span>)}
-      {project ? <Link to={`/project/${project.id}`} className="muted small task-proj">{project.name}</Link> : null}
       {onDue && !done && <WhenMenu due={task.due_on} onPick={d => onDue(task.id, d)}><span className="when-dots" aria-label="Reschedule">{info ? '⋯' : '+ date'}</span></WhenMenu>}
       {onDelete && <button className="link small danger task-x" aria-label={`Delete "${task.title}"`} onClick={onDelete}>×</button>}
     </Tag>

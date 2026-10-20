@@ -31,6 +31,7 @@ export default function Todos({ d }: { d: TodayData }) {
   if (by === 'due') sorted.sort((a, b) => DUE_ORDER.indexOf(label(a)) - DUE_ORDER.indexOf(label(b)) || (a.due_on ?? '').localeCompare(b.due_on ?? ''))
   if (by === 'project') sorted.sort((a, b) => (name(a) === 'No project' ? 1 : 0) - (name(b) === 'No project' ? 1 : 0) || name(a).localeCompare(name(b)))
 
+  const groups = new Set(sorted.map(label)).size
   const shown = all ? sorted : sorted.slice(0, LIMIT)
   const row = (t: ProjectTask, i: number) => (
     <div key={t.id} className={i >= LIMIT ? 'todo-more' : undefined} style={i >= LIMIT ? { animationDelay: `${Math.min(i - LIMIT, 8) * 30}ms` } : undefined}>
@@ -43,7 +44,7 @@ export default function Todos({ d }: { d: TodayData }) {
   let prev = ''
   shown.forEach((t, i) => {
     const g = label(t)
-    if (by !== 'flat' && g !== prev) { out.push(<h3 key={`h-${g}`} className={`todo-group ${g === 'Overdue' ? 'late' : ''}`}>{g}<span>{sorted.filter(x => label(x) === g).length}</span></h3>); prev = g }
+    if (by !== 'flat' && groups > 1 && g !== prev) { out.push(<h3 key={`h-${g}`} className={`todo-group ${g === 'Overdue' ? 'late' : ''}`}>{g}<span>{sorted.filter(x => label(x) === g).length}</span></h3>); prev = g }
     out.push(row(t, i))
   })
 

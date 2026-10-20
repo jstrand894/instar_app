@@ -1033,3 +1033,23 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .wx-swap.open .wx-fold-strip { grid-template-rows: 0fr; } .wx-swap.open .wx-fold-strip .wx-fold-in { opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s .45s; }
 .wx-swap.open .wx-fold-full { grid-template-rows: 1fr; } .wx-swap.open .wx-fold-full .wx-fold-in { opacity: 1; visibility: visible; transition: opacity .35s .1s ease; }
 .wx-fold-full .wx-fold-in { padding-bottom: 8px; margin-bottom: -8px; }
+
+/* Today refinements */
+.today .today-grid { align-items: start; }
+.today .today-grid .card.slim { padding: .6rem 1rem; } .today .today-grid .card.slim h2 { font-size: .95rem; color: var(--muted); }
+.today .card.slim > .card-head, .today .card.slim > h2:first-child { min-height: 0; }
+.today .page-head .today-date { margin-top: .2rem; }
+.routine-card .rt-days { margin-right: auto; }
+.today .routine-card { padding: .85rem 1.1rem; gap: .5rem; }
+.today .routine-card .card-head { min-height: 0; }
+.today .routine-cols { gap: 1rem; } .today .rt-list { margin-top: .15rem; gap: .15rem; } .today .rt-list li { padding: .3rem .6rem; } .today .rt-soon { gap: .1rem; } .today .rt-soon li { padding: .2rem 0; }
+.today .routine-cols > div { padding: 0; }
+.task-row .task-title { flex: 0 1 auto; min-width: 0; } .task-fill { flex: 1; min-width: .5rem; }
+.task-row .task-proj { margin-left: .2rem; padding: .05rem .6rem; border-radius: 99px; background: var(--chip); color: var(--muted); font-size: .75rem; white-space: nowrap; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; text-decoration: none; }
+.task-row .task-proj:hover { color: var(--ink); text-decoration: none; }
+.today-grid .trow.task-row > a.muted:last-child { margin-left: .2rem; }
+.todo-group span { background: var(--chip); border-radius: 99px; padding: 0 .5rem; font-size: .68rem; opacity: 1; }
+.addbar-date { background: none; border: 1px dashed var(--line); color: var(--muted); border-radius: 8px; min-height: 0; padding: .45rem .8rem; font-size: .85rem; cursor: pointer; white-space: nowrap; } .addbar-date:hover { color: var(--ink); border-color: var(--muted); }
+.weather.wx-clear { background: radial-gradient(ellipse 60% 120% at 100% 0%, rgba(255, 205, 110, .5), transparent 70%), linear-gradient(120deg, #2f7fe0, #7fb4ea); }
+.today .card { transition: box-shadow .2s ease, transform .2s ease; }
+.today-grid > .card:hover { transform: translateY(-1px); }

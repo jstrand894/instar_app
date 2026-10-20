@@ -25,6 +25,7 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
   const setTarget = (v: string) => { setChosen(v); try { localStorage.setItem('tm-addbar-project', v) } catch { /* ignore */ } }
   const [date, setDate] = useState('')
   const [saved, setSaved] = useState('')
+  const [dateOpen, setDateOpen] = useState(false)
 
   function change(v: string) {
     const hit = PREFIX.find(([re]) => re.test(v))
@@ -47,7 +48,7 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
       else if (mode === 'deadline') await store.addDeadline(target, parsed.title, when)
       else await store.addUpdate(target, parsed.title)
       setSaved(mode === 'todo' ? '' : mode === 'deadline' ? 'Deadline added' : `Logged to ${projects.find(p => p.id === target)?.name}`)
-      setText(''); setDate(''); onDone(); notify.added()
+      setText(''); setDate(''); setDateOpen(false); onDone(); notify.added()
       setTimeout(() => setSaved(''), 3000)
     } catch (er) { onError(friendlyError(er)) }
   }
@@ -65,7 +66,9 @@ export default function AddBar({ projects, onDone, onError }: { projects: Projec
           {group('Work', open.filter(p => p.type !== 'manuscript' && (p.area ?? 'work') === 'work'))}
           {group('Home', open.filter(p => p.type !== 'manuscript' && p.area === 'home'))}
         </select>
-        {mode !== 'update' && <input type="date" value={when} onChange={e => setDate(e.target.value)} aria-label="Date" />}
+        {mode !== 'update' && (dateOpen || when || mode === 'deadline'
+          ? <input type="date" value={when} autoFocus={dateOpen && !when} onChange={e => setDate(e.target.value)} aria-label="Date" />
+          : <button type="button" className="addbar-date" onClick={() => setDateOpen(true)}>+ date</button>)}
         <button className="primary" disabled={!ready}>Add</button>
       </div>
       {saved && <span className="ok small" role="status">{saved}</span>}

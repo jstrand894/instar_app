@@ -77,8 +77,7 @@ export default function Today() {
       <header className="page-head">
         <div>
           <h1>{greeting(d.now.getHours())}{name ? `, ${name}` : ''}</h1>
-          <p className="muted today-date">{d.now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}{d.summary && ` · ${d.summary}`}</p>
-          <p className="today-tone">{d.tone}</p>
+          <p className="muted today-date">{d.now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} · {d.tone}</p>
         </div>
         <div className="today-actions">
           <button className="today-search" onClick={() => window.dispatchEvent(new CustomEvent('tm-search'))} aria-label="Search">

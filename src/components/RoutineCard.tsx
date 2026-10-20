@@ -91,6 +91,7 @@ export default function RoutineCard({ routines, checks, projects, events, tasks,
     <section className="card routine-card">
       <div className="card-head">
         <h2>Your day</h2>
+        {routines.length > 0 && <span className="muted small rt-days">{routines.length} routine{routines.length === 1 ? '' : 's'}{[...new Set(routines.flatMap(r => r.weekdays))].length ? `: ${dayList([...new Set(routines.flatMap(r => r.weekdays))])}` : ''}</span>}
         {todayItems.length > 0 && (
           <span className="rt-progress" title={`${doneCount} of ${todayItems.length} routines done today`}>
             <span className="rt-bar"><i style={{ width: `${(doneCount / todayItems.length) * 100}%` }} /></span>
@@ -133,7 +134,6 @@ export default function RoutineCard({ routines, checks, projects, events, tasks,
           </div>
         </div>
       )}
-      {routines.length > 0 && <p className="muted small rt-foot">{routines.length} routine{routines.length === 1 ? '' : 's'}: {[...new Set(routines.flatMap(r => r.weekdays))].length ? dayList([...new Set(routines.flatMap(r => r.weekdays))]) : ''}</p>}
     </section>
   )
 }
