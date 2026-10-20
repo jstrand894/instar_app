@@ -31,16 +31,16 @@ export default function PinnedProjects({ d }: { d: TodayData }) {
   const go = (dir: number) => row.current?.scrollBy({ left: dir * row.current.clientWidth, behavior: 'smooth' })
 
   return (
-    <section className={`card ${pinned.length ? '' : 'slim'}`}>
+    <section className="pin-section">
       <h2><Icon name="star" size={16} filled className="pin-ico" /> Pinned projects {pinned.length > 0 && <span className="count-pill">{pinned.length}</span>}</h2>
       {pinned.length > 0 && (
         <div className="pin-wrap">
           <button type="button" className="pin-arrow left" onClick={() => go(-1)} disabled={!edge.left} aria-label="Scroll left">‹</button>
           <div className="pin-row" ref={row} onScroll={measure}>
             {pinned.map(p => (
-              <article className="pin-card" key={p.id}>
+              <article className={`pin-card t-${p.type}`} key={p.id}>
                 <Link to={`/project/${p.id}`} className="pin-name">{p.name}</Link>
-                <span className="muted small">{p.stage ? p.stage : p.type}{tasksOf(p) > 0 ? ` · ${tasksOf(p)} open to-do${tasksOf(p) === 1 ? '' : 's'}` : ''}</span>
+                <span className="pin-meta"><span className="pin-chip">{p.stage ? p.stage : p.type}</span>{tasksOf(p) > 0 && <span className="muted small">{tasksOf(p)} open to-do{tasksOf(p) === 1 ? '' : 's'}</span>}</span>
                 {lastBody.get(p.id) && <p className="pin-last small">{lastBody.get(p.id)}</p>}
                 <span className="task-fill" />
                 <div className="row between">
@@ -55,7 +55,7 @@ export default function PinnedProjects({ d }: { d: TodayData }) {
       )}
       {!pinned.length && <p className="muted">Pin the projects you want to keep coming back to. They stay here until you unpin them.</p>}
       {others.length > 0 && (
-        <select value="" onChange={e => { const p = others.find(x => x.id === e.target.value); if (p) setPinned(p, true) }} aria-label="Pin a project">
+        <select className="pin-add" value="" onChange={e => { const p = others.find(x => x.id === e.target.value); if (p) setPinned(p, true) }} aria-label="Pin a project">
           <option value="">Pin a project…</option>
           {others.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>

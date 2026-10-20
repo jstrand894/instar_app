@@ -1124,15 +1124,28 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .addbar-big-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .8rem; } .addbar-big-opts label { display: grid; gap: .25rem; font-size: .8rem; color: var(--muted); }
 .addbar-again { margin-left: 0; }
 
-/* Pinned projects on Today: cards in a row, scroll with the arrows */
+/* Pinned projects on Today: plain cards in a row (no box around them), scroll with the arrows */
+.pin-section { display: grid; grid-template-columns: minmax(0, 1fr); gap: .7rem; }
+.pin-section h2 { margin: 0; font-size: 1rem; display: flex; align-items: center; gap: .4rem; }
+.pin-add { max-width: 220px; font-size: .85rem; }
 .pin-wrap { position: relative; }
-.pin-row { display: flex; gap: .75rem; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: .1rem 0 .2rem; }
+.pin-row { display: flex; gap: .9rem; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: .35rem .15rem 1rem; margin: -.35rem -.15rem -.6rem; }
 .pin-row::-webkit-scrollbar { display: none; }
-.pin-card { flex: 0 0 calc((100% - 2.25rem) / 4); min-width: 200px; scroll-snap-align: start; display: flex; flex-direction: column; gap: .3rem; padding: .8rem .9rem; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); min-height: 150px; }
-.pin-name { font-weight: 600; font-size: 1rem; color: var(--ink); text-decoration: none; }
+.pin-card { --tc: var(--t-other); flex: 0 0 calc((100% - 2.7rem) / 4); min-width: 210px; scroll-snap-align: start; display: flex; flex-direction: column; gap: .45rem; padding: 1.05rem 1.1rem .9rem; min-height: 168px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--tc); box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 24px -16px rgba(0,0,0,.25); transition: transform .18s ease, box-shadow .18s ease; }
+.pin-card:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 18px 32px -16px rgba(0,0,0,.3); }
+.pin-card.t-manuscript { --tc: var(--t-manuscript); } .pin-card.t-data { --tc: var(--t-data); } .pin-card.t-field { --tc: var(--t-field); } .pin-card.t-code { --tc: var(--t-code); }
+.pin-name { font-weight: 650; font-size: 1.05rem; letter-spacing: -.01em; line-height: 1.25; color: var(--ink); text-decoration: none; }
 .pin-name:hover { color: var(--accent); }
-.pin-last { margin: 0; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.pin-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 34px; height: 34px; min-height: 0; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--panel); border: 1px solid rgba(128,128,128,.35); box-shadow: 0 2px 8px rgba(0,0,0,.15); color: var(--ink); font-size: 1.3rem; line-height: 1; }
-.pin-arrow.left { left: -12px; } .pin-arrow.right { right: -12px; }
+.pin-meta { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.pin-chip { font-size: .7rem; font-weight: 600; text-transform: capitalize; padding: .12rem .55rem; border-radius: 99px; color: var(--tc); background: color-mix(in srgb, var(--tc) 14%, transparent); }
+.pin-last { margin: .1rem 0 0; color: var(--muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.pin-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 36px; height: 36px; min-height: 0; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 4px 14px rgba(0,0,0,.18); color: var(--ink); font-size: 1.3rem; line-height: 1; }
+.pin-arrow.left { left: -14px; } .pin-arrow.right { right: -14px; }
 .pin-arrow:disabled { display: none; }
 @media (max-width: 700px) { .pin-card { flex-basis: 78%; } }
+
+/* Today: one even rhythm between sections instead of one-off margins */
+.today { display: flex; flex-direction: column; gap: 1.25rem; }
+.today > * { min-width: 0; }
+.today > .addbar, .today > .focus-now, .today > .routine-card, .today .today-grid, .today .today-top { margin-bottom: 0; }
+.today > .group-label { margin: .75rem 0 -.5rem; }

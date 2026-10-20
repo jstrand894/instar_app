@@ -4,8 +4,8 @@ export const TODAY_CARDS = [
   { id: 'started', label: 'Getting started', hint: 'The first-steps checklist' },
   { id: 'focus', label: 'Focus now', hint: 'The few things that matter most right now' },
   { id: 'day', label: 'Your day', hint: 'Events, routines and what is coming up' },
-  { id: 'pinned', label: 'Pinned projects', hint: 'Projects you pinned, ready to pick up' },
   { id: 'add', label: 'Quick add', hint: 'One box for to-dos, deadlines and updates' },
+  { id: 'pinned', label: 'Pinned projects', hint: 'Projects you pinned, ready to pick up' },
   { id: 'deadlines', label: 'Deadlines', hint: 'Due in the next three weeks' },
   { id: 'todos', label: 'To-dos', hint: 'Open tasks across every project' },
   { id: 'progress', label: 'Progress chart', hint: 'Updates, tasks and reading over time' },
@@ -29,5 +29,11 @@ export const CARD_META: Record<string, { shape: 'full' | 'top' | 'grid'; group?:
 export function orderedIds(order: string[]): string[] {
   const all = TODAY_CARDS.map(c => c.id as string)
   const mine = order.filter(id => all.includes(id))
-  return [...mine, ...all.filter(id => !mine.includes(id))]
+  const out = [...mine]
+  all.forEach((id, i) => { // a card you haven't placed goes right after the card that precedes it by default
+    if (out.includes(id)) return
+    const prev = i > 0 ? out.indexOf(all[i - 1]) : -1
+    out.splice(prev + 1, 0, id)
+  })
+  return out
 }
