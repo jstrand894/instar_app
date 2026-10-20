@@ -63,6 +63,13 @@ export default function ProjectDetail() {
     } catch { /* storage unavailable */ }
   }
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [menuId, setMenuId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!menuId) return
+    const close = (e: Event) => { if (e instanceof KeyboardEvent && e.key !== 'Escape') return; setMenuId(null) }
+    document.addEventListener('click', close); document.addEventListener('keydown', close)
+    return () => { document.removeEventListener('click', close); document.removeEventListener('keydown', close) }
+  }, [menuId])
   const text = drafts[mode], kind = mode === 'update' ? 'update' : 'note', isMeeting = mode === 'meeting'
   const setText = (v: string) => setDrafts(d => ({ ...d, [mode]: v }))
   const pickMode = (m: Mode) => { setMode(m); if (m === 'meeting') setDrafts(d => d.meeting.trim() ? d : { ...d, meeting: meetingTemplate() }) }
@@ -196,10 +203,19 @@ export default function ProjectDetail() {
             <span className="tl-dot" />
             <div className="tl-meta">
               <time title={fmt(u.created_at)}>{ago(u.created_at)} · {fmt(u.created_at)}</time>
-              {u.kind !== 'commit' && <button className="link small" onClick={() => setEditingId(editingId === u.id ? null : u.id)}>{editingId === u.id ? 'Cancel' : 'Edit'}</button>}
-              <button className="link small danger" onClick={async () => {
-                notify.undoable(u.kind === 'note' ? 'Note deleted' : 'Update deleted', () => store.deleteUpdate(u.id), [u.id])
-              }}>Delete</button>
+              <div className="tl-menu" onClick={e => e.stopPropagation()}>
+                <button type="button" className="tl-pen" aria-label="Entry actions" aria-haspopup="menu" aria-expanded={menuId === u.id} title="Edit or delete"
+                  onClick={() => setMenuId(menuId === u.id ? null : u.id)}><Icon name="pen" size={14} /></button>
+                {menuId === u.id && (
+                  <div className="tl-pop" role="menu">
+                    {u.kind !== 'commit' && <button type="button" role="menuitem" onClick={() => { setEditingId(editingId === u.id ? null : u.id); setMenuId(null) }}>{editingId === u.id ? 'Cancel edit' : 'Edit'}</button>}
+                    <button type="button" role="menuitem" className="danger" onClick={() => {
+                      setMenuId(null)
+                      notify.undoable(u.kind === 'note' ? 'Note deleted' : 'Update deleted', () => store.deleteUpdate(u.id), [u.id])
+                    }}>Delete</button>
+                  </div>
+                )}
+              </div>
             </div>
             {u.kind === 'commit' ? (
               <div className="commit-box">

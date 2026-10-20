@@ -954,3 +954,10 @@ main { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; scroll
 .entry-fold.clamped .entry-fold-clip { -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
 .entry-fold-btn { margin-top: .25rem; }
 @media (prefers-reduced-motion: reduce) { .entry-fold-clip { transition: none; } }
+.tl-menu { position: relative; }
+.tl-pen { display: inline-flex; align-items: center; background: none; border: 0; padding: .2rem; border-radius: 6px; color: var(--muted); cursor: pointer; opacity: .7; }
+.tl-pen:hover, .tl-pen[aria-expanded="true"] { opacity: 1; background: var(--chip); color: var(--ink); }
+.tl-pop { position: absolute; top: 100%; left: 0; z-index: 20; min-width: 6.5rem; margin-top: .2rem; padding: .25rem; display: grid; background: var(--panel); border: 1px solid var(--border, rgba(128,128,128,.25)); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+.tl-pop button { text-align: left; background: none; border: 0; padding: .35rem .6rem; border-radius: 6px; font-size: .85rem; color: inherit; cursor: pointer; }
+.tl-pop button:hover { background: var(--chip); }
+.tl-pop button.danger { color: var(--danger, #d33); }
