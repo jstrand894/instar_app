@@ -98,6 +98,13 @@ function AccountDialog({ signOut, onClose }: { signOut: (() => void) | null; onC
                 <span><b>Today screen</b><span className="muted small">Choose which cards appear{prefs.todayHidden.length ? ` (${prefs.todayHidden.length} hidden)` : ''}</span></span>
                 <button onClick={() => { onClose(); setTimeout(() => window.dispatchEvent(new Event('tm-customize-today')), 50) }}>Customize…</button>
               </div>
+              <div className="set-row">
+                <span><b>Remember where I was</b><span className="muted small">Returning to Projects or Manuscripts reopens the one you last had open</span></span>
+                <div className="seg" role="group" aria-label="Remember last project">
+                  <button className={prefs.resumeLast ? 'on' : ''} onClick={() => update({ resumeLast: true })}>On</button>
+                  <button className={!prefs.resumeLast ? 'on' : ''} onClick={() => update({ resumeLast: false })}>Off</button>
+                </div>
+              </div>
             </section>
 
             <section>

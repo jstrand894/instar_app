@@ -23,10 +23,11 @@ export interface Prefs {
   density: 'comfortable' | 'compact'
   motion: 'system' | 'reduce'
   todayHidden: string[] // Today cards you turned off
+  resumeLast: boolean // reopen the last project/manuscript when you return to its tab
 }
 
 const KEY = 'tm-prefs-v1'
-const DEFAULTS: Prefs = { theme: 'system', accent: 'forest', name: '', pomo: { focus: 25, short: 5, long: 15 }, units: 'auto', weekStart: 1, density: 'comfortable', motion: 'system', todayHidden: [] }
+const DEFAULTS: Prefs = { theme: 'system', accent: 'forest', name: '', pomo: { focus: 25, short: 5, long: 15 }, units: 'auto', weekStart: 1, density: 'comfortable', motion: 'system', todayHidden: [], resumeLast: true }
 
 export function getPrefs(): Prefs {
   try {

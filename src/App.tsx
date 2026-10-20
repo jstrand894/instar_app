@@ -7,6 +7,19 @@ import Logo from './components/Logo'
 import PageSkeleton from './components/PageSkeleton'
 import Toasts from './components/Toasts'
 import CheckPop from './components/CheckPop'
+import { Navigate } from 'react-router-dom'
+import { getPrefs } from './lib/prefs'
+import { forgetOpen, lastOpen, previousPath, setPreviousPath, type Section } from './lib/resume'
+
+/** Reopens the project or manuscript you last had open when you come back to its tab from elsewhere. */
+function Resume({ section, children }: { section: Section; children: React.ReactNode }) {
+  const id = getPrefs().resumeLast ? lastOpen(section) : null
+  const prev = previousPath()
+  const leftIt = !!id && prev === `/project/${id}`
+  useEffect(() => { if (leftIt) forgetOpen(section) }, [leftIt, section])
+  if (id && prev && !leftIt) return <Navigate to={`/project/${id}`} replace />
+  return <>{children}</>
+}
 import SyncStatus from './components/SyncStatus'
 import OfflineBar from './components/OfflineBar'
 const CommandPalette = lazy(() => import('./components/CommandPalette'))
@@ -39,7 +52,9 @@ const ICONS = {
 }
 
 function Shell({ signOut }: { signOut: (() => void) | null }) {
-  const reading = useLocation().pathname.startsWith('/read/')
+  const path = useLocation().pathname
+  const reading = path.startsWith('/read/')
+  useEffect(() => { setPreviousPath(path) }, [path])
   const [bannerOff, setBannerOff] = useState(() => sessionStorage.getItem('tm-banner') === '1')
   const desktop = isDesktop()
   // Mouse-and-trackpad devices start with a slim rail that slides open on hover; touch devices start pinned open.
@@ -92,8 +107,8 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
         <Suspense fallback={<PageSkeleton />}>
         <Routes>
           <Route path="/" element={<Today />} />
-          <Route path="/projects" element={<Home />} />
-          <Route path="/manuscripts" element={<Manuscripts />} />
+          <Route path="/projects" element={<Resume section="projects"><Home /></Resume>} />
+          <Route path="/manuscripts" element={<Resume section="manuscripts"><Manuscripts /></Resume>} />
           <Route path="/project/:id" element={<ProjectDetail />} />
           <Route path="/library" element={<Library />} />
           <Route path="/read/:id" element={<Reader />} />

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
+import { forgetOpen, rememberOpen } from '../lib/resume'
 import { friendlyError } from '../lib/errors'
 import { ago, fmtMinutes, fmtWhen, nextOccurrence } from '../lib/util'
 import { STAGES, deadlineInfo, stageLabel } from '../lib/manuscript'
@@ -138,11 +139,14 @@ export default function ProjectDetail() {
     try { await store.patchUpdate(u.id, { body }) } catch (e) { setError(friendlyError(e)) }
   }
 
+  const kindOf = project?.type, pid = project?.id
+  useEffect(() => { if (pid && kindOf) rememberOpen(kindOf === 'manuscript' ? 'manuscripts' : 'projects', pid) }, [pid, kindOf])
+
   if (!project) return <div className="page">{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}<Link to="/projects" className="link">← Projects</Link></div>
 
   return (
     <div className="page detail">
-      <Link to={project.type === 'manuscript' ? '/manuscripts' : '/projects'} className="link back-link">← {project.type === 'manuscript' ? 'Manuscripts' : 'Projects'}</Link>
+      <Link to={project.type === 'manuscript' ? '/manuscripts' : '/projects'} className="link back-link" onClick={() => forgetOpen(project.type === 'manuscript' ? 'manuscripts' : 'projects')}>← {project.type === 'manuscript' ? 'Manuscripts' : 'Projects'}</Link>
       <header className="detail-head">
         <button className={`star big ${project.pinned ? 'on' : ''}`} onClick={() => patch({ pinned: !project.pinned })} aria-pressed={!!project.pinned} title={project.pinned ? 'Unpin' : 'Pin to top'}><Icon name="star" size={20} filled={!!project.pinned} /></button>
         <input className="title-input" defaultValue={project.name} aria-label="Project name"
@@ -238,6 +242,7 @@ export default function ProjectDetail() {
 
       <button className="link small danger" onClick={() => {
         notify.undoable(`Deleted "${project.name}"`, () => store.deleteProject(project.id), [project.id])
+        forgetOpen(project.type === 'manuscript' ? 'manuscripts' : 'projects')
         nav(project.type === 'manuscript' ? '/manuscripts' : '/projects')
       }}>Delete project</button>
         </div>
