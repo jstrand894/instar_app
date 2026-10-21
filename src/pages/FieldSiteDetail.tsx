@@ -103,7 +103,7 @@ export default function FieldSiteDetail() {
 
       <section className="card site-hero">
         <div className="site-cover big">
-          {cover ? <img src={cover} alt={`Cover photo of ${site.name}`} /> : <Icon name="mapPin" size={40} />}
+          {cover ? <img src={cover} alt={`Cover photo of ${site.name}`} /> : <Icon name="tree" size={40} />}
           <div className="cover-tools">
             <button onClick={() => pick.current?.click()} disabled={photoBusy}><Icon name="camera" size={14} /> {photoBusy ? 'Saving…' : cover ? 'Change photo' : 'Add a cover photo'}</button>
             {cover && !photoBusy && <button onClick={() => setPhoto(null)}>Remove</button>}

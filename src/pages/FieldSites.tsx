@@ -73,7 +73,7 @@ export default function FieldSites() {
             const cover = s.cover_path ? covers[s.cover_path] : null
             return (
               <Link key={s.id} to={`/sites/${s.id}`} className="card site-card">
-                <div className="site-cover">{cover ? <img src={cover} alt="" loading="lazy" /> : <Icon name="mapPin" size={30} />}</div>
+                <div className="site-cover">{cover ? <img src={cover} alt="" loading="lazy" /> : <Icon name="tree" size={30} />}</div>
                 <div className="site-card-body">
                   <div className="row between"><h2>{s.name}</h2><span className="status-pill" data-status={s.status}>{s.status}</span></div>
                   {s.address && <p className="muted small">{s.address}</p>}
