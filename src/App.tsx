@@ -36,6 +36,8 @@ const Library = lazy(() => import('./pages/Library'))
 const Reader = lazy(() => import('./pages/Reader'))
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'))
 const Review = lazy(() => import('./pages/Review'))
+const FieldSites = lazy(() => import('./pages/FieldSites'))
+const FieldSiteDetail = lazy(() => import('./pages/FieldSiteDetail'))
 import { demoMode, guest } from './lib/supabase'
 import { isDesktop } from './lib/util'
 
@@ -48,6 +50,7 @@ const ICONS = {
   today: 'M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
   manuscripts: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
   projects: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+  sites: 'M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21zM12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
   review: 'M4 5h16v15H4zM4 10h16M8 3v4M16 3v4M8 15l2.5 2.5L16 13',
   papers: 'M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7',
   pin: 'M9 3h6M10 3v6l-4 5h12l-4-5V3M12 14v7',
@@ -67,7 +70,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
   })
   useEffect(() => {
     const idle: (cb: () => void) => void = (window as unknown as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback ?? (cb => setTimeout(cb, 1800))
-    idle(() => { import('./pages/Home'); import('./pages/Manuscripts'); import('./pages/ProjectDetail'); import('./pages/Library'); import('./pages/Review') })
+    idle(() => { import('./pages/Home'); import('./pages/Manuscripts'); import('./pages/ProjectDetail'); import('./pages/Library'); import('./pages/Review'); import('./pages/FieldSites') })
   }, [])
   useEffect(() => {
     const brand = document.querySelector<HTMLElement>('.brand'); const text = document.querySelector<HTMLElement>('.brand-text')
@@ -88,6 +91,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
         <NavLink to="/" end><Icon d={ICONS.today} /><span>Today</span></NavLink>
         <NavLink to="/projects"><Icon d={ICONS.projects} /><span>Projects</span></NavLink>
         <NavLink to="/manuscripts"><Icon d={ICONS.manuscripts} /><span>Manuscripts</span></NavLink>
+        <NavLink to="/sites"><Icon d={ICONS.sites} /><span>Field sites</span></NavLink>
         <NavLink to="/library"><Icon d={ICONS.papers} /><span>Reading</span></NavLink>
         <NavLink to="/review"><Icon d={ICONS.review} /><span>Review</span></NavLink>
         <div className="spacer" />
@@ -114,6 +118,8 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
           <Route path="/projects" element={<Resume section="projects"><Home /></Resume>} />
           <Route path="/manuscripts" element={<Resume section="manuscripts"><Manuscripts /></Resume>} />
           <Route path="/project/:id" element={<ProjectDetail />} />
+          <Route path="/sites" element={<FieldSites />} />
+          <Route path="/sites/:id" element={<FieldSiteDetail />} />
           <Route path="/library" element={<Library />} />
           <Route path="/read/:id" element={<Reader />} />
           <Route path="/review" element={<Review />} />

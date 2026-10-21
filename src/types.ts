@@ -92,3 +92,31 @@ export interface TimeEntry { id: string; project_id: string | null; minutes: num
 
 export interface Routine { id: string; title: string; notes: string; weekdays: number[]; project_id: string | null; active: boolean; created_at: string }
 export interface RoutineCheck { id: string; routine_id: string; on_date: string; created_at: string }
+
+export type SiteStatus = 'active' | 'paused' | 'done'
+export interface FieldSite {
+  id: string
+  name: string
+  status: SiteStatus
+  address: string
+  lat: number | null
+  lng: number | null
+  description: string
+  notes: string
+  project_id: string | null
+  /** One small photo: a path in the "sites" bucket (a data URL in local mode). */
+  cover_path: string | null
+  created_at: string
+}
+export interface SiteVisit {
+  id: string
+  site_id: string
+  /** "planned" is a revisit still to come; "done" is a visit that happened. */
+  status: 'planned' | 'done'
+  visited_at: string
+  minutes: number | null
+  purpose: string
+  notes: string
+  conditions: string
+  created_at: string
+}

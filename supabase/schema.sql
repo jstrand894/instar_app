@@ -203,3 +203,52 @@ alter table projects add column if not exists github_repo text;
 alter table project_updates add column if not exists source_url text;
 alter table project_updates add column if not exists external_id text;
 create unique index if not exists project_updates_external_id on project_updates (project_id, external_id);
+
+-- added later: field sites, with visits and planned revisits in one table (safe to re-run)
+create table if not exists field_sites (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  name text not null,
+  status text not null default 'active',          -- 'active', 'paused' or 'done'
+  address text not null default '',
+  lat double precision,
+  lng double precision,
+  description text not null default '',
+  notes text not null default '',
+  project_id uuid references projects on delete set null,
+  cover_path text,                                 -- one small photo in the 'sites' bucket
+  created_at timestamptz not null default now()
+);
+alter table field_sites enable row level security;
+
+create table if not exists site_visits (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  site_id uuid not null references field_sites on delete cascade,
+  status text not null default 'done',             -- 'planned' (a revisit to come) or 'done' (a visit that happened)
+  visited_at timestamptz not null,                 -- when it is planned for, or when it happened
+  minutes int,                                     -- time on site, optional
+  purpose text not null default '',
+  notes text not null default '',                  -- what you did
+  conditions text not null default '',             -- weather, crew, samples
+  created_at timestamptz not null default now()
+);
+alter table site_visits enable row level security;
+create index if not exists site_visits_site on site_visits (site_id, visited_at desc);
+
+do $$
+declare t text;
+begin
+  foreach t in array array['field_sites','site_visits'] loop
+    execute format('drop policy if exists "own rows" on %I', t);
+    execute format('create policy "own rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
+  end loop;
+end $$;
+
+insert into storage.buckets (id, name, public) values ('sites', 'sites', false)
+on conflict (id) do nothing;
+
+drop policy if exists "own site photos" on storage.objects;
+create policy "own site photos" on storage.objects for all
+  using (bucket_id = 'sites' and (storage.foldername(name))[1] = auth.uid()::text)
+  with check (bucket_id = 'sites' and (storage.foldername(name))[1] = auth.uid()::text);

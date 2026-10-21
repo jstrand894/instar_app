@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { trackMutation } from './sync'
 import { isPendingDelete } from './notify'
 import type {
-  Deadline, Highlight, InkPage, Paper, PaperInput, PaperLink, ProjectLink, ProjectTask, Routine, RoutineCheck, TimeEntry, Project, ProjectEvent, ProjectImport, ProjectUpdate, Stroke,
+  Deadline, FieldSite, Highlight, InkPage, Paper, PaperInput, PaperLink, ProjectLink, ProjectTask, Routine, RoutineCheck, TimeEntry, Project, ProjectEvent, ProjectImport, ProjectUpdate, SiteVisit, Stroke,
 } from '../types'
 
 const blankPaper = { authors: '', year: '', status: 'to-read', notes: '', doi: '', category: '', priority: '', source: '', why: '' } as const
@@ -34,12 +34,12 @@ const now = () => new Date().toISOString()
 const LS = 'tm-demo-v1'
 interface Db {
   projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; links: PaperLink[]; projectLinks: ProjectLink[]; deadlines: Deadline[]; tasks: ProjectTask[]; time: TimeEntry[]; routines: Routine[]; checks: RoutineCheck[]; papers: Paper[]
-  highlights: Highlight[]; ink: InkPage[]
+  highlights: Highlight[]; ink: InkPage[]; sites: FieldSite[]; visits: SiteVisit[]
 }
 function load(): Db {
   try {
     const raw = localStorage.getItem(LS)
-    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.links ??= []; d.projectLinks ??= []; d.deadlines ??= []; d.tasks ??= []; d.time ??= []; d.routines ??= []; d.checks ??= []; return d }
+    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.links ??= []; d.projectLinks ??= []; d.deadlines ??= []; d.tasks ??= []; d.time ??= []; d.routines ??= []; d.checks ??= []; d.sites ??= []; d.visits ??= []; return d }
   } catch { /* ignore */ }
   const d = seed()
   localStorage.setItem(LS, JSON.stringify(d))
@@ -62,7 +62,7 @@ function seed(): Db {
     { id: 'u4', kind: 'update', project_id: 'p3', body: 'Added gap-filling step, tests passing', created_at: t(0.2) },
     { id: 'u5', kind: 'update', project_id: 'p4', body: 'Waiting on calibration files', created_at: t(9) },
   ]
-  return { projects, updates, events: [], links: [], projectLinks: [], deadlines: [], tasks: [], time: [], routines: [], checks: [], papers: [], highlights: [], ink: [] }
+  return { projects, updates, events: [], links: [], projectLinks: [], deadlines: [], tasks: [], time: [], routines: [], checks: [], papers: [], highlights: [], ink: [], sites: [], visits: [] }
 }
 const demoFiles = new Map<string, string>() // path -> blob url (session only)
 
@@ -119,6 +119,32 @@ const local = {
     const d = load(); d.tasks = d.tasks.map(x => x.id === id ? { ...x, ...taskPatch(patch) } : x); save(d)
   },
   async deleteTask(id: string) { const d = load(); d.tasks = d.tasks.filter(x => x.id !== id); save(d) },
+  async sites() { return load().sites },
+  async addSite(s: Pick<FieldSite, 'name'> & Partial<Pick<FieldSite, 'address' | 'lat' | 'lng' | 'description'>>) {
+    const d = load(); const row: FieldSite = { id: uid(), status: 'active', address: '', lat: null, lng: null, description: '', notes: '', project_id: null, cover_path: null, created_at: now(), ...s }
+    d.sites.push(row); save(d); return row
+  },
+  async patchSite(id: string, patch: Partial<FieldSite>) {
+    const d = load(); d.sites = d.sites.map(x => x.id === id ? { ...x, ...patch } : x); save(d)
+  },
+  async deleteSite(id: string) {
+    const d = load(); d.sites = d.sites.filter(x => x.id !== id); d.visits = d.visits.filter(v => v.site_id !== id); save(d)
+  },
+  /** Stores the cover photo; in local mode it is kept as a data URL in the site itself. */
+  async saveSiteCover(id: string, photo: Blob | null) {
+    const url = photo ? await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = () => rej(r.error); r.readAsDataURL(photo) }) : null
+    const d = load(); d.sites = d.sites.map(x => x.id === id ? { ...x, cover_path: url } : x); save(d)
+  },
+  async siteCoverUrls(paths: string[]): Promise<Record<string, string>> { return Object.fromEntries(paths.map(p => [p, p])) },
+  async siteVisits() { return load().visits },
+  async addSiteVisit(v: Omit<SiteVisit, 'id' | 'created_at'>) {
+    const d = load(); const row: SiteVisit = { ...v, id: uid(), created_at: now() }
+    d.visits.push(row); save(d); return row
+  },
+  async patchSiteVisit(id: string, patch: Partial<SiteVisit>) {
+    const d = load(); d.visits = d.visits.map(x => x.id === id ? { ...x, ...patch } : x); save(d)
+  },
+  async deleteSiteVisit(id: string) { const d = load(); d.visits = d.visits.filter(x => x.id !== id); save(d) },
   async routines() { return load().routines },
   async addRoutine(r: { title: string; weekdays: number[]; project_id: string | null; notes: string }) {
     const d = load(); const row: Routine = { id: uid(), active: true, created_at: now(), ...r }
@@ -297,6 +323,35 @@ const remote: typeof local = {
   async addTask(project_id, title, due_on) { return ok(await sb().from('project_tasks').insert({ project_id, title, due_on }).select().single()) },
   async patchTask(id, patch) { ok(await sb().from('project_tasks').update(taskPatch(patch)).eq('id', id)) },
   async deleteTask(id) { ok(await sb().from('project_tasks').delete().eq('id', id)) },
+  async sites() { return ok(await sb().from('field_sites').select('*').order('created_at')) },
+  async addSite(s) { return ok(await sb().from('field_sites').insert(s).select().single()) },
+  async patchSite(id, patch) { ok(await sb().from('field_sites').update(patch).eq('id', id)) },
+  async deleteSite(id) {
+    const { data } = await sb().from('field_sites').select('cover_path').eq('id', id).single()
+    if (data?.cover_path) await sb().storage.from('sites').remove([data.cover_path])
+    ok(await sb().from('field_sites').delete().eq('id', id))
+  },
+  async saveSiteCover(id, photo) {
+    const { data: old } = await sb().from('field_sites').select('cover_path').eq('id', id).single()
+    let path: string | null = null
+    if (photo) {
+      const { data: { user } } = await sb().auth.getUser()
+      path = `${user!.id}/${uid()}.jpg`
+      const up = await sb().storage.from('sites').upload(path, photo, { contentType: 'image/jpeg' })
+      if (up.error) throw new Error(up.error.message)
+    }
+    ok(await sb().from('field_sites').update({ cover_path: path }).eq('id', id))
+    if (old?.cover_path) await sb().storage.from('sites').remove([old.cover_path]) // the old photo goes, so nothing piles up
+  },
+  async siteCoverUrls(paths) {
+    if (!paths.length) return {}
+    const r = await sb().storage.from('sites').createSignedUrls(paths, 3600)
+    return Object.fromEntries((r.data ?? []).flatMap(x => x.signedUrl && x.path ? [[x.path, x.signedUrl] as const] : []))
+  },
+  async siteVisits() { return ok(await sb().from('site_visits').select('*').order('visited_at', { ascending: false })) },
+  async addSiteVisit(v) { return ok(await sb().from('site_visits').insert(v).select().single()) },
+  async patchSiteVisit(id, patch) { ok(await sb().from('site_visits').update(patch).eq('id', id)) },
+  async deleteSiteVisit(id) { ok(await sb().from('site_visits').delete().eq('id', id)) },
   async routines() { return ok(await sb().from('routines').select('*').order('created_at')) },
   async addRoutine(r) { return ok(await sb().from('routines').insert(r).select().single()) },
   async patchRoutine(id, patch) { ok(await sb().from('routines').update(patch).eq('id', id)) },
