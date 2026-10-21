@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import Icon from '../Icon'
+import { Link } from 'react-router-dom'
+import RescueFreeze from '../RescueFreeze'
 import { useGame, XP } from '../../lib/game'
+import { rankFor } from '../../lib/rewards'
 
 const R = 36, C = 2 * Math.PI * R
 
@@ -28,6 +31,7 @@ export default function Quests() {
           <div className="q-ring-num"><b>{g.level}</b><span>Level</span></div>
           <div className="q-level-text">
             <b>{g.xp.toLocaleString()} XP</b>
+            <Link to="/rewards" className="q-rank">{rankFor(g.level).name}</Link>
             <span className="muted small">{(g.span - g.into).toLocaleString()} to level {g.level + 1}</span>
           </div>
         </div>
@@ -47,7 +51,7 @@ export default function Quests() {
         <div className="q-streak">
           <div className="q-streak-top">
             <b>{g.streak}</b>
-            <span className="muted small">day streak{g.frozen ? ' · rest day used' : ''}{g.best > g.streak ? ` · best ${g.best}` : g.best > 1 ? ' · your best' : ''}</span>
+            <span className="muted small">day streak{g.frozen ? ' · freeze used' : ''}{g.freezes > 0 ? ` · ${g.freezes} freeze${g.freezes === 1 ? '' : 's'} saved` : ''}{g.best > g.streak ? ` · best ${g.best}` : g.best > 1 ? ' · your best' : ''}</span>
           </div>
           <div className="q-week" aria-label="XP over the last 7 days">
             {g.week.map((w, i) => (
@@ -59,6 +63,7 @@ export default function Quests() {
           </div>
         </div>
       </div>
+      <RescueFreeze g={g} />
     </section>
   )
 }

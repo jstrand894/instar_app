@@ -15,6 +15,7 @@ import FocusNow from '../components/today/FocusNow'
 import Deadlines from '../components/today/Deadlines'
 import PinnedProjects from '../components/today/PinnedProjects'
 import SiteVisits from '../components/today/SiteVisits'
+import WeekRecap from '../components/today/WeekRecap'
 import Todos from '../components/today/Todos'
 import FocusTime from '../components/today/FocusTime'
 import Reading from '../components/today/Reading'
@@ -51,7 +52,7 @@ export default function Today() {
     quests: <Quests key="quests" />,
     pinned: <PinnedProjects key="pinned" d={d} />,
     add: <AddBar key="add" projects={d.projects} onDone={d.reload} onError={d.setError} />,
-    deadlines: <Deadlines key="deadlines" d={d} />, sites: <SiteVisits key="sites" />, todos: <Todos key="todos" d={d} />,
+    deadlines: <Deadlines key="deadlines" d={d} />, sites: <SiteVisits key="sites" />, recap: <WeekRecap key="recap" />, todos: <Todos key="todos" d={d} />,
     progress: <ProgressChart key="progress" updates={d.updates} projects={d.projects} papers={d.papers} tasks={d.tasks} time={d.time} />,
     completed: <Completed key="completed" d={d} />, time: <FocusTime key="time" d={d} />, reading: <Reading key="reading" d={d} />,
     attention: <Attention key="attention" d={d} />, activity: <Activity key="activity" d={d} />, picture: <Picture key="picture" />,

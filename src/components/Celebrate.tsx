@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGame } from '../lib/game'
+import { rankFor } from '../lib/rewards'
 
 interface Burst { n: number; x: number; y: number; gain: number; level: number | null }
 
@@ -38,7 +39,7 @@ export default function Celebrate() {
       <i className="cel-ring" />
       {Array.from({ length: 8 }, (_, i) => <i key={i} className="cel-dot" style={{ '--a': `${i * 45 + 12}deg` } as React.CSSProperties} />)}
       <span className="cel-xp">+{b.gain} XP</span>
-      {b.level && <span className="cel-level">Level {b.level}</span>}
+      {b.level && <span className="cel-level">Level {b.level} · {rankFor(b.level).name}</span>}
     </div>
   )
 }

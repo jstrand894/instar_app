@@ -252,3 +252,31 @@ drop policy if exists "own site photos" on storage.objects;
 create policy "own site photos" on storage.objects for all
   using (bucket_id = 'sites' and (storage.foldername(name))[1] = auth.uid()::text)
   with check (bucket_id = 'sites' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- added later: spent streak freezes and your own level rewards (safe to re-run)
+create table if not exists streak_freezes (
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  on_date date not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, on_date)
+);
+alter table streak_freezes enable row level security;
+
+create table if not exists rewards (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  title text not null,
+  level int not null,
+  claimed_at timestamptz,
+  created_at timestamptz not null default now()
+);
+alter table rewards enable row level security;
+
+do $$
+declare t text;
+begin
+  foreach t in array array['streak_freezes','rewards'] loop
+    execute format('drop policy if exists "own rows" on %I', t);
+    execute format('create policy "own rows" on %I for all using (user_id = auth.uid()) with check (user_id = auth.uid())', t);
+  end loop;
+end $$;

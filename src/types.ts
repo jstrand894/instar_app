@@ -120,3 +120,5 @@ export interface SiteVisit {
   conditions: string
   created_at: string
 }
+
+export interface Reward { id: string; title: string; level: number; claimed_at: string | null; created_at: string }

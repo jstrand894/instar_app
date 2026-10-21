@@ -3,13 +3,17 @@ import { useEffect, useState } from 'react'
 /** Per-device appearance and timer settings, kept in localStorage. */
 export type Theme = 'system' | 'light' | 'dark'
 
+/** `level` is where each colour unlocks as a reward. */
 export const ACCENTS = [
-  { id: 'forest', label: 'Forest', light: '#2f5d50', dark: '#7fc4ad' },
-  { id: 'ocean', label: 'Ocean', light: '#1b6ca8', dark: '#7db7ea' },
-  { id: 'indigo', label: 'Indigo', light: '#4a54b5', dark: '#a3aaf0' },
-  { id: 'plum', label: 'Plum', light: '#8a3f8e', dark: '#d9a1dc' },
-  { id: 'terracotta', label: 'Terracotta', light: '#b5502d', dark: '#f0a283' },
-  { id: 'slate', label: 'Slate', light: '#475569', dark: '#aab6c8' },
+  { id: 'forest', label: 'Forest', light: '#2f5d50', dark: '#7fc4ad', level: 1 },
+  { id: 'ocean', label: 'Ocean', light: '#1b6ca8', dark: '#7db7ea', level: 2 },
+  { id: 'slate', label: 'Slate', light: '#475569', dark: '#aab6c8', level: 3 },
+  { id: 'indigo', label: 'Indigo', light: '#4a54b5', dark: '#a3aaf0', level: 4 },
+  { id: 'plum', label: 'Plum', light: '#8a3f8e', dark: '#d9a1dc', level: 6 },
+  { id: 'terracotta', label: 'Terracotta', light: '#b5502d', dark: '#f0a283', level: 8 },
+  { id: 'amber', label: 'Amber', light: '#9a6200', dark: '#f0c06a', level: 11 },
+  { id: 'rose', label: 'Rose', light: '#b02a52', dark: '#f29bb2', level: 14 },
+  { id: 'midnight', label: 'Midnight', light: '#1e3a8a', dark: '#93b4f5', level: 18 },
 ] as const
 
 export type Units = 'auto' | 'f' | 'c'

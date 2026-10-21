@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { guest, supabase } from '../lib/supabase'
+import { useGame } from '../lib/game'
+import { accentLocked } from '../lib/rewards'
 import { ACCENTS, getPrefs, setPrefs, usePrefs, type Theme, type Units } from '../lib/prefs'
 import { isDesktop } from '../lib/util'
 import Logo from './Logo'
@@ -54,6 +56,7 @@ function AccountDialog({ start, signOut, onClose }: { start: Tab; signOut: (() =
   useEffect(() => { if (tab === 'whatsnew') markRead() }, [tab])
   const [email, setEmail] = useState<string | null>(null)
   const [prefs, setLocal] = useState(getPrefs)
+  const level = useGame()?.level
 
   useEffect(() => { supabase?.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null)) }, [])
   useEffect(() => {
@@ -134,10 +137,11 @@ function AccountDialog({ start, signOut, onClose }: { start: Tab; signOut: (() =
                   ))}
                 </div>
                 <div className="swatches" role="group" aria-label="Accent color">
-                  {ACCENTS.map(a => (
-                    <button key={a.id} className={`swatch ${prefs.accent === a.id ? 'on' : ''}`} style={{ background: a.light }} title={a.label}
-                      onClick={() => update({ accent: a.id })} aria-label={a.label} aria-pressed={prefs.accent === a.id} />
-                  ))}
+                  {ACCENTS.map(a => {
+                    const locked = accentLocked(a, level) && prefs.accent !== a.id
+                    return <button key={a.id} className={`swatch ${prefs.accent === a.id ? 'on' : ''} ${locked ? 'locked' : ''}`} style={{ background: a.light }} title={locked ? `${a.label}: unlocks at level ${a.level}` : a.label}
+                      disabled={locked} onClick={() => update({ accent: a.id })} aria-label={locked ? `${a.label}, unlocks at level ${a.level}` : a.label} aria-pressed={prefs.accent === a.id} />
+                  })}
                 </div>
                 <p className="muted small">Saved on this device, so your Mac, iPad and iPhone can each look different.</p>
               </section>

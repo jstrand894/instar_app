@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 import { trackMutation } from './sync'
 import { isPendingDelete } from './notify'
 import type {
-  Deadline, FieldSite, Highlight, InkPage, Paper, PaperInput, PaperLink, ProjectLink, ProjectTask, Routine, RoutineCheck, TimeEntry, Project, ProjectEvent, ProjectImport, ProjectUpdate, SiteVisit, Stroke,
+  Deadline, FieldSite, Highlight, InkPage, Paper, PaperInput, PaperLink, ProjectLink, ProjectTask, Routine, RoutineCheck, TimeEntry, Project, ProjectEvent, ProjectImport, ProjectUpdate, Reward, SiteVisit, Stroke,
 } from '../types'
 
 const blankPaper = { authors: '', year: '', status: 'to-read', notes: '', doi: '', category: '', priority: '', source: '', why: '' } as const
@@ -34,12 +34,12 @@ const now = () => new Date().toISOString()
 const LS = 'tm-demo-v1'
 interface Db {
   projects: Project[]; updates: ProjectUpdate[]; events: ProjectEvent[]; links: PaperLink[]; projectLinks: ProjectLink[]; deadlines: Deadline[]; tasks: ProjectTask[]; time: TimeEntry[]; routines: Routine[]; checks: RoutineCheck[]; papers: Paper[]
-  highlights: Highlight[]; ink: InkPage[]; sites: FieldSite[]; visits: SiteVisit[]
+  highlights: Highlight[]; ink: InkPage[]; sites: FieldSite[]; visits: SiteVisit[]; freezes: string[]; rewards: Reward[]
 }
 function load(): Db {
   try {
     const raw = localStorage.getItem(LS)
-    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.links ??= []; d.projectLinks ??= []; d.deadlines ??= []; d.tasks ??= []; d.time ??= []; d.routines ??= []; d.checks ??= []; d.sites ??= []; d.visits ??= []; return d }
+    if (raw) { const d = JSON.parse(raw); d.events ??= []; d.links ??= []; d.projectLinks ??= []; d.deadlines ??= []; d.tasks ??= []; d.time ??= []; d.routines ??= []; d.checks ??= []; d.sites ??= []; d.visits ??= []; d.freezes ??= []; d.rewards ??= []; return d }
   } catch { /* ignore */ }
   const d = seed()
   localStorage.setItem(LS, JSON.stringify(d))
@@ -62,7 +62,7 @@ function seed(): Db {
     { id: 'u4', kind: 'update', project_id: 'p3', body: 'Added gap-filling step, tests passing', created_at: t(0.2) },
     { id: 'u5', kind: 'update', project_id: 'p4', body: 'Waiting on calibration files', created_at: t(9) },
   ]
-  return { projects, updates, events: [], links: [], projectLinks: [], deadlines: [], tasks: [], time: [], routines: [], checks: [], papers: [], highlights: [], ink: [], sites: [], visits: [] }
+  return { projects, updates, events: [], links: [], projectLinks: [], deadlines: [], tasks: [], time: [], routines: [], checks: [], papers: [], highlights: [], ink: [], sites: [], visits: [], freezes: [], rewards: [] }
 }
 const demoFiles = new Map<string, string>() // path -> blob url (session only)
 
@@ -145,6 +145,15 @@ const local = {
     const d = load(); d.visits = d.visits.map(x => x.id === id ? { ...x, ...patch } : x); save(d)
   },
   async deleteSiteVisit(id: string) { const d = load(); d.visits = d.visits.filter(x => x.id !== id); save(d) },
+  async freezes() { return load().freezes },
+  async addFreeze(on_date: string) { const d = load(); if (!d.freezes.includes(on_date)) d.freezes.push(on_date); save(d) },
+  async rewards() { return load().rewards },
+  async addReward(r: { title: string; level: number }) {
+    const d = load(); const row: Reward = { id: uid(), claimed_at: null, created_at: now(), ...r }
+    d.rewards.push(row); save(d); return row
+  },
+  async patchReward(id: string, patch: Partial<Reward>) { const d = load(); d.rewards = d.rewards.map(x => x.id === id ? { ...x, ...patch } : x); save(d) },
+  async deleteReward(id: string) { const d = load(); d.rewards = d.rewards.filter(x => x.id !== id); save(d) },
   async routines() { return load().routines },
   async addRoutine(r: { title: string; weekdays: number[]; project_id: string | null; notes: string }) {
     const d = load(); const row: Routine = { id: uid(), active: true, created_at: now(), ...r }
@@ -352,6 +361,12 @@ const remote: typeof local = {
   async addSiteVisit(v) { return ok(await sb().from('site_visits').insert(v).select().single()) },
   async patchSiteVisit(id, patch) { ok(await sb().from('site_visits').update(patch).eq('id', id)) },
   async deleteSiteVisit(id) { ok(await sb().from('site_visits').delete().eq('id', id)) },
+  async freezes() { return (ok(await sb().from('streak_freezes').select('on_date')) as { on_date: string }[]).map(r => r.on_date) },
+  async addFreeze(on_date) { ok(await sb().from('streak_freezes').insert({ on_date })) },
+  async rewards() { return ok(await sb().from('rewards').select('*').order('level')) },
+  async addReward(r) { return ok(await sb().from('rewards').insert(r).select().single()) },
+  async patchReward(id, patch) { ok(await sb().from('rewards').update(patch).eq('id', id)) },
+  async deleteReward(id) { ok(await sb().from('rewards').delete().eq('id', id)) },
   async routines() { return ok(await sb().from('routines').select('*').order('created_at')) },
   async addRoutine(r) { return ok(await sb().from('routines').insert(r).select().single()) },
   async patchRoutine(id, patch) { ok(await sb().from('routines').update(patch).eq('id', id)) },

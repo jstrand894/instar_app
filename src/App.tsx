@@ -10,6 +10,7 @@ import UpdateNotice from './components/UpdateNotice'
 import CheckPop from './components/CheckPop'
 import Celebrate from './components/Celebrate'
 import LevelChip from './components/LevelChip'
+import RewardWatcher from './components/RewardWatcher'
 import { Navigate } from 'react-router-dom'
 import { getPrefs } from './lib/prefs'
 import { forgetOpen, lastOpen, previousPath, setPreviousPath, type Section } from './lib/resume'
@@ -36,6 +37,7 @@ const Library = lazy(() => import('./pages/Library'))
 const Reader = lazy(() => import('./pages/Reader'))
 const ProjectDetail = lazy(() => import('./pages/ProjectDetail'))
 const Review = lazy(() => import('./pages/Review'))
+const Rewards = lazy(() => import('./pages/Rewards'))
 const FieldSites = lazy(() => import('./pages/FieldSites'))
 const FieldSiteDetail = lazy(() => import('./pages/FieldSiteDetail'))
 import { demoMode, guest } from './lib/supabase'
@@ -118,6 +120,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
           <Route path="/projects" element={<Resume section="projects"><Home /></Resume>} />
           <Route path="/manuscripts" element={<Resume section="manuscripts"><Manuscripts /></Resume>} />
           <Route path="/project/:id" element={<ProjectDetail />} />
+          <Route path="/rewards" element={<Rewards />} />
           <Route path="/sites" element={<FieldSites />} />
           <Route path="/sites/:id" element={<FieldSiteDetail />} />
           <Route path="/library" element={<Library />} />
@@ -128,7 +131,7 @@ function Shell({ signOut }: { signOut: (() => void) | null }) {
       </main>
       <Suspense fallback={null}><Tour /><CommandPalette /></Suspense>
       <QuickCapture />
-      <Toasts /><CheckPop /><Celebrate /><UpdateNotice />
+      <Toasts /><CheckPop /><Celebrate /><RewardWatcher /><UpdateNotice />
     </div>
   )
 }
