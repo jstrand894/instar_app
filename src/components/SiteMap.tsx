@@ -9,6 +9,18 @@ const BASES: Record<string, () => L.TileLayer> = {
   Satellite: () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics' }),
   Terrain: () => L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc', attribution: `${OSM}, SRTM | &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)` }),
 }
+// keyed base maps only appear once their key is set in .env (see .env.example)
+const STADIA_KEY = import.meta.env.VITE_STADIA_KEY as string | undefined
+const STADIA_ON = !!STADIA_KEY || import.meta.env.VITE_STADIA_DOMAIN_AUTH === 'true'
+const THUNDER_KEY = import.meta.env.VITE_THUNDERFOREST_KEY as string | undefined
+const stadia = (name: string, ext: string, maxZoom: number) => () => L.tileLayer(`https://tiles.stadiamaps.com/tiles/${name}/{z}/{x}/{y}.${ext}${STADIA_KEY ? `?api_key=${STADIA_KEY}` : ''}`, { maxZoom, attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://stamen.com/">Stamen Design</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> ' + OSM })
+const thunder = (name: string) => () => L.tileLayer(`https://{s}.tile.thunderforest.com/${name}/{z}/{x}/{y}.png?apikey=${THUNDER_KEY}`, { maxZoom: 22, maxNativeZoom: 18, subdomains: 'abc', attribution: `&copy; <a href="https://www.thunderforest.com/">Thunderforest</a>, ${OSM}` })
+if (STADIA_ON) Object.assign(BASES, {
+  Watercolor: stadia('stamen_watercolor', 'jpg', 16),
+  'Stamen Terrain': stadia('stamen_terrain', 'png', 18),
+  'Satellite+': stadia('alidade_satellite', 'jpg', 20),
+})
+if (THUNDER_KEY) Object.assign(BASES, { Outdoors: thunder('outdoors'), Landscape: thunder('landscape') })
 const KEY = 'site-map-base'
 const saved = () => { try { const v = localStorage.getItem(KEY); return v && v in BASES ? v : 'Satellite' } catch { return 'Satellite' } }
 // a drawn pin, so no marker image files are needed
