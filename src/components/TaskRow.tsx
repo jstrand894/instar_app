@@ -8,7 +8,7 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 const inDays = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return iso(d) }
 
 /** Reschedule menu: today, tomorrow, next week, any date, or no date. */
-function WhenMenu({ due, onPick, children }: { due: string | null; onPick: (d: string | null) => void; children: React.ReactNode }) {
+export function WhenMenu({ due, onPick, children }: { due: string | null; onPick: (d: string | null) => void; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [date, setDate] = useState(false)
   const box = useRef<HTMLSpanElement>(null)

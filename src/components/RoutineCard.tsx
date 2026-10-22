@@ -4,7 +4,9 @@ import Icon from './Icon'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { dayList } from './RoutineManager'
-import TaskRow from './TaskRow'
+import { WhenMenu } from './TaskRow'
+import InlineEdit from './InlineEdit'
+import { deadlineInfo } from '../lib/manuscript'
 import type { Project, ProjectTask, Routine, RoutineCheck } from '../types'
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -55,15 +57,22 @@ export default function RoutineCard({ routines, checks, projects, events, tasks,
     finally { setOpt(x => { const n = { ...x }; delete n[o.key]; return n }) }
   }
 
+  // every agenda line has the same shape: a marker (tick or dot), a title, and one quiet line of details underneath
+  const projLink = (pr?: Project) => pr ? <Link to={`/project/${pr.id}`} className="ag-proj">{pr.name}</Link> : null
   const row = (o: Occ, showDay = false) => {
     const d = isDone(o); const pr = o.r.project_id ? byId.get(o.r.project_id) : undefined
     return (
-      <li key={o.key} className={d ? 'done' : ''}>
+      <li key={o.key} className={`ag-row${d ? ' done' : ''}`}>
         <input type="checkbox" className="tick" checked={d} onChange={() => toggle(o)} aria-label={`Mark "${o.r.title}" ${d ? 'not done' : 'done'}`} />
-        <div>
-          <span className="rt-title">{o.r.title}</span>
-          {(showDay || pr) && <span className="muted small"> {showDay && <b>{o.date.toLocaleDateString(undefined, { weekday: 'short' })}</b>}{pr && <> · <Link to={`/project/${pr.id}`}>{pr.name}</Link></>}</span>}
-          {o.r.notes && !d && <div className="muted small">{o.r.notes}</div>}
+        <div className="ag-body">
+          <div className="ag-title">{o.r.title}</div>
+          {(showDay || pr || (o.r.notes && !d)) && (
+            <div className="ag-meta">
+              {showDay && <span>{o.date.toLocaleDateString(undefined, { weekday: 'long' })}</span>}
+              {projLink(pr)}
+              {o.r.notes && !d && <span>{o.r.notes}</span>}
+            </div>
+          )}
         </div>
       </li>
     )
@@ -73,11 +82,22 @@ export default function RoutineCard({ routines, checks, projects, events, tasks,
   const doneCount = todayItems.filter(isDone).length
   const dueToday = tasks.filter(t => t.due_on === todayIso)
   const overdue = tasks.filter(t => t.due_on && t.due_on < todayIso)
-  const taskRow = (t: ProjectTask, late: boolean) => (
-    <TaskRow as="li" key={t.id} task={t} late={late} project={t.project_id ? byId.get(t.project_id) : undefined} leaving={leaving.has('t' + t.id)}
-      onToggle={onTask} onRename={onRename} onDue={onDue}
-      onDelete={() => notify.undoable(`Deleted task "${t.title}"`, () => store.deleteTask(t.id), [t.id])} />
-  )
+  const taskRow = (t: ProjectTask, late: boolean) => {
+    const info = deadlineInfo(t.due_on); const gone = leaving.has('t' + t.id)
+    return (
+      <li key={t.id} className={`ag-row${gone ? ' done leaving' : ''}${late ? ' late' : ''}`}>
+        <input type="checkbox" className="tick" checked={gone} onChange={() => onTask(t.id)} aria-label={`Mark "${t.title}" done`} />
+        <div className="ag-body">
+          <InlineEdit value={t.title} className="ag-title" onSave={v => onRename(t.id, v)} />
+          <div className="ag-meta">
+            {projLink(t.project_id ? byId.get(t.project_id) : undefined)}
+            <WhenMenu due={t.due_on} onPick={d => onDue(t.id, d)}>{info ? <span className={`pill dl-${info.tone}`}>{info.text}</span> : <span className="ag-add">+ date</span>}</WhenMenu>
+          </div>
+        </div>
+        <button className="link small danger ag-x" aria-label={`Delete "${t.title}"`} onClick={() => notify.undoable(`Deleted task "${t.title}"`, () => store.deleteTask(t.id), [t.id])}>×</button>
+      </li>
+    )
+  }
   const tomorrow = addDays(base, 1)
   const todayEvents = events.filter(e => e.when < tomorrow)
   const comingEvents = events.filter(e => e.when >= tomorrow && e.when < addDays(base, COMING + 1))
@@ -108,11 +128,14 @@ export default function RoutineCard({ routines, checks, projects, events, tasks,
           <div>
             <h3 className="sub">Today · {base.toLocaleDateString(undefined, { weekday: 'long' })}</h3>
             {todayEvents.length + todayItems.length + dueToday.length ? (
-              <ul className="rt-list">
+              <ul className="ag-list">
                 {todayEvents.map((e, i) => (
-                  <li key={`e${i}`}>
-                    <b className="rt-time">{clock(e.when)}</b>
-                    <div><span className="rt-title">{e.title}</span> <span className="muted small">· <Link to={`/project/${e.project.id}`}>{e.project.name}</Link></span></div>
+                  <li key={`e${i}`} className="ag-row">
+                    <i className="ag-dot" aria-hidden />
+                    <div className="ag-body">
+                      <div className="ag-title">{e.title}</div>
+                      <div className="ag-meta"><b className="ag-time">{clock(e.when)}</b><Link to={`/project/${e.project.id}`} className="ag-proj">{e.project.name}</Link></div>
+                    </div>
                   </li>
                 ))}
                 {dueToday.map(t => taskRow(t, false))}
@@ -123,13 +146,21 @@ export default function RoutineCard({ routines, checks, projects, events, tasks,
           {open.length + overdue.length > 0 && (
             <div>
               <h3 className="sub">Still open</h3>
-              <ul className="rt-list">{overdue.map(t => taskRow(t, true))}{open.map(o => row(o, true))}</ul>
+              <ul className="ag-list">{overdue.map(t => taskRow(t, true))}{open.map(o => row(o, true))}</ul>
             </div>
           )}
           <div>
             <h3 className="sub">Coming up</h3>
             {comingAll.length
-              ? <ul className="rt-soon">{comingAll.map(x => <li key={x.k}><b>{x.day.toLocaleDateString(undefined, { weekday: 'short' })}</b> {x.at && <span className="muted small">{x.at} </span>}{x.label}{x.pr && <span className="muted small"> · {x.pr.name}</span>}</li>)}</ul>
+              ? <ul className="ag-list">{comingAll.map(x => (
+                <li key={x.k} className="ag-row ag-up">
+                  <b className="ag-day">{x.day.toLocaleDateString(undefined, { weekday: 'short' })}</b>
+                  <div className="ag-body">
+                    <div className="ag-title">{x.label}</div>
+                    {(x.at || x.pr) && <div className="ag-meta">{x.at && <b className="ag-time">{x.at}</b>}{x.pr && <span>{x.pr.name}</span>}</div>}
+                  </div>
+                </li>
+              ))}</ul>
               : <p className="muted small">Nothing in the next few days.</p>}
           </div>
         </div>

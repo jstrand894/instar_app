@@ -1462,3 +1462,24 @@ img.avatar { object-fit: cover; background: var(--chip); }
 .rescue { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; padding: .6rem .8rem; margin-top: .6rem; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, var(--panel)); font-size: .9rem; }
 .recap-stats { max-width: none; margin: .4rem 0; } .recap-line { margin: .2rem 0; }
 @media (max-width: 560px) { .rw-hero { flex-direction: column; text-align: center; } }
+
+/* the Your day agenda: one row shape everywhere (marker, title, a quiet details line) */
+.routine-card .ag-list { list-style: none; margin: .3rem 0 0; padding: 0; display: grid; gap: .1rem; }
+.routine-card .ag-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; column-gap: .7rem; align-items: start; padding: .4rem .5rem; margin: 0 -.5rem; border-radius: 10px; transition: background .15s; }
+.routine-card .ag-row:hover { background: var(--bg); }
+.routine-card .ag-row > .tick { margin-top: .12rem; }
+.routine-card .ag-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin: .45rem 0 0 7px; }
+.routine-card .ag-body { min-width: 0; }
+.routine-card .ag-title { font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; display: block; }
+.routine-card .ag-row.done .ag-title { text-decoration: line-through; color: var(--muted); font-weight: 500; }
+.routine-card .ag-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .1rem .7rem; margin-top: .1rem; font-size: .8rem; color: var(--muted); }
+.routine-card .ag-meta > span:not(.when-menu) { min-width: 0; }
+.routine-card .ag-time { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.routine-card .ag-proj { color: var(--muted); text-decoration: none; max-width: 100%; overflow-wrap: anywhere; } .routine-card .ag-proj:hover { color: var(--ink); text-decoration: underline; }
+.routine-card .ag-meta .pill { white-space: nowrap; }
+.routine-card .ag-add { opacity: 0; transition: opacity .15s; } .routine-card .ag-row:hover .ag-add, .routine-card .when-btn:focus-visible .ag-add { opacity: 1; }
+.routine-card .ag-x { opacity: 0; align-self: start; padding: 0 .3rem; } .routine-card .ag-row:hover .ag-x, .routine-card .ag-x:focus-visible { opacity: 1; }
+.routine-card .ag-up { grid-template-columns: 2.6rem minmax(0, 1fr); }
+.routine-card .ag-day { color: var(--accent); font-size: .85rem; padding-top: .1rem; }
+.routine-card .ag-row.late .ag-title { font-weight: 600; }
+@media (max-width: 760px) { .routine-card .ag-x, .routine-card .ag-add { opacity: 1; } }
