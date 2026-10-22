@@ -133,7 +133,7 @@ export default function Home() {
         <div className="grid">
           {list.map(p => (
             <ProjectCard key={p.id} project={p} updates={byProject.get(p.id) ?? []} upcoming={upcomingByProject.get(p.id) ?? []} openTasks={tasks.filter(t => t.project_id === p.id && !t.done)}
-              linked={linkedTo(p.id, projLinks).map(i => projects.find(x => x.id === i)).filter((x): x is Project => !!x)}
+              allTasks={tasks} linked={linkedTo(p.id, projLinks).map(i => projects.find(x => x.id === i)).filter((x): x is Project => !!x)}
               onChange={refresh} onPin={() => togglePin(p)} />
           ))}
         </div>
@@ -241,8 +241,8 @@ function NewProject({ area, onClose, onCreated }: { area: Area; onClose: () => v
 
 const overdueCount = (ts: ProjectTask[]) => ts.filter(t => t.due_on && t.due_on < new Date().toISOString().slice(0, 10)).length
 
-function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks, linked }: {
-  openTasks: ProjectTask[]; linked: Project[]
+function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks, linked, allTasks }: {
+  openTasks: ProjectTask[]; allTasks: ProjectTask[]; linked: Project[]
   project: Project; updates: ProjectUpdate[]; upcoming: { id: string; title: string; when: Date; weekly: boolean }[]; onChange: () => void; onPin: () => void }) {
   const nav = useNavigate()
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: project.id })
@@ -276,7 +276,7 @@ function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks, l
       </div>
       <h2><Link to={`/project/${project.id}`} className="plink">{project.name}</Link></h2>
       {project.description && <p className="muted">{project.description}</p>}
-      <LinkedChips linked={linked} />
+      <LinkedChips linked={linked} tasks={allTasks} self={project.id} />
       {(project.tags?.length ?? 0) > 0 && (
         <div className="card-tags">{project.tags!.map(t => <a key={t} href="#search" onClick={e => { e.preventDefault(); window.dispatchEvent(new CustomEvent('tm-search', { detail: '#' + t })) }}>#{t}</a>)}</div>
       )}

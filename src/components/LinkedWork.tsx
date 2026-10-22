@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { store } from '../lib/store'
 import { friendlyError } from '../lib/errors'
 import { ago } from '../lib/util'
-import type { Project, ProjectLink } from '../types'
+import type { Project, ProjectLink, ProjectTask } from '../types'
 
 /** How one piece of linked work is going, for the line under its name. */
 export interface Progress { done: number; total: number; last?: string; commits: number; nextDue?: string }
@@ -70,13 +70,27 @@ function ProgressLine({ pr }: { pr?: Progress }) {
   )
 }
 
-/** A small line on a card naming what it is linked with. */
-export function LinkedChips({ linked }: { linked: Project[] }) {
+/** A small line on a card naming what it is linked with, how far along each piece is, and the total across the card and its links. */
+export function LinkedChips({ linked, tasks, self }: { linked: Project[]; tasks?: ProjectTask[]; self?: string }) {
   if (!linked.length) return null
+  const count = (id: string) => { const ts = (tasks ?? []).filter(t => t.project_id === id); return { done: ts.filter(t => t.done).length, total: ts.length } }
+  const all = [...linked.map(l => l.id), ...(self ? [self] : [])].map(count)
+  const done = all.reduce((a, c) => a + c.done, 0), total = all.reduce((a, c) => a + c.total, 0)
   return (
-    <div className="linked-chips">
-      {linked.slice(0, 3).map(l => <Link key={l.id} to={`/project/${l.id}`} className="linked-chip" title={`Linked ${l.type === 'manuscript' ? 'manuscript' : 'project'}`}>{l.name}</Link>)}
-      {linked.length > 3 && <span className="muted small">+{linked.length - 3} more</span>}
-    </div>
+    <>
+      <div className="linked-chips">
+        {linked.slice(0, 3).map(l => {
+          const c = count(l.id)
+          return <Link key={l.id} to={`/project/${l.id}`} className="linked-chip" title={`Linked ${l.type === 'manuscript' ? 'manuscript' : 'project'}`}>{l.name}{tasks && c.total > 0 && <span className="muted"> {c.done}/{c.total}</span>}</Link>
+        })}
+        {linked.length > 3 && <span className="muted small">+{linked.length - 3} more</span>}
+      </div>
+      {tasks && total > 0 && (
+        <div className="linked-progress small" title="To-dos done across this and its linked work">
+          <span className="linked-bar" aria-hidden><i style={{ width: `${Math.round(done / total * 100)}%` }} /></span>
+          <span className="muted">{done}/{total} to-dos done together</span>
+        </div>
+      )}
+    </>
   )
 }
