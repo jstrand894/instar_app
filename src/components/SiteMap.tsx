@@ -22,7 +22,8 @@ if (STADIA_ON) Object.assign(BASES, {
 })
 if (THUNDER_KEY) Object.assign(BASES, { Outdoors: thunder('outdoors'), Landscape: thunder('landscape') })
 const KEY = 'site-map-base'
-const saved = () => { try { const v = localStorage.getItem(KEY); return v && v in BASES ? v : 'Satellite' } catch { return 'Satellite' } }
+const DEFAULT = 'Satellite+' in BASES ? 'Satellite+' : 'Satellite'
+const saved = () => { try { const v = localStorage.getItem(KEY); return v && v in BASES ? v : DEFAULT } catch { return DEFAULT } }
 // a drawn pin, so no marker image files are needed
 const pin = (on = false) => L.divIcon({ className: 'site-pin', html: `<i class="${on ? 'on' : ''}"></i>`, iconSize: [26, 26], iconAnchor: [13, 26], tooltipAnchor: [0, -24] })
 
