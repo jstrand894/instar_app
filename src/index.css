@@ -1483,3 +1483,6 @@ img.avatar { object-fit: cover; background: var(--chip); }
 .routine-card .ag-day { color: var(--accent); font-size: .85rem; padding-top: .1rem; }
 .routine-card .ag-row.late .ag-title { font-weight: 600; }
 @media (max-width: 760px) { .routine-card .ag-x, .routine-card .ag-add { opacity: 1; } }
+
+/* the Today column already spaces its cards with a gap, so these should not add a margin on top */
+.today > .weather, .today > .wx-swap, .today > .started { margin-bottom: 0; }
