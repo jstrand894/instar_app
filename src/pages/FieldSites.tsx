@@ -7,19 +7,17 @@ import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
 import { ago, fmtWhen } from '../lib/util'
-import { geocode, hasPin, parseCoords, siteStats } from '../lib/sites'
+import { geocode, hasPin, parseCoords, siteStats, tagStyle } from '../lib/sites'
 import SitePlace from '../components/SitePlace'
-import type { FieldSite, SiteStatus, SiteVisit } from '../types'
+import type { FieldSite, SiteVisit } from '../types'
 
 const SitesMap = lazy(() => import('../components/SiteMap').then(m => ({ default: m.SitesMap })))
-const STATUSES: (SiteStatus | 'all')[] = ['all', 'active', 'paused', 'done']
 
 export default function FieldSites() {
   const nav = useNavigate()
   const [sites, setSites] = useState<FieldSite[]>([])
   const [visits, setVisits] = useState<SiteVisit[]>([])
   const [covers, setCovers] = useState<Record<string, string>>({})
-  const [filter, setFilter] = useState<SiteStatus | 'all'>('all')
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState('')
   const [loaded, setLoaded] = useState(false)
@@ -37,8 +35,8 @@ export default function FieldSites() {
   const stats = useMemo(() => new Map(sites.map(s => [s.id, siteStats(visits.filter(v => v.site_id === s.id))])), [sites, visits])
   const [tag, setTag] = useState('')
   const allTags = useMemo(() => [...new Set(sites.flatMap(s => s.tags ?? []))].sort(), [sites])
-  const shown = sites.filter(s => (filter === 'all' || s.status === filter) && (!tag || (s.tags ?? []).includes(tag)))
-  const pins = useMemo(() => shown.flatMap(s => hasPin(s) ? [{ id: s.id, name: s.name, lat: s.lat, lng: s.lng }] : []), [sites, filter, tag]) // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = sites.filter(s => !tag || (s.tags ?? []).includes(tag))
+  const pins = useMemo(() => shown.flatMap(s => hasPin(s) ? [{ id: s.id, name: s.name, lat: s.lat, lng: s.lng }] : []), [sites, tag]) // eslint-disable-line react-hooks/exhaustive-deps
   const byId = useMemo(() => new Map(sites.map(x => [x.id, x])), [sites])
   const nextUp = useMemo(() => [...stats.entries()].flatMap(([id, st]) => st.next && byId.get(id) ? [{ site: byId.get(id)!, visit: st.next }] : [])
     .sort((a, b) => a.visit.visited_at.localeCompare(b.visit.visited_at)).slice(0, 4), [stats, byId])
@@ -85,22 +83,17 @@ export default function FieldSites() {
             {tagCounts.length > 0 && (
               <>
                 <h3>By tag</h3>
-                <div className="site-tags">{tagCounts.map(([t, n]) => <span key={t}>#{t} · {n}</span>)}</div>
+                <div className="site-tags">{tagCounts.map(([t, n]) => <button key={t} className={`tag-pill${tag === t ? ' on' : ''}`} style={tagStyle(t)} onClick={() => setTag(tag === t ? '' : t)}>{t} · {n}</button>)}</div>
               </>
             )}
           </section>
         </div>
       )}
 
-      {sites.length > 0 && (
+      {allTags.length > 0 && (
         <div className="chips">
-          {STATUSES.map(s => <button key={s} className={filter === s ? 'on' : ''} onClick={() => setFilter(s)}>{s === 'all' ? 'All' : s[0].toUpperCase() + s.slice(1)}</button>)}
-          {allTags.length > 0 && (
-            <select className="tag-filter" value={tag} onChange={e => setTag(e.target.value)} aria-label="Filter by tag">
-              <option value="">All tags</option>
-              {allTags.map(t => <option key={t} value={t}>#{t}</option>)}
-            </select>
-          )}
+          <button className={tag ? '' : 'on'} onClick={() => setTag('')}>All</button>
+          {allTags.map(t => <button key={t} className={`tag-pill${tag === t ? ' on' : ''}`} style={tagStyle(t)} onClick={() => setTag(tag === t ? '' : t)}>{t}</button>)}
         </div>
       )}
 
@@ -113,9 +106,8 @@ export default function FieldSites() {
               <Link key={s.id} to={`/sites/${s.id}`} className="card site-card">
                 <div className="site-cover">{cover ? <img src={cover} alt="" loading="lazy" /> : <Icon name="tree" size={30} />}</div>
                 <div className="site-card-body">
-                  <div className="row between"><h2>{s.name}</h2><span className="status-pill" data-status={s.status}>{s.status}</span></div>
+                  <div className="row between"><h2>{s.name}</h2>{(s.tags?.length ?? 0) > 0 && <div className="site-tags">{s.tags!.map(t => <span key={t} style={tagStyle(t)}>{t}</span>)}</div>}</div>
                   <SitePlace site={s} />
-                  {(s.tags?.length ?? 0) > 0 && <div className="site-tags">{s.tags!.map(t => <span key={t}>#{t}</span>)}</div>}
                   <p className="site-next">{st.next ? <><b>Next:</b> {fmtWhen(new Date(st.next.visited_at))}{st.next.purpose ? ` · ${st.next.purpose}` : ''}</> : <span className="muted">No visit planned</span>}</p>
                   <p className="muted small">{st.last ? `Last visited ${ago(st.last.visited_at)} · ` : 'Not visited yet · '}{st.done.length} visit{st.done.length === 1 ? '' : 's'}</p>
                 </div>
@@ -128,7 +120,7 @@ export default function FieldSites() {
       {loaded && !shown.length && !adding && (
         <Empty icon="folder" dashed title={sites.length ? 'No sites match this filter' : 'No field sites yet'}
           actions={!sites.length && <button className="primary" onClick={() => setAdding(true)}>Add a site</button>}>
-          {sites.length ? 'Try another status.' : 'A field site keeps its notes, a log of every visit and your planned revisits, with one photo as its card and a pin on the map.'}
+          {sites.length ? 'Try another tag.' : 'A field site keeps its notes, a log of every visit and your planned revisits, with one photo as its card and a pin on the map.'}
         </Empty>
       )}
     </div>

@@ -110,7 +110,7 @@ export default function FieldSiteDetail() {
           <button className="link small danger" onClick={removeSite}>Delete site</button>
         </div>
       </div>
-      <div className="site-head-tags"><TagEditor tags={site.tags ?? []} onChange={tags => patch({ tags })} placeholder="Add a tag (life table, RP grid, mecinus…)" suggest={allTags} /></div>
+      <div className="site-head-tags"><TagEditor colored tags={site.tags ?? []} onChange={tags => patch({ tags })} placeholder="Add a project (life table, RP grid, mecinus…)" suggest={allTags} /></div>
       {error && <p className="error">{error}</p>}
 
       <section className="card site-hero">

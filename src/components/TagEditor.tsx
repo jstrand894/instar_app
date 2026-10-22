@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import { tagStyle } from '../lib/sites'
 import { normalizeTag, useLinks } from '../lib/links'
 
 /** Tag chips you can add (Enter or comma) and remove. */
-export default function TagEditor({ tags, onChange, placeholder = 'Add a tag…', suggest }: { tags: string[]; onChange: (t: string[]) => void; placeholder?: string; suggest?: string[] }) {
+export default function TagEditor({ tags, onChange, placeholder = 'Add a tag…', suggest, colored }: { tags: string[]; onChange: (t: string[]) => void; placeholder?: string; suggest?: string[]; colored?: boolean }) {
   const [v, setV] = useState('')
   const { tags: known } = useLinks()
   const add = (raw: string) => {
@@ -14,7 +15,7 @@ export default function TagEditor({ tags, onChange, placeholder = 'Add a tag…'
   return (
     <div className="tag-editor">
       {tags.map(t => (
-        <span key={t} className="tag-chip">#{t}<button type="button" aria-label={`Remove tag ${t}`} onClick={() => onChange(tags.filter(x => x !== t))}>×</button></span>
+        <span key={t} className={`tag-chip${colored ? ' colored' : ''}`} style={colored ? tagStyle(t) : undefined}>{colored ? t : `#${t}`}<button type="button" aria-label={`Remove tag ${t}`} onClick={() => onChange(tags.filter(x => x !== t))}>×</button></span>
       ))}
       <input value={v} list={list} placeholder={tags.length ? '' : placeholder} aria-label="Add a tag"
         onChange={e => { const x = e.target.value; if (/[,;]$/.test(x) || /[,;\n]/.test(x.slice(0, -1))) add(x); else setV(x) }}

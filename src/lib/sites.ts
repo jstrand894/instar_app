@@ -11,6 +11,14 @@ export function mapLinks(s: Pick<FieldSite, 'name' | 'address' | 'lat' | 'lng'>)
   }
 }
 
+/** A steady hue (0-359) per tag name, so each project keeps its colour everywhere. */
+export function tagHue(tag: string) {
+  let h = 0
+  for (const c of tag) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return (h * 47) % 360
+}
+export const tagStyle = (tag: string) => ({ '--h': tagHue(tag) }) as React.CSSProperties
+
 /** Reads "46.12, -112.45" style text as a position; null for anything else. */
 export function parseCoords(q: string): { lat: number; lng: number } | null {
   const m = q.trim().match(/^(-?\d+(?:\.\d+)?)\s*[,\s]\s*(-?\d+(?:\.\d+)?)$/)
