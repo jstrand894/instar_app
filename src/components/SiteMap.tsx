@@ -40,7 +40,7 @@ export function SitesMap({ sites, onOpen }: { sites: MapSite[]; onOpen: (id: str
     const map = makeMap(box.current!)
     const pts = sites.map(s => {
       const m = L.marker([s.lat, s.lng], { icon: pin(), title: s.name, keyboard: true }).addTo(map)
-      m.bindTooltip(s.name, { direction: 'top' }); m.on('click', () => open.current(s.id))
+      m.bindTooltip(s.name, { direction: 'top', permanent: true, className: 'site-label' }); m.on('click', () => open.current(s.id))
       return [s.lat, s.lng] as [number, number]
     })
     if (pts.length === 1) map.setView(pts[0], 12)
