@@ -2,14 +2,24 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-const TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-const ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+// free base maps that need no API key; the viewer's pick is remembered
+const BASES: Record<string, () => L.TileLayer> = {
+  Streets: () => L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 20, subdomains: 'abcd', attribution: `${OSM} &copy; <a href="https://carto.com/attributions">CARTO</a>` }),
+  Satellite: () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics' }),
+  Terrain: () => L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc', attribution: `${OSM}, SRTM | &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)` }),
+}
+const KEY = 'site-map-base'
+const saved = () => { try { const v = localStorage.getItem(KEY); return v && v in BASES ? v : 'Streets' } catch { return 'Streets' } }
 // a drawn pin, so no marker image files are needed
 const pin = (on = false) => L.divIcon({ className: 'site-pin', html: `<i class="${on ? 'on' : ''}"></i>`, iconSize: [26, 26], iconAnchor: [13, 26], tooltipAnchor: [0, -24] })
 
 function makeMap(el: HTMLElement) {
   const map = L.map(el, { scrollWheelZoom: true }).setView([20, 0], 2)
-  L.tileLayer(TILES, { maxZoom: 19, attribution: ATTR }).addTo(map)
+  const layers = Object.fromEntries(Object.entries(BASES).map(([k, f]) => [k, f()]))
+  layers[saved()].addTo(map)
+  L.control.layers(layers, undefined, { position: 'topright' }).addTo(map)
+  map.on('baselayerchange', (e: L.LayersControlEvent) => { try { localStorage.setItem(KEY, e.name) } catch { /* remembering is optional */ } })
   return map
 }
 
