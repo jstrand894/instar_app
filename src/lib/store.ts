@@ -69,9 +69,10 @@ const demoFiles = new Map<string, string>() // path -> blob url (session only)
 const local = {
   async projects() { return load().projects },
   async updates() { return load().updates },
-  async projectUpdates(project_id: string, limit: number): Promise<ProjectPage> {
-    const all = load().updates.filter(u => u.project_id === project_id).sort((a, b) => b.created_at.localeCompare(a.created_at))
-    const commits = all.filter(u => u.kind === 'commit')
+  async projectUpdates(project_id: string, limit: number, also: string[] = []): Promise<ProjectPage> {
+    const ids = new Set([project_id, ...also])
+    const all = load().updates.filter(u => ids.has(u.project_id)).sort((a, b) => b.created_at.localeCompare(a.created_at))
+    const commits = all.filter(u => u.project_id === project_id && u.kind === 'commit')
     return { rows: all.slice(0, limit), total: all.length, commits: commits.length, lastPush: commits[0]?.created_at }
   },
   async mentionsOf(name: string, exceptId: string) {
@@ -290,11 +291,12 @@ async function uploadPdf(file: File) {
 const remote: typeof local = {
   async projects() { return ok(await sb().from('projects').select('*').order('created_at')) },
   async updates() { return ok(await sb().from('project_updates').select('*').order('created_at', { ascending: false }).limit(500)) },
-  async projectUpdates(project_id, limit) {
+  async projectUpdates(project_id, limit, also = []) {
     const q = () => sb().from('project_updates')
+    const ids = [project_id, ...also] // this project plus the ones linked to it: their entries are shared
     const [rows, total, commits, last] = await Promise.all([
-      q().select('*').eq('project_id', project_id).order('created_at', { ascending: false }).limit(limit),
-      q().select('id', { count: 'exact', head: true }).eq('project_id', project_id),
+      q().select('*').in('project_id', ids).order('created_at', { ascending: false }).limit(limit),
+      q().select('id', { count: 'exact', head: true }).in('project_id', ids),
       q().select('id', { count: 'exact', head: true }).eq('project_id', project_id).eq('kind', 'commit'),
       q().select('created_at').eq('project_id', project_id).eq('kind', 'commit').order('created_at', { ascending: false }).limit(1),
     ])

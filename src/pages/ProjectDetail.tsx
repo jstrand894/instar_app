@@ -87,9 +87,11 @@ export default function ProjectDetail() {
 
   const load = useCallback(async () => {
     try {
-      const [ps, us, evs, pp, ls, dls, tks, tes, pls] = await Promise.all([store.projects(), id ? store.projectUpdates(id, shown) : Promise.resolve({ rows: [], total: 0, commits: 0 } as ProjectPage), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[]), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[]), store.timeEntries().catch(() => [] as TimeEntry[]), store.projectLinks().catch(() => [] as ProjectLink[])])
+      const pls = await store.projectLinks().catch(() => [] as ProjectLink[])
+      const shared = new Set([id, ...linkedTo(id ?? '', pls)]) // a project and the manuscripts linked to it share their notes, updates, tasks and the rest
+      const [ps, us, evs, pp, ls, dls, tks, tes] = await Promise.all([store.projects(), id ? store.projectUpdates(id, shown, linkedTo(id, pls)) : Promise.resolve({ rows: [], total: 0, commits: 0 } as ProjectPage), store.events().catch(() => [] as ProjectEvent[]), store.papers(), store.projectPapers().catch(() => [] as PaperLink[]), store.deadlines().catch(() => [] as Deadline[]), store.tasks().catch(() => [] as ProjectTask[]), store.timeEntries().catch(() => [] as TimeEntry[])])
       setAllProjects(ps); setProjLinks(pls)
-      setEvents(evs.filter(e => e.project_id === id)); setPapers(pp); setLinks(ls.filter(l => l.project_id === id)); setDeadlines(dls.filter(d => d.project_id === id)); setTasks(tks.filter(t => t.project_id === id)); setTime(tes.filter(t => t.project_id === id))
+      setEvents(evs.filter(e => shared.has(e.project_id))); setPapers(pp); setLinks(ls.filter(l => shared.has(l.project_id))); setDeadlines(dls.filter(d => shared.has(d.project_id))); setTasks(tks.filter(t => t.project_id && shared.has(t.project_id))); setTime(tes.filter(t => t.project_id && shared.has(t.project_id)))
       const p = ps.find(x => x.id === id) ?? null
       setProject(p); setTotal(us.total); setPushes({ n: us.commits, last: us.lastPush })
       setEntries(us.rows)
@@ -241,6 +243,7 @@ export default function ProjectDetail() {
                 ? <input type="datetime-local" autoFocus defaultValue={toLocalInput(u.created_at)} aria-label="Entry time"
                     onBlur={e => saveTime(u, e.target.value)} onKeyDown={e => { if (e.key === 'Enter') saveTime(u, e.currentTarget.value); if (e.key === 'Escape') setTimeId(null) }} />
                 : <time title={fmt(u.created_at)}>{ago(u.created_at)} · {fmt(u.created_at)}</time>}
+              {u.project_id !== project.id && <Link to={`/project/${u.project_id}`} className="tl-from small" title="Shared from a linked project">from {allProjects.find(p => p.id === u.project_id)?.name ?? 'linked'}</Link>}
               <div className="tl-menu" onClick={e => e.stopPropagation()}>
                 <button type="button" className="tl-pen" aria-label="Entry actions" aria-haspopup="menu" aria-expanded={menuId === u.id} title="Edit or delete"
                   onClick={() => setMenuId(menuId === u.id ? null : u.id)}><Icon name="pen" size={14} /></button>
