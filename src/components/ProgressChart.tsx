@@ -10,6 +10,7 @@ const METRICS = [
   { id: 'tasks', label: 'Tasks done', unit: 'tasks', fmt: (n: number) => String(n) },
   { id: 'papers', label: 'Papers read', unit: 'papers', fmt: (n: number) => String(n) },
   { id: 'updates', label: 'Updates logged', unit: 'updates', fmt: (n: number) => String(n) },
+  { id: 'commits', label: 'Commits', unit: 'commits', fmt: (n: number) => String(n) },
   { id: 'focus', label: 'Focus time', unit: 'focus time', fmt: (n: number) => fmtMinutes(n) },
 ] as const
 type MetricId = typeof METRICS[number]['id']
@@ -35,10 +36,10 @@ export default function ProgressChart({ updates, projects, papers, tasks, time }
       const t = new Date(iso).getTime()
       return t >= end.getTime() ? -1 : starts.findLastIndex(s => t >= s.getTime())
     }
-    const series: Record<MetricId, number[]> = { tasks: Array(WEEKS).fill(0), papers: Array(WEEKS).fill(0), updates: Array(WEEKS).fill(0), focus: Array(WEEKS).fill(0) }
+    const series: Record<MetricId, number[]> = { tasks: Array(WEEKS).fill(0), papers: Array(WEEKS).fill(0), updates: Array(WEEKS).fill(0), commits: Array(WEEKS).fill(0), focus: Array(WEEKS).fill(0) }
     for (const t of tasks) { const i = t.done ? index(t.done_at) : -1; if (i >= 0) series.tasks[i]++ }
     for (const p of papers) { const i = p.status === 'read' ? index(p.read_at) : -1; if (i >= 0) series.papers[i]++ }
-    for (const u of updates) { const i = u.kind === 'commit' ? -1 : index(u.created_at); if (i >= 0) series.updates[i]++ }
+    for (const u of updates) { const i = index(u.created_at); if (i >= 0) series[u.kind === 'commit' ? 'commits' : 'updates'][i]++ }
     for (const e of time) { const i = index(e.started_at); if (i >= 0) series.focus[i] += e.minutes }
 
     // what got attention this week: updates logged plus tasks finished, per project
