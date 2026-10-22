@@ -38,13 +38,30 @@ export function SitesMap({ sites, onOpen }: { sites: MapSite[]; onOpen: (id: str
   useEffect(() => { open.current = onOpen })
   useEffect(() => {
     const map = makeMap(box.current!)
+    const markers: L.Marker[] = []
     const pts = sites.map(s => {
       const m = L.marker([s.lat, s.lng], { icon: pin(), title: s.name, keyboard: true }).addTo(map)
       m.bindTooltip(s.name, { direction: 'top', permanent: true, className: 'site-label' }); m.on('click', () => open.current(s.id))
+      m.on('mouseover', () => m.getTooltip()?.getElement()?.classList.remove('crowded'))
+      m.on('mouseout', declutter)
+      markers.push(m)
       return [s.lat, s.lng] as [number, number]
     })
+    // labels that would sit on top of one already shown fade out until you zoom in or hover the pin
+    function declutter() {
+      const shown: DOMRect[] = []
+      for (const m of markers) {
+        const el = m.getTooltip()?.getElement(); if (!el) continue
+        el.classList.remove('crowded')
+        const r = el.getBoundingClientRect()
+        if (shown.some(o => r.left < o.right + 2 && r.right > o.left - 2 && r.top < o.bottom + 2 && r.bottom > o.top - 2)) el.classList.add('crowded')
+        else shown.push(r)
+      }
+    }
+    map.on('zoomend moveend', () => setTimeout(declutter, 0))
     if (pts.length === 1) map.setView(pts[0], 12)
     else if (pts.length) map.fitBounds(pts, { padding: [28, 28], maxZoom: 13 })
+    setTimeout(declutter, 50)
     return () => { map.remove() }
   }, [sites])
   return <div ref={box} className="site-map" role="region" aria-label="Map of field sites" />

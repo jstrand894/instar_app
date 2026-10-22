@@ -76,10 +76,10 @@ export default function FieldSites() {
           <div className="sites-top">
             {pins.length > 0 && <Suspense fallback={<div className="site-map" />}><SitesMap sites={pins} onOpen={id => nav(`/sites/${id}`)} /></Suspense>}
             <section className="card sites-summary">
-              <div className="site-tiles">
+              <div className="site-stats">
                 <div><b>{sites.filter(x => x.status === 'active').length}</b><span>active</span></div>
                 <div><b>{upcoming}</b><span>planned</span></div>
-                <div><b>{visitsDone}</b><span>visits</span></div>
+                <div><b>{visitsDone}</b><span>{visitsDone === 1 ? 'visit' : 'visits'}</span></div>
                 <div><b>{onSite ? fmtMinutes(onSite) : '0'}</b><span>on site</span></div>
               </div>
               <h3>Next up</h3>
@@ -102,31 +102,31 @@ export default function FieldSites() {
             </section>
           </div>
 
-          <div className="sites-cards">
-            <section className="card">
-              <h3>Due a visit</h3>
+          <section className="card sites-insights">
+            <div>
+              <h3>Due a visit{stale.length > 0 && <em>{stale.length}</em>}</h3>
               {stale.length ? (
                 <ul className="sites-list">
                   {stale.map(({ site, days }) => <li key={site.id}><Link to={`/sites/${site.id}`}><b>{site.name}</b></Link><span>{days == null ? 'never visited' : `${days} days ago`}</span></li>)}
                 </ul>
               ) : <p className="muted small">Every active site has been visited in the last month or has a visit planned.</p>}
-            </section>
-            <section className="card">
+            </div>
+            <div>
               <h3>Recently visited</h3>
               {recent.length ? (
                 <ul className="sites-list">
                   {recent.map(({ site, visit }) => <li key={visit.id}><Link to={`/sites/${site.id}`}><b>{site.name}</b></Link><span>{ago(visit.visited_at)}{visit.purpose ? ` · ${visit.purpose}` : ''}</span></li>)}
                 </ul>
               ) : <p className="muted small">No visits logged yet.</p>}
-            </section>
-            <section className="card">
+            </div>
+            <div>
               <h3>Projects</h3>
               {tagCounts.length ? (
                 <div className="site-tags left">{tagCounts.map(([t, n]) => <button key={t} className={`tag-pill${tag === t ? ' on' : ''}`} style={tagStyle(t)} onClick={() => setTag(tag === t ? '' : t)}>{t} · {n}</button>)}</div>
               ) : <p className="muted small">Tag a site with a project, like life table or RP grid, to group them here.</p>}
               {sites.some(x => !hasPin(x)) && <p className="muted small" style={{ marginTop: '.6rem' }}>{sites.filter(x => !hasPin(x)).length} not on the map yet.</p>}
-            </section>
-          </div>
+            </div>
+          </section>
         </>
       )}
 

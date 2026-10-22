@@ -1374,8 +1374,6 @@ img.avatar { object-fit: cover; background: var(--chip); }
 .next-what { display: grid; min-width: 0; } .next-what b { font-size: .92rem; } .next-what em { font-style: normal; font-size: .8rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .quick-task { display: flex; gap: .4rem; margin-top: .3rem; padding-top: .7rem; border-top: 1px solid var(--line); }
 .quick-task input { flex: 1; min-width: 0; } .quick-task select { width: 7.5rem; flex: none; }
-.sites-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-.sites-cards .card { margin: 0; }
 .site-tags.left { justify-content: flex-start; }
 .sites-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
 .sites-list li { display: flex; justify-content: space-between; gap: .8rem; font-size: .9rem; }
@@ -1383,7 +1381,6 @@ img.avatar { object-fit: cover; background: var(--chip); }
 .sites-list span { color: var(--muted); text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sites-summary .tag-pill, .sites-cards .tag-pill { border-radius: 99px; padding: .05rem .6rem; font-size: .72rem; font-weight: 600; min-height: 0; background: color-mix(in srgb, hsl(var(--h) var(--s) 52%) 20%, var(--panel)); color: color-mix(in srgb, hsl(var(--h) var(--s) 32%) 75%, var(--ink)); border: 1px solid color-mix(in srgb, hsl(var(--h) var(--s) 52%) 35%, transparent); }
 .sites-summary .tag-pill.on, .sites-cards .tag-pill.on { background: hsl(var(--h) var(--s) 36%); color: #fff; }
-@media (max-width: 900px) { .sites-cards { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 720px) { .sites-top { grid-template-columns: minmax(0, 1fr); } .sites-top .site-map { height: 260px; } }
 .new-site { width: min(520px, 100%); }
 .new-site .modal-body { gap: .8rem; }
@@ -1486,3 +1483,26 @@ img.avatar { object-fit: cover; background: var(--chip); }
 
 /* the Today column already spaces its cards with a gap, so these should not add a margin on top */
 .today > .weather, .today > .wx-swap, .today > .started { margin-bottom: 0; }
+
+/* Field sites overview: one summary card beside the map, one insights card under it */
+.sites-top { align-items: stretch; }
+.sites-summary { display: flex; flex-direction: column; gap: .8rem; padding: 1.1rem 1.25rem; }
+.site-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.site-stats div { display: grid; gap: .1rem; padding: 0 .9rem; border-left: 1px solid var(--line); background: none; border-radius: 0; }
+.site-stats div:first-child { padding-left: 0; border-left: 0; }
+.site-stats b { font-size: 1.6rem; line-height: 1.1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.site-stats span { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.sites-summary > h3 { margin: .4rem 0 -.2rem; }
+.sites-summary .quick-task { margin-top: auto; }
+.sites-summary .next-list { flex: 1; align-content: start; }
+.sites-insights { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; padding: 0; margin-bottom: 1rem; }
+.sites-insights > div { padding: 1rem 1.25rem; min-width: 0; }
+.sites-insights > div + div { border-left: 1px solid var(--line); }
+.sites-insights h3 { display: flex; align-items: center; gap: .45rem; margin: 0 0 .6rem; }
+.sites-insights h3 em { font-style: normal; font-size: .68rem; background: var(--chip); color: var(--ink); border-radius: 99px; padding: 0 .45rem; letter-spacing: 0; }
+.sites-insights .sites-list li { align-items: baseline; }
+@media (max-width: 900px) {
+  .site-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: .8rem; } .site-stats div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .sites-insights { grid-template-columns: minmax(0, 1fr); } .sites-insights > div + div { border-left: 0; border-top: 1px solid var(--line); }
+}
+.leaflet-tooltip.site-label { transition: opacity .15s; } .leaflet-tooltip.site-label.crowded { opacity: 0; pointer-events: none; }
