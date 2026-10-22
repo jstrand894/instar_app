@@ -10,7 +10,7 @@ const BASES: Record<string, () => L.TileLayer> = {
   Terrain: () => L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, subdomains: 'abc', attribution: `${OSM}, SRTM | &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)` }),
 }
 const KEY = 'site-map-base'
-const saved = () => { try { const v = localStorage.getItem(KEY); return v && v in BASES ? v : 'Streets' } catch { return 'Streets' } }
+const saved = () => { try { const v = localStorage.getItem(KEY); return v && v in BASES ? v : 'Terrain' } catch { return 'Terrain' } }
 // a drawn pin, so no marker image files are needed
 const pin = (on = false) => L.divIcon({ className: 'site-pin', html: `<i class="${on ? 'on' : ''}"></i>`, iconSize: [26, 26], iconAnchor: [13, 26], tooltipAnchor: [0, -24] })
 
