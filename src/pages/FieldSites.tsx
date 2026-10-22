@@ -6,10 +6,10 @@ import Icon from '../components/Icon'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
-import { ago, fmtWhen } from '../lib/util'
+import { ago, fmtMinutes, fmtWhen } from '../lib/util'
 import { geocode, hasPin, parseCoords, siteStats, tagStyle, cleanTag, toCover } from '../lib/sites'
 import SitePlace from '../components/SitePlace'
-import TagEditor from '../components/TagEditor'
+import ProjectPicker from '../components/ProjectPicker'
 import type { FieldSite, SiteStatus, SiteVisit } from '../types'
 
 const SitesMap = lazy(() => import('../components/SiteMap').then(m => ({ default: m.SitesMap })))
@@ -44,13 +44,22 @@ export default function FieldSites() {
   const nextUp = useMemo(() => [...stats.entries()].flatMap(([id, st]) => st.next && byId.get(id) ? [{ site: byId.get(id)!, visit: st.next }] : [])
     .sort((a, b) => a.visit.visited_at.localeCompare(b.visit.visited_at)).slice(0, 4), [stats, byId])
   const recent = useMemo(() => [...stats.entries()].flatMap(([id, st]) => st.last && byId.get(id) ? [{ site: byId.get(id)!, visit: st.last }] : [])
-    .sort((a, b) => b.visit.visited_at.localeCompare(a.visit.visited_at)).slice(0, 3), [stats, byId])
+    .sort((a, b) => b.visit.visited_at.localeCompare(a.visit.visited_at)).slice(0, 4), [stats, byId])
   const tagCounts = useMemo(() => {
     const n = new Map<string, number>()
     for (const x of sites) for (const t of x.tags ?? []) n.set(t, (n.get(t) ?? 0) + 1)
     return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
   }, [sites])
   const visitsDone = visits.filter(v => v.status === 'done').length
+  const upcoming = [...stats.values()].filter(x => x.next).length
+  const onSite = visits.filter(v => v.status === 'done').reduce((n, v) => n + (v.minutes ?? 0), 0)
+  // active sites with no visit planned that were last visited over a month ago (or never), the longest-waiting first
+  const stale = useMemo(() => sites.flatMap(site => {
+    const st = stats.get(site.id)
+    if (site.status !== 'active' || !st || st.next) return []
+    const days = st.last ? Math.floor((Date.now() - new Date(st.last.visited_at).getTime()) / 864e5) : null
+    return days == null || days >= 30 ? [{ site, days }] : []
+  }).sort((a, b) => (b.days ?? 1e9) - (a.days ?? 1e9)).slice(0, 4), [sites, stats])
 
   return (
     <div className="page">
@@ -63,34 +72,62 @@ export default function FieldSites() {
       {adding && <NewSite tagSuggestions={allTags} onClose={() => setAdding(false)} onCreated={id => { setAdding(false); nav(`/sites/${id}`) }} />}
 
       {sites.length > 0 && (
-        <div className="sites-top">
-          {pins.length > 0 && <Suspense fallback={<div className="site-map" />}><SitesMap sites={pins} onOpen={id => nav(`/sites/${id}`)} /></Suspense>}
-          <section className="card sites-summary">
-            <h2>Field season</h2>
-            <p className="muted small sites-totals">
-              {sites.filter(s => s.status === 'active').length} active · {visitsDone} visit{visitsDone === 1 ? '' : 's'} logged
-              {sites.some(s => !hasPin(s)) && ` · ${sites.filter(s => !hasPin(s)).length} not on the map`}
-            </p>
-            <h3>Next up</h3>
-            {nextUp.length ? (
-              <ul className="sites-list">
-                {nextUp.map(({ site, visit }) => <li key={visit.id}><Link to={`/sites/${site.id}`}><b>{site.name}</b></Link><span>{fmtWhen(new Date(visit.visited_at))}{visit.purpose ? ` · ${visit.purpose}` : ''}</span></li>)}
-              </ul>
-            ) : <p className="muted small">No visits planned.</p>}
-            <h3>Recently visited</h3>
-            {recent.length ? (
-              <ul className="sites-list">
-                {recent.map(({ site, visit }) => <li key={visit.id}><Link to={`/sites/${site.id}`}><b>{site.name}</b></Link><span>{ago(visit.visited_at)}{visit.purpose ? ` · ${visit.purpose}` : ''}</span></li>)}
-              </ul>
-            ) : <p className="muted small">No visits logged yet.</p>}
-            {tagCounts.length > 0 && (
-              <>
-                <h3>By tag</h3>
-                <div className="site-tags">{tagCounts.map(([t, n]) => <button key={t} className={`tag-pill${tag === t ? ' on' : ''}`} style={tagStyle(t)} onClick={() => setTag(tag === t ? '' : t)}>{t} · {n}</button>)}</div>
-              </>
-            )}
-          </section>
-        </div>
+        <>
+          <div className="sites-top">
+            {pins.length > 0 && <Suspense fallback={<div className="site-map" />}><SitesMap sites={pins} onOpen={id => nav(`/sites/${id}`)} /></Suspense>}
+            <section className="card sites-summary">
+              <div className="site-tiles">
+                <div><b>{sites.filter(x => x.status === 'active').length}</b><span>active</span></div>
+                <div><b>{upcoming}</b><span>planned</span></div>
+                <div><b>{visitsDone}</b><span>visits</span></div>
+                <div><b>{onSite ? fmtMinutes(onSite) : '0'}</b><span>on site</span></div>
+              </div>
+              <h3>Next up</h3>
+              {nextUp.length ? (
+                <ul className="next-list">
+                  {nextUp.map(({ site, visit }) => {
+                    const d = new Date(visit.visited_at)
+                    return (
+                      <li key={visit.id}>
+                        <Link to={`/sites/${site.id}`}>
+                          <span className="date-badge"><small>{d.toLocaleDateString(undefined, { month: 'short' })}</small><b>{d.getDate()}</b></span>
+                          <span className="next-what"><b>{site.name}</b><em>{d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}{visit.purpose ? ` · ${visit.purpose}` : ''}</em></span>
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : <p className="muted small">No visits planned. Open a site to plan a revisit.</p>}
+              <QuickTask sites={sites} />
+            </section>
+          </div>
+
+          <div className="sites-cards">
+            <section className="card">
+              <h3>Due a visit</h3>
+              {stale.length ? (
+                <ul className="sites-list">
+                  {stale.map(({ site, days }) => <li key={site.id}><Link to={`/sites/${site.id}`}><b>{site.name}</b></Link><span>{days == null ? 'never visited' : `${days} days ago`}</span></li>)}
+                </ul>
+              ) : <p className="muted small">Every active site has been visited in the last month or has a visit planned.</p>}
+            </section>
+            <section className="card">
+              <h3>Recently visited</h3>
+              {recent.length ? (
+                <ul className="sites-list">
+                  {recent.map(({ site, visit }) => <li key={visit.id}><Link to={`/sites/${site.id}`}><b>{site.name}</b></Link><span>{ago(visit.visited_at)}{visit.purpose ? ` · ${visit.purpose}` : ''}</span></li>)}
+                </ul>
+              ) : <p className="muted small">No visits logged yet.</p>}
+            </section>
+            <section className="card">
+              <h3>Projects</h3>
+              {tagCounts.length ? (
+                <div className="site-tags left">{tagCounts.map(([t, n]) => <button key={t} className={`tag-pill${tag === t ? ' on' : ''}`} style={tagStyle(t)} onClick={() => setTag(tag === t ? '' : t)}>{t} · {n}</button>)}</div>
+              ) : <p className="muted small">Tag a site with a project, like life table or RP grid, to group them here.</p>}
+              {sites.some(x => !hasPin(x)) && <p className="muted small" style={{ marginTop: '.6rem' }}>{sites.filter(x => !hasPin(x)).length} not on the map yet.</p>}
+            </section>
+          </div>
+        </>
       )}
 
       {allTags.length > 0 && (
@@ -107,9 +144,9 @@ export default function FieldSites() {
             const cover = s.cover_path ? covers[s.cover_path] : null
             return (
               <Link key={s.id} to={`/sites/${s.id}`} className="card site-card">
-                <div className="site-cover">{cover ? <img src={cover} alt="" loading="lazy" /> : <Icon name="tree" size={30} />}</div>
+                <div className="site-cover">{cover ? <img src={cover} alt="" loading="lazy" /> : <Icon name="tree" size={30} />}{(s.tags?.length ?? 0) > 0 && <div className="site-tags">{s.tags!.map(t => <span key={t} style={tagStyle(t)}>{t}</span>)}</div>}</div>
                 <div className="site-card-body">
-                  <div className="row between"><h2>{s.name}</h2>{(s.tags?.length ?? 0) > 0 && <div className="site-tags">{s.tags!.map(t => <span key={t} style={tagStyle(t)}>{t}</span>)}</div>}</div>
+                  <h2>{s.name}</h2>
                   <SitePlace site={s} />
                   <p className="site-next">{st.next ? <><b>Next:</b> {fmtWhen(new Date(st.next.visited_at))}{st.next.purpose ? ` · ${st.next.purpose}` : ''}</> : <span className="muted">No visit planned</span>}</p>
                   <p className="muted small">{st.last ? `Last visited ${ago(st.last.visited_at)} · ` : 'Not visited yet · '}{st.done.length} visit{st.done.length === 1 ? '' : 's'}</p>
@@ -127,6 +164,33 @@ export default function FieldSites() {
         </Empty>
       )}
     </div>
+  )
+}
+
+/** Adds a to-do from the overview, tagged with the site's name and filed under its project when it has one. */
+function QuickTask({ sites }: { sites: FieldSite[] }) {
+  const [text, setText] = useState('')
+  const [siteId, setSiteId] = useState('')
+  const [busy, setBusy] = useState(false)
+  async function add(e: React.FormEvent) {
+    e.preventDefault()
+    const t = text.trim(); if (!t || busy) return
+    const site = sites.find(x => x.id === siteId)
+    setBusy(true)
+    try {
+      await store.addTask(site?.project_id ?? null, site ? `${site.name}: ${t}` : t, null)
+      setText(''); notify.info(site ? `Added to your tasks for ${site.name}.` : 'Added to your tasks.')
+    } catch (er) { notify.error(er) } finally { setBusy(false) }
+  }
+  return (
+    <form className="quick-task" onSubmit={add}>
+      <input value={text} onChange={e => setText(e.target.value)} placeholder="Add a field to-do…" aria-label="New field to-do" />
+      <select value={siteId} onChange={e => setSiteId(e.target.value)} aria-label="Site for this to-do">
+        <option value="">Any site</option>
+        {sites.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+      </select>
+      <button className="primary" disabled={!text.trim() || busy}>Add</button>
+    </form>
   )
 }
 
@@ -169,7 +233,7 @@ function NewSite({ onClose, onCreated, tagSuggestions }: { onClose: () => void; 
           {photo && <button type="button" className="link small" onClick={() => setPhoto(null)}>Remove photo</button>}
           <label>Name<input autoFocus placeholder="e.g. Elk Park" value={name} onChange={e => setName(e.target.value)} /></label>
           <label>Location<input placeholder="Address, place or lat, lng (puts it on the map)" value={address} onChange={e => setAddress(e.target.value)} /></label>
-          <div><h3>Projects</h3><TagEditor colored tags={tags} onChange={setTags} suggest={tagSuggestions} placeholder="Life table, RP grid, mecinus…" /></div>
+          <div><h3>Projects</h3><ProjectPicker tags={tags} onChange={setTags} known={tagSuggestions} /></div>
           <label>Status
             <select value={status} onChange={e => setStatus(e.target.value as SiteStatus)}>
               {(['active', 'paused', 'done'] as const).map(s => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}

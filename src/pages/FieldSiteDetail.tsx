@@ -5,7 +5,7 @@ import Icon from '../components/Icon'
 import InlineEdit from '../components/InlineEdit'
 import RichTextarea, { RichView } from '../components/RichText'
 import VisitForm, { type VisitDraft } from '../components/VisitForm'
-import TagEditor from '../components/TagEditor'
+import ProjectPicker from '../components/ProjectPicker'
 import { usePlace } from '../components/SitePlace'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
@@ -110,7 +110,7 @@ export default function FieldSiteDetail() {
           <button className="link small danger" onClick={removeSite}>Delete site</button>
         </div>
       </div>
-      <div className="site-head-tags"><TagEditor colored tags={site.tags ?? []} onChange={tags => patch({ tags })} placeholder="Add a project (life table, RP grid, mecinus…)" suggest={allTags} /></div>
+      <div className="site-head-tags"><ProjectPicker tags={site.tags ?? []} onChange={tags => patch({ tags })} known={allTags} /></div>
       {error && <p className="error">{error}</p>}
 
       <section className="card site-hero">
