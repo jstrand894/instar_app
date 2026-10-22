@@ -63,6 +63,8 @@ export default function FieldSiteDetail() {
   }
   const [moving, setMoving] = useState(false)
   const [editingLoc, setEditingLoc] = useState(false)
+  const [editingAbout, setEditingAbout] = useState(false)
+  const [about, setAbout] = useState('')
   const [place, setPlace] = useState<string | null>(null)
   useEffect(() => {
     setPlace(null)
@@ -123,8 +125,21 @@ export default function FieldSiteDetail() {
           <input ref={pick} type="file" accept="image/*" hidden onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto(f); e.target.value = '' }} />
         </div>
         <div className="site-facts">
-          <label className="muted small">About this site</label>
-          <textarea rows={3} placeholder="What is here, how to get in, who to call…" defaultValue={site.description} onBlur={e => { if (e.target.value !== site.description) patch({ description: e.target.value }) }} />
+          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <label className="muted small">About this site</label>
+            {!editingAbout && <button className="link" aria-label="Edit about" title="Edit about" onClick={() => { setAbout(site.description); setEditingAbout(true) }}><Icon name="pen" size={16} /></button>}
+          </div>
+          {editingAbout ? (
+            <>
+              <textarea autoFocus rows={4} placeholder="What is here, how to get in, who to call…" value={about} onChange={e => setAbout(e.target.value)} />
+              <div className="row">
+                <button className="primary" onClick={() => { if (about !== site.description) patch({ description: about }); setEditingAbout(false) }}>Save</button>
+                <button onClick={() => setEditingAbout(false)}>Cancel</button>
+              </div>
+            </>
+          ) : site.description.trim()
+            ? <p style={{ whiteSpace: 'pre-wrap', margin: '.2rem 0' }}>{site.description}</p>
+            : <p className="muted" style={{ margin: '.2rem 0' }}>Nothing yet. Use the pencil to add what is here, how to get in, who to call…</p>}
           <p className="site-next">{next ? <><b>Next visit:</b> {fmtWhen(new Date(next.visited_at))}{next.purpose ? ` · ${next.purpose}` : ''}</> : <span className="muted">No visit planned</span>}</p>
           <p className="muted small">{done[0] ? `Last visited ${ago(done[0].visited_at)} · ` : 'Not visited yet · '}{done.length} visit{done.length === 1 ? '' : 's'}{done.some(v => v.minutes) ? ` · ${fmtMinutes(done.reduce((n, v) => n + (v.minutes ?? 0), 0))} on site` : ''}</p>
           <div className="row wrap">
