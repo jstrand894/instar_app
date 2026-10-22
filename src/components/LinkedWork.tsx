@@ -2,14 +2,18 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { store } from '../lib/store'
 import { friendlyError } from '../lib/errors'
+import { ago } from '../lib/util'
 import type { Project, ProjectLink } from '../types'
+
+/** How one piece of linked work is going, for the line under its name. */
+export interface Progress { done: number; total: number; last?: string; commits: number; nextDue?: string }
 
 /** The projects linked to a manuscript, or the manuscripts linked to a project: the two kinds of work that belong together. */
 export const linkedTo = (id: string, links: ProjectLink[]) =>
   links.filter(l => l.project_id === id || l.linked_id === id).map(l => (l.project_id === id ? l.linked_id : l.project_id))
 
-export default function LinkedWork({ project, projects, links, onChange, onError }: {
-  project: Project; projects: Project[]; links: ProjectLink[]; onChange: () => void; onError: (m: string) => void
+export default function LinkedWork({ project, projects, links, progress, onChange, onError }: {
+  project: Project; projects: Project[]; links: ProjectLink[]; progress?: Map<string, Progress>; onChange: () => void; onError: (m: string) => void
 }) {
   const [q, setQ] = useState('')
   const isMs = project.type === 'manuscript'
@@ -29,7 +33,8 @@ export default function LinkedWork({ project, projects, links, onChange, onError
         {linked.map(p => (
           <li key={p.id}>
             <div><Link to={`/project/${p.id}`} className="paper-title">{p.name}</Link>
-              <div className="muted small">{p.type === 'manuscript' ? (p.stage ? p.stage.replace(/^./, c => c.toUpperCase()) : 'Manuscript') : p.type}</div></div>
+              <div className="muted small">{p.type === 'manuscript' ? (p.stage ? p.stage.replace(/^./, c => c.toUpperCase()) : 'Manuscript') : p.type}</div>
+              <ProgressLine pr={progress?.get(p.id)} /></div>
             <button className="link small danger" onClick={() => run(() => store.unlinkProject(project.id, p.id))}>Unlink</button>
           </li>
         ))}
@@ -46,6 +51,22 @@ export default function LinkedWork({ project, projects, links, onChange, onError
       )}
       {needle && !matches.length && <p className="muted small">No unlinked {noun}s match.</p>}
     </section>
+  )
+}
+
+function ProgressLine({ pr }: { pr?: Progress }) {
+  if (!pr) return null
+  const bits = [
+    pr.total ? `${pr.done}/${pr.total} to-dos done` : 'No to-dos yet',
+    pr.commits ? `${pr.commits} recent commit${pr.commits === 1 ? '' : 's'}` : '',
+    pr.last ? `active ${ago(pr.last)}` : 'no activity yet',
+    pr.nextDue ? `next deadline ${new Date(pr.nextDue + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : '',
+  ].filter(Boolean)
+  return (
+    <div className="linked-progress small">
+      {pr.total > 0 && <span className="linked-bar" aria-hidden><i style={{ width: `${Math.round(pr.done / pr.total * 100)}%` }} /></span>}
+      <span className="muted">{bits.join(' · ')}</span>
+    </div>
   )
 }
 

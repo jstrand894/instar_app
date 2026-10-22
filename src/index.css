@@ -1507,3 +1507,4 @@ img.avatar { object-fit: cover; background: var(--chip); }
   .sites-insights { grid-template-columns: minmax(0, 1fr); } .sites-insights > div + div { border-left: 0; border-top: 1px solid var(--line); }
 }
 .leaflet-tooltip.site-label { transition: opacity .15s; } .leaflet-tooltip.site-label.crowded { opacity: 0; pointer-events: none; }
+.linked-progress { display: grid; gap: .3rem; margin-top: .3rem; } .linked-bar { display: block; height: 5px; width: min(220px, 100%); border-radius: 99px; background: var(--line); overflow: hidden; } .linked-bar i { display: block; height: 100%; background: var(--accent); }

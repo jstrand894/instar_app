@@ -15,7 +15,7 @@ import EntryBody from '../components/EntryBody'
 import RichTextarea from '../components/RichText'
 import LinkedText from '../components/LinkedText'
 import { parsePieces, useLinks } from '../lib/links'
-import LinkedWork, { linkedTo } from '../components/LinkedWork'
+import LinkedWork, { linkedTo, type Progress } from '../components/LinkedWork'
 import type { Area, Deadline, ProjectLink, ProjectTask, TimeEntry, Paper, PaperLink, Project, ProjectEvent, ProjectStatus, ProjectType, ProjectUpdate, Stage } from '../types'
 
 const TYPES: { id: ProjectType; label: string }[] = [
@@ -84,6 +84,7 @@ export default function ProjectDetail() {
   const [total, setTotal] = useState(0)
   const [pushes, setPushes] = useState<{ n: number; last?: string }>({ n: 0 })
   const [timeId, setTimeId] = useState<string | null>(null)
+  const [recent, setRecent] = useState<ProjectUpdate[]>([]) // recent entries across projects, for the linked-work progress lines
 
   const load = useCallback(async () => {
     try {
@@ -95,6 +96,7 @@ export default function ProjectDetail() {
       const p = ps.find(x => x.id === id) ?? null
       setProject(p); setTotal(us.total); setPushes({ n: us.commits, last: us.lastPush })
       setEntries(us.rows)
+      setRecent(await store.updates().catch(() => []))
       setAllUpdates(p ? await store.mentionsOf(p.name, p.id).catch(() => []) : [])
       if (!p) setError('Project not found.')
     } catch (e) { setError(friendlyError(e)) }
@@ -125,6 +127,15 @@ export default function ProjectDetail() {
   const [mentionNames, setMentionNames] = useState<Map<string, string>>(new Map())
   useEffect(() => { store.projects().then(ps => setMentionNames(new Map(ps.map(p => [p.id, p.name])))).catch(() => {}) }, [allUpdates])
   const mentions = project ? allUpdates.filter(u => u.project_id !== project.id && parsePieces(u.body).some(pc => pc.t === 'link' && (() => { const t = resolve(pc.s); return t?.kind === 'project' && t.id === project.id })())) : []
+
+  const progress = new Map<string, Progress>()
+  for (const i of linkedTo(project?.id ?? '', projLinks)) {
+    const ts = tasks.filter(t => t.project_id === i), mine = recent.filter(u => u.project_id === i)
+    progress.set(i, {
+      done: ts.filter(t => t.done).length, total: ts.length, last: mine[0]?.created_at, commits: mine.filter(u => u.kind === 'commit').length,
+      nextDue: deadlines.filter(d => d.project_id === i && !d.done).map(d => d.due_on).sort()[0],
+    })
+  }
 
   const linkedIds = new Set(links.map(l => l.paper_id))
   const linked = papers.filter(p => linkedIds.has(p.id))
@@ -384,7 +395,7 @@ export default function ProjectDetail() {
         })() : <p className="muted">No focus time logged here yet. Pick this project in the sidebar timer and your sessions will be added.</p>}
       </section>
 
-      {project && <LinkedWork project={project} projects={allProjects} links={projLinks} onChange={load} onError={setError} />}
+      {project && <LinkedWork project={project} projects={allProjects} links={projLinks} progress={progress} onChange={load} onError={setError} />}
 
       <section className="card reading">
         <h2>Reading</h2>
