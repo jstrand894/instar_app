@@ -21,6 +21,18 @@ export async function geocode(q: string): Promise<{ lat: number; lng: number } |
   } catch { return null }
 }
 
+/** A broad place name (city or county, state) for a pin, so coordinates never need showing; null when the lookup fails. */
+export async function placeName(lat: number, lng: number): Promise<string | null> {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=10&addressdetails=1&lat=${lat}&lon=${lng}`, { headers: { Accept: 'application/json' } })
+    const a = (await r.json() as { address?: Record<string, string> }).address
+    if (!a) return null
+    const local = a.city || a.town || a.village || a.municipality || a.hamlet
+    const parts = [local || a.county, local ? a.county : undefined, a.state || a.country].filter(Boolean)
+    return parts.length ? parts.join(', ') : null
+  } catch { return null }
+}
+
 /** Shrinks a picked photo to a JPEG about 800px wide (60-100 KB), so covers barely use any storage. */
 export function toCover(file: File, width = 800, quality = 0.8): Promise<Blob> {
   return new Promise((resolve, reject) => {

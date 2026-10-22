@@ -8,7 +8,7 @@ const ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStree
 const pin = (on = false) => L.divIcon({ className: 'site-pin', html: `<i class="${on ? 'on' : ''}"></i>`, iconSize: [26, 26], iconAnchor: [13, 26], tooltipAnchor: [0, -24] })
 
 function makeMap(el: HTMLElement) {
-  const map = L.map(el, { scrollWheelZoom: false }).setView([20, 0], 2)
+  const map = L.map(el, { scrollWheelZoom: true }).setView([20, 0], 2)
   L.tileLayer(TILES, { maxZoom: 19, attribution: ATTR }).addTo(map)
   return map
 }
@@ -35,15 +35,16 @@ export function SitesMap({ sites, onOpen }: { sites: MapSite[]; onOpen: (id: str
 }
 
 /** A small map where you click to place (or move) the site's pin. */
-export function PickMap({ lat, lng, onPick }: { lat: number | null; lng: number | null; onPick: (lat: number, lng: number) => void }) {
+export function PickMap({ lat, lng, onPick, locked = false }: { lat: number | null; lng: number | null; onPick: (lat: number, lng: number) => void; locked?: boolean }) {
   const box = useRef<HTMLDivElement>(null)
   const pick = useRef(onPick)
-  useEffect(() => { pick.current = onPick })
+  const isLocked = useRef(locked)
+  useEffect(() => { pick.current = onPick; isLocked.current = locked })
   const map = useRef<L.Map | null>(null)
   const mark = useRef<L.Marker | null>(null)
   useEffect(() => {
     const m = makeMap(box.current!); map.current = m
-    m.on('click', e => pick.current(+e.latlng.lat.toFixed(6), +e.latlng.lng.toFixed(6)))
+    m.on('click', e => { if (!isLocked.current) pick.current(+e.latlng.lat.toFixed(6), +e.latlng.lng.toFixed(6)) })
     return () => { m.remove(); map.current = null; mark.current = null }
   }, [])
   useEffect(() => {
@@ -52,5 +53,5 @@ export function PickMap({ lat, lng, onPick }: { lat: number | null; lng: number 
     if (mark.current) mark.current.setLatLng([lat, lng]); else mark.current = L.marker([lat, lng], { icon: pin(true) }).addTo(m)
     m.setView([lat, lng], Math.max(m.getZoom(), 13))
   }, [lat, lng])
-  return <div ref={box} className="site-map pick" role="region" aria-label="Click the map to set the site's location" />
+  return <div ref={box} className={`site-map pick${locked ? ' locked' : ''}`} role="region" aria-label="Click the map to set the site's location" />
 }

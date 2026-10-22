@@ -9,7 +9,7 @@ import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
 import { ago, fmtMinutes, fmtWhen } from '../lib/util'
-import { geocode, hasPin, mapLinks, siteStats, toCover } from '../lib/sites'
+import { geocode, hasPin, placeName, mapLinks, siteStats, toCover } from '../lib/sites'
 import type { FieldSite, Project, SiteStatus, SiteVisit } from '../types'
 
 const PickMap = lazy(() => import('../components/SiteMap').then(m => ({ default: m.PickMap })))
@@ -61,6 +61,16 @@ export default function FieldSiteDetail() {
       await load()
     } catch (e) { notify.error(e) } finally { setPhotoBusy(false) }
   }
+  const [moving, setMoving] = useState(false)
+  const [place, setPlace] = useState<string | null>(null)
+  useEffect(() => {
+    setPlace(null)
+    if (site?.lat == null || site.lng == null) return
+    let live = true
+    placeName(site.lat, site.lng).then(n => { if (live) setPlace(n) })
+    return () => { live = false }
+  }, [site?.lat, site?.lng])
+
   async function findOnMap() {
     if (!address.trim()) return
     setFindBusy(true)
@@ -190,10 +200,11 @@ export default function FieldSiteDetail() {
               <button onClick={findOnMap} disabled={!address.trim() || findBusy}>{findBusy ? 'Finding…' : 'Find'}</button>
             </div>
             <Suspense fallback={<div className="site-map pick" />}>
-              <PickMap lat={site.lat} lng={site.lng} onPick={(lat, lng) => patch({ lat, lng })} />
+              <PickMap lat={site.lat} lng={site.lng} locked={hasPin(site) && !moving} onPick={(lat, lng) => { setMoving(false); patch({ lat, lng }) }} />
             </Suspense>
-            <p className="muted small">{hasPin(site) ? `Pin at ${site.lat!.toFixed(5)}, ${site.lng!.toFixed(5)}. Click the map to move it.` : 'Click the map to drop a pin.'}
-              {hasPin(site) && <> <button className="link small" onClick={() => patch({ lat: null, lng: null })}>Clear pin</button></>}</p>
+            <p className="muted small">{!hasPin(site) ? 'Click the map to drop a pin.' : moving ? 'Click the map to place the pin.' : `Near ${place ?? 'this pin'}.`}
+              {hasPin(site) && <> <button className="link small" onClick={() => setMoving(m => !m)}>{moving ? 'Cancel' : 'Move pin'}</button>
+                {!moving && <> <button className="link small" onClick={() => patch({ lat: null, lng: null })}>Clear pin</button></>}</>}</p>
             {(hasPin(site) || site.address) && (
               <div className="row wrap">
                 <a className="map-btn" href={links.google} target="_blank" rel="noreferrer">Open in Google Maps</a>
