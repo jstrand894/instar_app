@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { tagStyle } from '../lib/sites'
+import { cleanTag, tagStyle } from '../lib/sites'
 import { normalizeTag, useLinks } from '../lib/links'
 
 /** Tag chips you can add (Enter or comma) and remove. */
@@ -8,7 +8,9 @@ export default function TagEditor({ tags, onChange, placeholder = 'Add a tag…'
   const { tags: known } = useLinks()
   const add = (raw: string) => {
     setV('')
-    const fresh = raw.split(/[,;\n]+/).map(normalizeTag).filter((t, i, all) => t && !tags.includes(t) && all.indexOf(t) === i)
+    const norm = colored ? cleanTag : normalizeTag
+    const have = tags.map(t => t.toLowerCase())
+    const fresh = raw.split(/[,;\n]+/).map(norm).filter((t, i, all) => t && !have.includes(t.toLowerCase()) && all.findIndex(x => x.toLowerCase() === t.toLowerCase()) === i)
     if (fresh.length) onChange([...tags, ...fresh])
   }
   const list = `tags-${Math.random().toString(36).slice(2, 7)}`
@@ -24,7 +26,7 @@ export default function TagEditor({ tags, onChange, placeholder = 'Add a tag…'
           if (e.key === 'Backspace' && !v && tags.length) onChange(tags.slice(0, -1))
         }}
         onBlur={() => v && add(v)} />
-      <datalist id={list}>{[...new Set([...(suggest ?? []), ...known.map(k => k.tag)])].filter(t => !tags.includes(t)).map(t => <option key={t} value={t} />)}</datalist>
+      <datalist id={list}>{[...new Set(colored ? (suggest ?? []) : [...(suggest ?? []), ...known.map(k => k.tag)])].filter(t => !tags.some(x => x.toLowerCase() === t.toLowerCase())).map(t => <option key={t} value={t} />)}</datalist>
     </div>
   )
 }

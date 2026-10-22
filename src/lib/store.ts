@@ -120,7 +120,7 @@ const local = {
   },
   async deleteTask(id: string) { const d = load(); d.tasks = d.tasks.filter(x => x.id !== id); save(d) },
   async sites() { return load().sites },
-  async addSite(s: Pick<FieldSite, 'name'> & Partial<Pick<FieldSite, 'address' | 'lat' | 'lng' | 'description'>>) {
+  async addSite(s: Pick<FieldSite, 'name'> & Partial<Pick<FieldSite, 'address' | 'lat' | 'lng' | 'description' | 'status' | 'tags'>>) {
     const d = load(); const row: FieldSite = { id: uid(), status: 'active', address: '', lat: null, lng: null, description: '', notes: '', project_id: null, cover_path: null, created_at: now(), ...s }
     d.sites.push(row); save(d); return row
   },

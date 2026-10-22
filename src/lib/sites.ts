@@ -11,13 +11,17 @@ export function mapLinks(s: Pick<FieldSite, 'name' | 'address' | 'lat' | 'lng'>)
   }
 }
 
-/** A steady hue (0-359) per tag name, so each project keeps its colour everywhere. */
-export function tagHue(tag: string) {
+// muted earth and water tones: [hue, saturation %]
+const TAG_COLORS: [number, number][] = [[152, 30], [16, 46], [38, 52], [212, 38], [284, 26], [182, 36], [344, 38], [66, 32]]
+/** A steady colour per tag name, so each project keeps its colour everywhere. */
+export function tagStyle(tag: string) {
   let h = 0
-  for (const c of tag) h = (h * 31 + c.charCodeAt(0)) >>> 0
-  return (h * 47) % 360
+  for (const c of tag.toLowerCase()) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  const [hue, sat] = TAG_COLORS[h % TAG_COLORS.length]
+  return { '--h': hue, '--s': `${sat}%` } as React.CSSProperties
 }
-export const tagStyle = (tag: string) => ({ '--h': tagHue(tag) }) as React.CSSProperties
+/** Project tags are plain words ("life table", "RP grid"), not dashed slugs. */
+export const cleanTag = (t: string) => t.trim().replace(/^#+/, '').replace(/[-_\s]+/g, ' ').trim()
 
 /** Reads "46.12, -112.45" style text as a position; null for anything else. */
 export function parseCoords(q: string): { lat: number; lng: number } | null {

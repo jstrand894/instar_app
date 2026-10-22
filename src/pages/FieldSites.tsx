@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import BackButton from '../components/BackButton'
 import Empty from '../components/Empty'
@@ -7,9 +7,10 @@ import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
 import { ago, fmtWhen } from '../lib/util'
-import { geocode, hasPin, parseCoords, siteStats, tagStyle } from '../lib/sites'
+import { geocode, hasPin, parseCoords, siteStats, tagStyle, cleanTag, toCover } from '../lib/sites'
 import SitePlace from '../components/SitePlace'
-import type { FieldSite, SiteVisit } from '../types'
+import TagEditor from '../components/TagEditor'
+import type { FieldSite, SiteStatus, SiteVisit } from '../types'
 
 const SitesMap = lazy(() => import('../components/SiteMap').then(m => ({ default: m.SitesMap })))
 
@@ -25,6 +26,8 @@ export default function FieldSites() {
   const refresh = useCallback(async () => {
     try {
       const [s, v] = await Promise.all([store.sites(), store.siteVisits().catch(() => [] as SiteVisit[])])
+      const dashed = s.filter(x => (x.tags ?? []).some(t => /[-_]/.test(t)))
+      for (const x of dashed) { x.tags = [...new Set(x.tags!.map(cleanTag))]; store.patchSite(x.id, { tags: x.tags }).catch(() => {}) } // one-off: older tags were dashed slugs
       setSites(s); setVisits(v); setError('')
       setCovers(await store.siteCoverUrls(s.map(x => x.cover_path).filter((p): p is string => !!p)).catch((): Record<string, string> => ({})))
     } catch (e) { setError(friendlyError(e)) } finally { setLoaded(true) }
@@ -57,7 +60,7 @@ export default function FieldSites() {
       </header>
 
       {error && <p className="error">{error}</p>}
-      {adding && <NewSite onClose={() => setAdding(false)} onCreated={id => { setAdding(false); nav(`/sites/${id}`) }} />}
+      {adding && <NewSite tagSuggestions={allTags} onClose={() => setAdding(false)} onCreated={id => { setAdding(false); nav(`/sites/${id}`) }} />}
 
       {sites.length > 0 && (
         <div className="sites-top">
@@ -127,10 +130,21 @@ export default function FieldSites() {
   )
 }
 
-function NewSite({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+function NewSite({ onClose, onCreated, tagSuggestions }: { onClose: () => void; onCreated: (id: string) => void; tagSuggestions: string[] }) {
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
+  const [tags, setTags] = useState<string[]>([])
+  const [status, setStatus] = useState<SiteStatus>('active')
+  const [about, setAbout] = useState('')
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const pick = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (!photo) { setPreview(null); return }
+    const u = URL.createObjectURL(photo); setPreview(u)
+    return () => URL.revokeObjectURL(u)
+  }, [photo])
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim() || busy) return
@@ -138,18 +152,36 @@ function NewSite({ onClose, onCreated }: { onClose: () => void; onCreated: (id: 
     try {
       const where = address.trim() ? await geocode(address) : null
       if (address.trim() && !where) notify.info("Couldn't find that address on the map. Drop a pin on the site page instead.")
-      const row = await store.addSite({ name: name.trim(), address: parseCoords(address) ? '' : address.trim(), ...(where ?? {}) })
+      const row = await store.addSite({ name: name.trim(), address: parseCoords(address) ? '' : address.trim(), description: about.trim(), status, tags, ...(where ?? {}) })
+      if (photo) await store.saveSiteCover(row.id, await toCover(photo)).catch(er => notify.error(er))
       onCreated(row.id)
     } catch (er) { notify.error(er); setBusy(false) }
   }
   return (
-    <form className="card form" onSubmit={submit}>
-      <input autoFocus placeholder="Site name" value={name} onChange={e => setName(e.target.value)} />
-      <input placeholder="Address or place (optional, puts it on the map)" value={address} onChange={e => setAddress(e.target.value)} />
-      <div className="row">
-        <button className="primary" disabled={!name.trim() || busy}>{busy ? 'Adding…' : 'Create'}</button>
-        <button type="button" onClick={onClose}>Cancel</button>
-      </div>
-    </form>
+    <div className="modal-back" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }} onKeyDown={e => { if (e.key === 'Escape') onClose() }}>
+      <form className="modal new-site" role="dialog" aria-modal="true" aria-label="New field site" onSubmit={submit}>
+        <div className="modal-head"><h2>New field site</h2><button type="button" className="close-x" onClick={onClose} aria-label="Close">×</button></div>
+        <div className="modal-body">
+          <button type="button" className="new-site-photo" onClick={() => pick.current?.click()}>
+            {preview ? <img src={preview} alt="Cover preview" /> : <span><Icon name="camera" size={20} /> Add a cover photo</span>}
+          </button>
+          <input ref={pick} type="file" accept="image/*" hidden onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto(f); e.target.value = '' }} />
+          {photo && <button type="button" className="link small" onClick={() => setPhoto(null)}>Remove photo</button>}
+          <label>Name<input autoFocus placeholder="e.g. Elk Park" value={name} onChange={e => setName(e.target.value)} /></label>
+          <label>Location<input placeholder="Address, place or lat, lng (puts it on the map)" value={address} onChange={e => setAddress(e.target.value)} /></label>
+          <div><h3>Projects</h3><TagEditor colored tags={tags} onChange={setTags} suggest={tagSuggestions} placeholder="Life table, RP grid, mecinus…" /></div>
+          <label>Status
+            <select value={status} onChange={e => setStatus(e.target.value as SiteStatus)}>
+              {(['active', 'paused', 'done'] as const).map(s => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}
+            </select>
+          </label>
+          <label>About<textarea rows={3} placeholder="What is here, how to get in, who to call…" value={about} onChange={e => setAbout(e.target.value)} /></label>
+          <div className="row">
+            <button className="primary" disabled={!name.trim() || busy}>{busy ? 'Adding…' : 'Create site'}</button>
+            <button type="button" onClick={onClose}>Cancel</button>
+          </div>
+        </div>
+      </form>
+    </div>
   )
 }
