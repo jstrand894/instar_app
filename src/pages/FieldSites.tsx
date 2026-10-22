@@ -7,7 +7,8 @@ import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
 import { ago, fmtWhen } from '../lib/util'
-import { geocode, hasPin, siteStats } from '../lib/sites'
+import { geocode, hasPin, parseCoords, siteStats } from '../lib/sites'
+import SitePlace from '../components/SitePlace'
 import type { FieldSite, SiteStatus, SiteVisit } from '../types'
 
 const SitesMap = lazy(() => import('../components/SiteMap').then(m => ({ default: m.SitesMap })))
@@ -76,7 +77,7 @@ export default function FieldSites() {
                 <div className="site-cover">{cover ? <img src={cover} alt="" loading="lazy" /> : <Icon name="tree" size={30} />}</div>
                 <div className="site-card-body">
                   <div className="row between"><h2>{s.name}</h2><span className="status-pill" data-status={s.status}>{s.status}</span></div>
-                  {s.address && <p className="muted small">{s.address}</p>}
+                  <SitePlace site={s} />
                   <p className="site-next">{st.next ? <><b>Next:</b> {fmtWhen(new Date(st.next.visited_at))}{st.next.purpose ? ` · ${st.next.purpose}` : ''}</> : <span className="muted">No visit planned</span>}</p>
                   <p className="muted small">{st.last ? `Last visited ${ago(st.last.visited_at)} · ` : 'Not visited yet · '}{st.done.length} visit{st.done.length === 1 ? '' : 's'}</p>
                 </div>
@@ -107,7 +108,7 @@ function NewSite({ onClose, onCreated }: { onClose: () => void; onCreated: (id: 
     try {
       const where = address.trim() ? await geocode(address) : null
       if (address.trim() && !where) notify.info("Couldn't find that address on the map. Drop a pin on the site page instead.")
-      const row = await store.addSite({ name: name.trim(), address: address.trim(), ...(where ?? {}) })
+      const row = await store.addSite({ name: name.trim(), address: parseCoords(address) ? '' : address.trim(), ...(where ?? {}) })
       onCreated(row.id)
     } catch (er) { notify.error(er); setBusy(false) }
   }

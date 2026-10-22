@@ -30,17 +30,37 @@ export async function geocode(q: string): Promise<{ lat: number; lng: number } |
   } catch { return null }
 }
 
-/** A broad place name (city or county, state) for a pin, so coordinates never need showing; null when the lookup fails. */
-export async function placeName(lat: number, lng: number): Promise<string | null> {
-  try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=10&addressdetails=1&lat=${lat}&lon=${lng}`, { headers: { Accept: 'application/json' } })
-    const a = (await r.json() as { address?: Record<string, string> }).address
-    if (!a) return null
-    const local = a.city || a.town || a.village || a.municipality || a.hamlet
-    const parts = [local || a.county, local ? a.county : undefined, a.state || a.country].filter(Boolean)
-    return parts.length ? parts.join(', ') : null
-  } catch { return null }
+const places = new Map<string, Promise<string | null>>()
+const placeKey = (lat: number, lng: number) => `${lat.toFixed(3)},${lng.toFixed(3)}`
+const readCache = (): Record<string, string> => { try { return JSON.parse(localStorage.getItem('site-places') ?? '{}') } catch { return {} } }
+
+/** A broad place name (city or county, state) for a pin, so coordinates never need showing; null when the lookup fails. Remembered between visits. */
+export function placeName(lat: number, lng: number): Promise<string | null> {
+  const k = placeKey(lat, lng)
+  const hit = readCache()[k]
+  if (hit) return Promise.resolve(hit)
+  let p = places.get(k)
+  if (!p) {
+    p = (async () => {
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=10&addressdetails=1&lat=${lat}&lon=${lng}`, { headers: { Accept: 'application/json' } })
+        const a = (await r.json() as { address?: Record<string, string> }).address
+        if (!a) return null
+        const local = a.city || a.town || a.village || a.municipality || a.hamlet
+        const parts = [local || a.county, local ? a.county : undefined, a.state || a.country].filter(Boolean)
+        const name = parts.length ? parts.join(', ') : null
+        if (name) try { localStorage.setItem('site-places', JSON.stringify({ ...readCache(), [k]: name })) } catch { /* remembering is optional */ }
+        return name
+      } catch { return null }
+    })()
+    places.set(k, p)
+    p.then(n => { if (!n) places.delete(k) })
+  }
+  return p
 }
+
+/** What to show for where a site is: its place name, else a typed address (never raw coordinates). */
+export const placeText = (s: Pick<FieldSite, 'address'>, place: string | null) => place ?? (parseCoords(s.address) ? null : s.address.trim() || null)
 
 /** Shrinks a picked photo to a JPEG about 800px wide (60-100 KB), so covers barely use any storage. */
 export function toCover(file: File, width = 800, quality = 0.8): Promise<Blob> {

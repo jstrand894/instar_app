@@ -5,11 +5,12 @@ import Icon from '../components/Icon'
 import InlineEdit from '../components/InlineEdit'
 import RichTextarea, { RichView } from '../components/RichText'
 import VisitForm, { type VisitDraft } from '../components/VisitForm'
+import { usePlace } from '../components/SitePlace'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
 import { ago, fmtMinutes, fmtWhen } from '../lib/util'
-import { geocode, hasPin, parseCoords, placeName, mapLinks, siteStats, toCover } from '../lib/sites'
+import { geocode, hasPin, parseCoords, mapLinks, siteStats, toCover } from '../lib/sites'
 import type { FieldSite, Project, SiteStatus, SiteVisit } from '../types'
 
 const PickMap = lazy(() => import('../components/SiteMap').then(m => ({ default: m.PickMap })))
@@ -65,14 +66,7 @@ export default function FieldSiteDetail() {
   const [editingLoc, setEditingLoc] = useState(false)
   const [editingAbout, setEditingAbout] = useState(false)
   const [about, setAbout] = useState('')
-  const [place, setPlace] = useState<string | null>(null)
-  useEffect(() => {
-    setPlace(null)
-    if (site?.lat == null || site.lng == null) return
-    let live = true
-    placeName(site.lat, site.lng).then(n => { if (live) setPlace(n) })
-    return () => { live = false }
-  }, [site?.lat, site?.lng])
+  const { text: placeLabel } = usePlace(site ?? { address: '', lat: null, lng: null })
 
   async function findOnMap() {
     if (!address.trim()) return
@@ -221,7 +215,7 @@ export default function FieldSiteDetail() {
               </div>
             ) : (
               <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>{hasPin(site) ? (place ?? (site.address || 'Pin set')) : (site.address || <span className="muted">No location yet</span>)}</span>
+                <span>{placeLabel ?? <span className="muted">{hasPin(site) ? 'Pin set' : 'No location yet'}</span>}</span>
                 <button className="link" aria-label="Edit location" title="Edit location" onClick={() => { setAddress(site.address); setEditingLoc(true) }}><Icon name="pen" size={16} /></button>
               </div>
             )}
