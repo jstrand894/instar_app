@@ -3,7 +3,7 @@ import { demoMode, supabase } from '../lib/supabase'
 import { notify } from '../lib/notify'
 import { ago } from '../lib/util'
 import { store } from '../lib/store'
-import { friendlyError } from '../lib/errors'
+import { friendlyError, UserError } from '../lib/errors'
 import Icon from './Icon'
 
 /** "https://github.com/Owner/Repo.git", "git@github.com:Owner/Repo" or "Owner/Repo" -> "owner/repo" (null if it is not one). */
@@ -37,7 +37,12 @@ export default function GithubLink({ projectId, repo, lastPush, pushes, onChange
     setLoading(true); setLoadErr('')
     try {
       const { data, error } = await supabase!.functions.invoke('github-history', { body: { repo: r } })
-      if (error || !data?.commits) throw new Error(data?.error ?? error?.message ?? 'Could not read the repo history.')
+      if (error) {
+        // a non-2xx reply carries the function's own message in the response body
+        const body = await (error as { context?: Response }).context?.json?.().catch(() => null)
+        throw new UserError(body?.error ?? (/not found/i.test(error.message) ? 'The github-history function is not deployed yet.' : error.message))
+      }
+      if (!data?.commits) throw new UserError(data?.error ?? 'Could not read the repo history.')
       const items = (data.commits as { sha: string; message: string; url: string; date: string | null }[]).map(c => {
         const [head, ...rest] = c.message.trim().split('\n')
         return { sha: c.sha, url: c.url, at: c.date ?? new Date().toISOString(), body: [head.slice(0, 200), rest.join('\n').trim()].filter(Boolean).join('\n') }
