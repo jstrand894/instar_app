@@ -5,6 +5,7 @@ import Icon from '../components/Icon'
 import InlineEdit from '../components/InlineEdit'
 import RichTextarea, { RichView } from '../components/RichText'
 import VisitForm, { type VisitDraft } from '../components/VisitForm'
+import TagEditor from '../components/TagEditor'
 import { usePlace } from '../components/SitePlace'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
@@ -66,6 +67,8 @@ export default function FieldSiteDetail() {
   const [editingLoc, setEditingLoc] = useState(false)
   const [editingAbout, setEditingAbout] = useState(false)
   const [about, setAbout] = useState('')
+  const [allTags, setAllTags] = useState<string[]>([])
+  useEffect(() => { store.sites().then(ss => setAllTags([...new Set(ss.flatMap(x => x.tags ?? []))])).catch(() => {}) }, [])
   const { text: placeLabel } = usePlace(site ?? { address: '', lat: null, lng: null })
 
   async function findOnMap() {
@@ -107,6 +110,7 @@ export default function FieldSiteDetail() {
           <button className="link small danger" onClick={removeSite}>Delete site</button>
         </div>
       </div>
+      <div className="site-head-tags"><TagEditor tags={site.tags ?? []} onChange={tags => patch({ tags })} placeholder="Add a tag (life table, RP grid, mecinus…)" suggest={allTags} /></div>
       {error && <p className="error">{error}</p>}
 
       <section className="card site-hero">

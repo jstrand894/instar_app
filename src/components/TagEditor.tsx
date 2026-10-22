@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { normalizeTag, useLinks } from '../lib/links'
 
 /** Tag chips you can add (Enter or comma) and remove. */
-export default function TagEditor({ tags, onChange, placeholder = 'Add a tag…' }: { tags: string[]; onChange: (t: string[]) => void; placeholder?: string }) {
+export default function TagEditor({ tags, onChange, placeholder = 'Add a tag…', suggest }: { tags: string[]; onChange: (t: string[]) => void; placeholder?: string; suggest?: string[] }) {
   const [v, setV] = useState('')
   const { tags: known } = useLinks()
   const add = (raw: string) => {
@@ -23,7 +23,7 @@ export default function TagEditor({ tags, onChange, placeholder = 'Add a tag…'
           if (e.key === 'Backspace' && !v && tags.length) onChange(tags.slice(0, -1))
         }}
         onBlur={() => v && add(v)} />
-      <datalist id={list}>{known.filter(k => !tags.includes(k.tag)).map(k => <option key={k.tag} value={k.tag} />)}</datalist>
+      <datalist id={list}>{[...new Set([...(suggest ?? []), ...known.map(k => k.tag)])].filter(t => !tags.includes(t)).map(t => <option key={t} value={t} />)}</datalist>
     </div>
   )
 }

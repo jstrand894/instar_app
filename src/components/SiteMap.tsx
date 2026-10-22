@@ -8,9 +8,9 @@ const STADIA_ON = !!STADIA_KEY || import.meta.env.VITE_STADIA_DOMAIN_AUTH === 't
 const stadia = (name: string, ext: string, maxZoom: number) => () => L.tileLayer(`https://tiles.stadiamaps.com/tiles/${name}/{z}/{x}/{y}.${ext}${STADIA_KEY ? `?api_key=${STADIA_KEY}` : ''}`, { maxZoom, attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://stamen.com/">Stamen Design</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> ' + OSM })
 // Stadia base maps (set VITE_STADIA_KEY, see .env.example); plain OpenStreetMap only stands in when that is not set
 const BASES: Record<string, () => L.TileLayer> = STADIA_ON ? {
-  'Satellite+': stadia('alidade_satellite', 'jpg', 20),
+  Stamen: stadia('stamen_terrain', 'png', 18), // first, so it is the default
   Watercolor: stadia('stamen_watercolor', 'jpg', 16),
-  Stamen: stadia('stamen_terrain', 'png', 18),
+  'Satellite+': stadia('alidade_satellite', 'jpg', 20),
 } : {
   Streets: () => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: OSM }),
 }
@@ -44,7 +44,7 @@ export function SitesMap({ sites, onOpen }: { sites: MapSite[]; onOpen: (id: str
       return [s.lat, s.lng] as [number, number]
     })
     if (pts.length === 1) map.setView(pts[0], 12)
-    else if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 13 })
+    else if (pts.length) map.fitBounds(pts, { padding: [28, 28], maxZoom: 13 })
     return () => { map.remove() }
   }, [sites])
   return <div ref={box} className="site-map" role="region" aria-label="Map of field sites" />

@@ -104,6 +104,8 @@ export interface FieldSite {
   description: string
   notes: string
   project_id: string | null
+  /** Labels for the kind of work done here, e.g. life table, RP grid, mecinus. */
+  tags?: string[]
   /** One small photo: a path in the "sites" bucket (a data URL in local mode). */
   cover_path: string | null
   created_at: string

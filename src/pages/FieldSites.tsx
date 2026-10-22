@@ -35,8 +35,10 @@ export default function FieldSites() {
   useEffect(() => { window.addEventListener('tm-data', refresh); return () => window.removeEventListener('tm-data', refresh) }, [refresh])
 
   const stats = useMemo(() => new Map(sites.map(s => [s.id, siteStats(visits.filter(v => v.site_id === s.id))])), [sites, visits])
-  const shown = sites.filter(s => filter === 'all' || s.status === filter)
-  const pins = useMemo(() => shown.flatMap(s => hasPin(s) ? [{ id: s.id, name: s.name, lat: s.lat, lng: s.lng }] : []), [sites, filter]) // eslint-disable-line react-hooks/exhaustive-deps
+  const [tag, setTag] = useState('')
+  const allTags = useMemo(() => [...new Set(sites.flatMap(s => s.tags ?? []))].sort(), [sites])
+  const shown = sites.filter(s => (filter === 'all' || s.status === filter) && (!tag || (s.tags ?? []).includes(tag)))
+  const pins = useMemo(() => shown.flatMap(s => hasPin(s) ? [{ id: s.id, name: s.name, lat: s.lat, lng: s.lng }] : []), [sites, filter, tag]) // eslint-disable-line react-hooks/exhaustive-deps
   const upcoming = [...stats.values()].filter(x => x.next).length
   const visitsDone = visits.filter(v => v.status === 'done').length
 
@@ -64,6 +66,12 @@ export default function FieldSites() {
       {sites.length > 0 && (
         <div className="chips">
           {STATUSES.map(s => <button key={s} className={filter === s ? 'on' : ''} onClick={() => setFilter(s)}>{s === 'all' ? 'All' : s[0].toUpperCase() + s.slice(1)}</button>)}
+          {allTags.length > 0 && (
+            <select className="tag-filter" value={tag} onChange={e => setTag(e.target.value)} aria-label="Filter by tag">
+              <option value="">All tags</option>
+              {allTags.map(t => <option key={t} value={t}>#{t}</option>)}
+            </select>
+          )}
         </div>
       )}
 
@@ -78,6 +86,7 @@ export default function FieldSites() {
                 <div className="site-card-body">
                   <div className="row between"><h2>{s.name}</h2><span className="status-pill" data-status={s.status}>{s.status}</span></div>
                   <SitePlace site={s} />
+                  {(s.tags?.length ?? 0) > 0 && <div className="site-tags">{s.tags!.map(t => <span key={t}>#{t}</span>)}</div>}
                   <p className="site-next">{st.next ? <><b>Next:</b> {fmtWhen(new Date(st.next.visited_at))}{st.next.purpose ? ` · ${st.next.purpose}` : ''}</> : <span className="muted">No visit planned</span>}</p>
                   <p className="muted small">{st.last ? `Last visited ${ago(st.last.visited_at)} · ` : 'Not visited yet · '}{st.done.length} visit{st.done.length === 1 ? '' : 's'}</p>
                 </div>

@@ -220,6 +220,7 @@ create table if not exists field_sites (
   created_at timestamptz not null default now()
 );
 alter table field_sites enable row level security;
+alter table field_sites add column if not exists tags text[] not null default '{}';  -- what kind of work happens here (safe to re-run)
 
 create table if not exists site_visits (
   id uuid primary key default gen_random_uuid(),
