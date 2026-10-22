@@ -6,8 +6,8 @@ import Icon from '../components/Icon'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
-import { ago, fmtMinutes, fmtWhen } from '../lib/util'
-import { geocode, hasPin, parseCoords, siteStats, tagStyle, cleanTag, toCover } from '../lib/sites'
+import { ago, fmtMinutes } from '../lib/util'
+import { geocode, hasPin, parseCoords, siteStats, tagStyle, cleanTag, toCover, isAllDay, fmtVisit } from '../lib/sites'
 import SitePlace from '../components/SitePlace'
 import ProjectPicker from '../components/ProjectPicker'
 import type { FieldSite, SiteStatus, SiteVisit } from '../types'
@@ -91,7 +91,7 @@ export default function FieldSites() {
                       <li key={visit.id}>
                         <Link to={`/sites/${site.id}`}>
                           <span className="date-badge"><small>{d.toLocaleDateString(undefined, { month: 'short' })}</small><b>{d.getDate()}</b></span>
-                          <span className="next-what"><b>{site.name}</b><em>{d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}{visit.purpose ? ` · ${visit.purpose}` : ''}</em></span>
+                          <span className="next-what"><b>{site.name}</b><em>{isAllDay(visit.visited_at) ? 'All day' : d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}{visit.purpose ? ` · ${visit.purpose}` : ''}</em></span>
                         </Link>
                       </li>
                     )
@@ -148,7 +148,7 @@ export default function FieldSites() {
                 <div className="site-card-body">
                   <h2>{s.name}</h2>
                   <SitePlace site={s} />
-                  <p className="site-next">{st.next ? <><b>Next:</b> {fmtWhen(new Date(st.next.visited_at))}{st.next.purpose ? ` · ${st.next.purpose}` : ''}</> : <span className="muted">No visit planned</span>}</p>
+                  <p className="site-next">{st.next ? <><b>Next:</b> {fmtVisit(st.next.visited_at)}{st.next.purpose ? ` · ${st.next.purpose}` : ''}</> : <span className="muted">No visit planned</span>}</p>
                   <p className="muted small">{st.last ? `Last visited ${ago(st.last.visited_at)} · ` : 'Not visited yet · '}{st.done.length} visit{st.done.length === 1 ? '' : 's'}</p>
                 </div>
               </Link>

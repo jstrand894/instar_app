@@ -10,8 +10,8 @@ import { usePlace } from '../components/SitePlace'
 import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
-import { ago, fmtMinutes, fmtWhen } from '../lib/util'
-import { geocode, hasPin, parseCoords, mapLinks, siteStats, toCover } from '../lib/sites'
+import { ago, fmtMinutes } from '../lib/util'
+import { geocode, hasPin, parseCoords, fmtVisit, isAllDay, mapLinks, siteStats, toCover } from '../lib/sites'
 import type { FieldSite, Project, SiteStatus, SiteVisit } from '../types'
 
 const PickMap = lazy(() => import('../components/SiteMap').then(m => ({ default: m.PickMap })))
@@ -138,7 +138,7 @@ export default function FieldSiteDetail() {
           ) : site.description.trim()
             ? <p style={{ whiteSpace: 'pre-wrap', margin: '.2rem 0' }}>{site.description}</p>
             : <p className="muted" style={{ margin: '.2rem 0' }}>Nothing yet. Use the pencil to add what is here, how to get in, who to call…</p>}
-          <p className="site-next">{next ? <><b>Next visit:</b> {fmtWhen(new Date(next.visited_at))}{next.purpose ? ` · ${next.purpose}` : ''}</> : <span className="muted">No visit planned</span>}</p>
+          <p className="site-next">{next ? <><b>Next visit:</b> {fmtVisit(next.visited_at)}{next.purpose ? ` · ${next.purpose}` : ''}</> : <span className="muted">No visit planned</span>}</p>
           <p className="muted small">{done[0] ? `Last visited ${ago(done[0].visited_at)} · ` : 'Not visited yet · '}{done.length} visit{done.length === 1 ? '' : 's'}{done.some(v => v.minutes) ? ` · ${fmtMinutes(done.reduce((n, v) => n + (v.minutes ?? 0), 0))} on site` : ''}</p>
           <div className="row wrap">
             <button className="primary" onClick={() => setForm('log')}>Log a visit</button>
@@ -148,7 +148,7 @@ export default function FieldSiteDetail() {
       </section>
 
       {form === 'log' && <VisitForm submitLabel="Save visit" onSubmit={d => saveVisit('done', d)} onCancel={() => setForm(null)} />}
-      {form === 'plan' && <VisitForm planning submitLabel="Schedule" initial={{ visited_at: new Date(Date.now() + 7 * 864e5).toISOString() }} onSubmit={d => saveVisit('planned', { ...d, minutes: null, notes: '', conditions: '' })} onCancel={() => setForm(null)} />}
+      {form === 'plan' && <VisitForm planning submitLabel="Schedule" initial={{ visited_at: (() => { const d = new Date(Date.now() + 7 * 864e5); d.setHours(0, 0, 0, 0); return d.toISOString() })() }} onSubmit={d => saveVisit('planned', { ...d, minutes: null, notes: '', conditions: '' })} onCancel={() => setForm(null)} />}
 
       <div className="detail-cols">
         <div className="detail-main">
@@ -165,7 +165,7 @@ export default function FieldSiteDetail() {
                     <VisitForm planning submitLabel="Save" initial={v} onSubmit={d => patchVisit(v.id, { visited_at: d.visited_at, purpose: d.purpose })} onCancel={() => setForm(null)} />
                   ) : (
                     <>
-                      <div className="row between wrap"><b>Planned · {longDate(v.visited_at)} {clock(v.visited_at)}</b>
+                      <div className="row between wrap"><b>Planned · {longDate(v.visited_at)}{!isAllDay(v.visited_at) && ` ${clock(v.visited_at)}`}</b>
                         <span className="row">
                           <button className="link small" onClick={() => setForm({ finish: v.id })}>Log this visit</button>
                           <button className="link small" onClick={() => setForm({ edit: v.id })}>Reschedule</button>

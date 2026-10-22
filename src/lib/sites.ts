@@ -1,3 +1,4 @@
+import { fmtWhen } from './util'
 import type { FieldSite, SiteVisit } from '../types'
 
 export const hasPin = (s: Pick<FieldSite, 'lat' | 'lng'>): s is { lat: number; lng: number } => s.lat != null && s.lng != null
@@ -90,10 +91,26 @@ export function toCover(file: File, width = 800, quality = 0.8): Promise<Blob> {
   })
 }
 
+/** A planned visit with no time is stored at local midnight and means "all day". */
+export const isAllDay = (iso: string) => { const d = new Date(iso); return d.getHours() === 0 && d.getMinutes() === 0 }
+/** When a planned visit stops being "next": an hour after it starts, or the end of the day for an all-day one. */
+export const visitEnd = (iso: string) => new Date(iso).getTime() + (isAllDay(iso) ? 864e5 : 36e5)
+/** "Tomorrow", "Fri" or "Nov 12" for an all-day visit, with the time added when it has one. */
+export function fmtVisit(iso: string, now = new Date()): string {
+  const d = new Date(iso)
+  if (!isAllDay(iso)) return fmtWhen(d, now)
+  const mid = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const days = Math.round((mid(d) - mid(now)) / 864e5)
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Tomorrow'
+  if (days > 1 && days < 7) return d.toLocaleDateString(undefined, { weekday: 'long' })
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
 export interface SiteStats { done: SiteVisit[]; planned: SiteVisit[]; last?: SiteVisit; next?: SiteVisit }
 /** Past visits newest first, planned ones soonest first. A planned visit stays "next" for an hour after it starts. */
 export function siteStats(visits: SiteVisit[], now = Date.now()): SiteStats {
   const done = visits.filter(v => v.status === 'done').sort((a, b) => b.visited_at.localeCompare(a.visited_at))
   const planned = visits.filter(v => v.status === 'planned').sort((a, b) => a.visited_at.localeCompare(b.visited_at))
-  return { done, planned, last: done[0], next: planned.find(v => new Date(v.visited_at).getTime() + 36e5 >= now) }
+  return { done, planned, last: done[0], next: planned.find(v => visitEnd(v.visited_at) >= now) }
 }
