@@ -288,7 +288,7 @@ export default function ProjectDetail() {
       }}>Delete project</button>
         </div>
         <aside className="col-side">
-          <GithubLink repo={project.github_repo ?? null} lastPush={pushes.last} pushes={pushes.n} onChange={r => patch({ github_repo: r })} />
+          <GithubLink projectId={project.id} repo={project.github_repo ?? null} lastPush={pushes.last} pushes={pushes.n} onChange={r => patch({ github_repo: r })} />
       {project.type === 'manuscript' && (
         <section className="card ms-panel">
           <h2>Manuscript</h2>

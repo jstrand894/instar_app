@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { demoMode, supabase } from '../lib/supabase'
+import { notify } from '../lib/notify'
 import { ago } from '../lib/util'
+import { store } from '../lib/store'
+import { friendlyError } from '../lib/errors'
 import Icon from './Icon'
 
 /** "https://github.com/Owner/Repo.git", "git@github.com:Owner/Repo" or "Owner/Repo" -> "owner/repo" (null if it is not one). */
@@ -12,7 +15,7 @@ export function parseRepo(v: string): string | null {
 const hookUrl = () => `${import.meta.env.VITE_SUPABASE_URL ?? 'https://<your-project>.supabase.co'}/functions/v1/github-webhook`
 
 /** Link a project to a GitHub repo: pushes to it show up in this project's timeline (through the github-webhook function). */
-export default function GithubLink({ repo, lastPush, pushes, onChange }: { repo: string | null; lastPush?: string; pushes: number; onChange: (r: string | null) => void }) {
+export default function GithubLink({ projectId, repo, lastPush, pushes, onChange }: { projectId: string; repo: string | null; lastPush?: string; pushes: number; onChange: (r: string | null) => void }) {
   // repos your GitHub App is installed on; null while loading or when the App is not set up (then it falls back to typing a name + per-repo webhook)
   const [app, setApp] = useState<{ repos: string[]; installUrl: string | null } | null>(null)
   const [checked, setChecked] = useState(!supabase) // the lookup has finished (successfully or not)
@@ -26,12 +29,32 @@ export default function GithubLink({ repo, lastPush, pushes, onChange }: { repo:
   const [v, setV] = useState('')
   const [bad, setBad] = useState(false)
   const [help, setHelp] = useState(false)
+  const [offer, setOffer] = useState<string | null>(null) // repo whose earlier commits we are offering to load
+  const [loading, setLoading] = useState(false)
+  const [loadErr, setLoadErr] = useState('')
+
+  async function loadHistory(r: string) {
+    setLoading(true); setLoadErr('')
+    try {
+      const { data, error } = await supabase!.functions.invoke('github-history', { body: { repo: r } })
+      if (error || !data?.commits) throw new Error(data?.error ?? error?.message ?? 'Could not read the repo history.')
+      const items = (data.commits as { sha: string; message: string; url: string; date: string | null }[]).map(c => {
+        const [head, ...rest] = c.message.trim().split('\n')
+        return { sha: c.sha, url: c.url, at: c.date ?? new Date().toISOString(), body: [head.slice(0, 200), rest.join('\n').trim()].filter(Boolean).join('\n') }
+      })
+      const n = await store.importCommits(projectId, items)
+      notify.info(n ? `Loaded ${n} earlier commit${n === 1 ? '' : 's'} into the timeline.` : 'Nothing new to load; those commits are already in the timeline.')
+      setOffer(null)
+    } catch (e) { setLoadErr(friendlyError(e)) }
+    setLoading(false)
+  }
 
   function save(e: React.FormEvent) {
     e.preventDefault()
     const r = parseRepo(v)
     if (!r) { setBad(true); return }
     onChange(r); setEditing(false); setV(''); setBad(false); setHelp(!app)
+    if (supabase && !demoMode) { setLoadErr(''); setOffer(r) }
   }
 
   return (
@@ -77,6 +100,21 @@ export default function GithubLink({ repo, lastPush, pushes, onChange }: { repo:
           {bad && <span className="error small">Use owner/name or a github.com URL.</span>}
         </form>
       ) : null}
+      {offer && (
+        <div className="modal-back" onMouseDown={e => { if (e.target === e.currentTarget && !loading) setOffer(null) }}>
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Load earlier build notes">
+            <div className="modal-head"><h2>Load earlier build notes?</h2><button className="close-x" onClick={() => setOffer(null)} disabled={loading} aria-label="Close">×</button></div>
+            <div className="modal-body">
+              <p className="muted small">New pushes to <b>{offer}</b> will show up here automatically. Do you also want to bring in the repo's earlier commits (up to the latest 100) as entries in this project's timeline, dated when each was committed?</p>
+              {loadErr && <p className="error small">{loadErr}</p>}
+              <div className="row">
+                <button className="primary" onClick={() => loadHistory(offer)} disabled={loading}>{loading ? 'Loading…' : loadErr ? 'Try again' : 'Load previous notes'}</button>
+                <button onClick={() => setOffer(null)} disabled={loading}>Skip</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {repo && help && !app && (
         <div className="gh-help small">
           {demoMode && <p className="error">Demo mode keeps data only in this browser, so GitHub can't reach it. Connect Supabase first.</p>}

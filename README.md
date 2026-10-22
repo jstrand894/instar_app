@@ -119,11 +119,12 @@ Pick a repo on a project's page and every push to a branch adds an entry to its 
    supabase secrets set GITHUB_OWNER_EMAILS=<the email you sign in with>
    supabase functions deploy github-webhook --no-verify-jwt
    supabase functions deploy github-repos
+   supabase functions deploy github-history
    ```
 
-   `github-webhook` is deployed without a Supabase login because GitHub can't send one; it checks GitHub's signature instead. `github-repos` requires you to be signed in, and both functions only act for the emails in `GITHUB_OWNER_EMAILS`, so nobody else who signs up can see your repos or read your commit messages.
+   `github-webhook` is deployed without a Supabase login because GitHub can't send one; it checks GitHub's signature instead. `github-repos` and `github-history` require you to be signed in, and both functions only act for the emails in `GITHUB_OWNER_EMAILS`, so nobody else who signs up can see your repos or read your commit messages.
 
-**Using it:** open a project, choose a repo under *Connect a GitHub repo*. Repos the App isn't installed on don't appear; the *Add more repos* link takes you to GitHub to add them. Re-delivered pushes are ignored, and tag pushes and branch deletions are skipped.
+**Using it:** open a project, choose a repo under *Connect a GitHub repo*. Repos the App isn't installed on don't appear; the *Add more repos* link takes you to GitHub to add them. After connecting, the app offers to load the repo's earlier commits (up to the latest 100) into the timeline. Re-delivered pushes are ignored, and tag pushes and branch deletions are skipped.
 
 Prefer no App? A plain per-repo webhook also works: *Settings → Webhooks* on the repo, same URL and secret, content type `application/json`, push events only. Type the repo name by hand in the app.
 

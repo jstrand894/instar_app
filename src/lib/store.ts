@@ -216,6 +216,12 @@ const local = {
     const d = load(); const row: ProjectUpdate = { id: uid(), project_id, kind, body, created_at: at ?? now() }
     d.updates.push(row); save(d); return row
   },
+  async importCommits(project_id: string, items: CommitImport[]) {
+    const d = load(); const have = new Set(d.updates.map(u => u.project_id + u.source_url))
+    const fresh = items.filter(c => !have.has(project_id + c.url))
+    for (const c of fresh) d.updates.push({ id: uid(), project_id, kind: 'commit', body: c.body, source_url: c.url, created_at: c.at })
+    save(d); return fresh.length
+  },
   async patchUpdate(id: string, patch: Partial<ProjectUpdate>) {
     const d = load(); d.updates = d.updates.map(u => u.id === id ? { ...u, ...patch } : u); save(d)
   },
@@ -268,6 +274,7 @@ const local = {
 
 // ---------- supabase backend ----------
 const sb = () => supabase!
+export interface CommitImport { sha: string; body: string; url: string; at: string }
 export interface ProjectPage { rows: ProjectUpdate[]; total: number; commits: number; lastPush?: string }
 function ok<T>(r: { data: T | null; error: { message: string } | null }): T {
   if (r.error) throw new Error(r.error.message)
@@ -384,6 +391,13 @@ const remote: typeof local = {
   async addEvent(project_id, title, starts_at, repeat) { return ok(await sb().from('project_events').insert({ project_id, title, starts_at, repeat }).select().single()) },
   async deleteEvent(id) { ok(await sb().from('project_events').delete().eq('id', id)) },
   async addUpdate(project_id, body, kind = 'update', at) { return ok(await sb().from('project_updates').insert({ project_id, body, kind, ...(at ? { created_at: at } : {}) }).select().single()) },
+  async importCommits(project_id, items) {
+    const rows = items.map(c => ({ project_id, kind: 'commit', body: c.body, source_url: c.url, external_id: `commit:${c.sha}`, created_at: c.at }))
+    if (!rows.length) return 0
+    // a re-run (or a commit already logged) has the same external_id, so it is skipped
+    const r = ok(await sb().from('project_updates').upsert(rows, { onConflict: 'project_id,external_id', ignoreDuplicates: true }).select('id')) as unknown[]
+    return r.length
+  },
   async patchUpdate(id, patch) { ok(await sb().from('project_updates').update(patch).eq('id', id)) },
   async deleteUpdate(id) { ok(await sb().from('project_updates').delete().eq('id', id)) },
   async papers() { return ok(await sb().from('papers').select('*').order('created_at', { ascending: false })) },
