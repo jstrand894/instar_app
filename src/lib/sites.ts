@@ -11,9 +11,18 @@ export function mapLinks(s: Pick<FieldSite, 'name' | 'address' | 'lat' | 'lng'>)
   }
 }
 
+/** Reads "46.12, -112.45" style text as a position; null for anything else. */
+export function parseCoords(q: string): { lat: number; lng: number } | null {
+  const m = q.trim().match(/^(-?\d+(?:\.\d+)?)\s*[,\s]\s*(-?\d+(?:\.\d+)?)$/)
+  if (!m) return null
+  const lat = +m[1], lng = +m[2]
+  return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null
+}
+
 /** Looks an address up with OpenStreetMap's free search; null when nothing matches or the lookup fails. */
 export async function geocode(q: string): Promise<{ lat: number; lng: number } | null> {
   if (!q.trim()) return null
+  const c = parseCoords(q); if (c) return c
   try {
     const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`, { headers: { Accept: 'application/json' } })
     const j = await r.json() as { lat: string; lon: string }[]

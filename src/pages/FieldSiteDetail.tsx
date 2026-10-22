@@ -9,7 +9,7 @@ import { store } from '../lib/store'
 import { notify } from '../lib/notify'
 import { friendlyError } from '../lib/errors'
 import { ago, fmtMinutes, fmtWhen } from '../lib/util'
-import { geocode, hasPin, placeName, mapLinks, siteStats, toCover } from '../lib/sites'
+import { geocode, hasPin, parseCoords, placeName, mapLinks, siteStats, toCover } from '../lib/sites'
 import type { FieldSite, Project, SiteStatus, SiteVisit } from '../types'
 
 const PickMap = lazy(() => import('../components/SiteMap').then(m => ({ default: m.PickMap })))
@@ -62,6 +62,7 @@ export default function FieldSiteDetail() {
     } catch (e) { notify.error(e) } finally { setPhotoBusy(false) }
   }
   const [moving, setMoving] = useState(false)
+  const [editingLoc, setEditingLoc] = useState(false)
   const [place, setPlace] = useState<string | null>(null)
   useEffect(() => {
     setPlace(null)
@@ -77,7 +78,8 @@ export default function FieldSiteDetail() {
     const where = await geocode(address)
     setFindBusy(false)
     if (!where) { notify.info("Couldn't find that address. Click the map to drop a pin instead."); await patch({ address: address.trim() }); return }
-    await patch({ address: address.trim(), ...where })
+    await patch({ address: parseCoords(address) ? '' : address.trim(), ...where })
+    setEditingLoc(false)
   }
   async function saveVisit(status: SiteVisit['status'], d: VisitDraft) {
     if (!site) return
@@ -195,16 +197,26 @@ export default function FieldSiteDetail() {
         <aside className="detail-side">
           <section className="card">
             <h2>Location</h2>
-            <div className="row">
-              <input placeholder="Address or place" value={address} onChange={e => setAddress(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); findOnMap() } }} />
-              <button onClick={findOnMap} disabled={!address.trim() || findBusy}>{findBusy ? 'Finding…' : 'Find'}</button>
-            </div>
+            {editingLoc ? (
+              <div className="row">
+                <input autoFocus placeholder="Address, place or lat, lng" value={address} onChange={e => setAddress(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); findOnMap() } else if (e.key === 'Escape') setEditingLoc(false) }} />
+                <button onClick={findOnMap} disabled={!address.trim() || findBusy}>{findBusy ? 'Finding…' : 'Find'}</button>
+                <button className="link" onClick={() => setEditingLoc(false)}>Cancel</button>
+              </div>
+            ) : (
+              <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{hasPin(site) ? (place ?? (site.address || 'Pin set')) : (site.address || <span className="muted">No location yet</span>)}</span>
+                <button className="link" aria-label="Edit location" title="Edit location" onClick={() => { setAddress(site.address); setEditingLoc(true) }}><Icon name="pen" size={16} /></button>
+              </div>
+            )}
             <Suspense fallback={<div className="site-map pick" />}>
               <PickMap lat={site.lat} lng={site.lng} locked={hasPin(site) && !moving} onPick={(lat, lng) => { setMoving(false); patch({ lat, lng }) }} />
             </Suspense>
-            <p className="muted small">{!hasPin(site) ? 'Click the map to drop a pin.' : moving ? 'Click the map to place the pin.' : `Near ${place ?? 'this pin'}.`}
+            <p className="muted small">{!hasPin(site) ? 'Click the map to drop a pin.' : moving ? 'Click the map to place the pin.' : ''}
               {hasPin(site) && <> <button className="link small" onClick={() => setMoving(m => !m)}>{moving ? 'Cancel' : 'Move pin'}</button>
                 {!moving && <> <button className="link small" onClick={() => patch({ lat: null, lng: null })}>Clear pin</button></>}</>}</p>
+            {hasPin(site) && <button className="map-btn" onClick={() => navigator.clipboard.writeText(`${site.lat}, ${site.lng}`).then(() => notify.info('Coordinates copied.'), () => notify.info("Couldn't copy to the clipboard."))}>Copy coordinates</button>}
             {(hasPin(site) || site.address) && (
               <div className="row wrap">
                 <a className="map-btn" href={links.google} target="_blank" rel="noreferrer">Open in Google Maps</a>
