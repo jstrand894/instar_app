@@ -39,7 +39,16 @@ export default function FieldSites() {
   const allTags = useMemo(() => [...new Set(sites.flatMap(s => s.tags ?? []))].sort(), [sites])
   const shown = sites.filter(s => (filter === 'all' || s.status === filter) && (!tag || (s.tags ?? []).includes(tag)))
   const pins = useMemo(() => shown.flatMap(s => hasPin(s) ? [{ id: s.id, name: s.name, lat: s.lat, lng: s.lng }] : []), [sites, filter, tag]) // eslint-disable-line react-hooks/exhaustive-deps
-  const upcoming = [...stats.values()].filter(x => x.next).length
+  const byId = useMemo(() => new Map(sites.map(x => [x.id, x])), [sites])
+  const nextUp = useMemo(() => [...stats.entries()].flatMap(([id, st]) => st.next && byId.get(id) ? [{ site: byId.get(id)!, visit: st.next }] : [])
+    .sort((a, b) => a.visit.visited_at.localeCompare(b.visit.visited_at)).slice(0, 4), [stats, byId])
+  const recent = useMemo(() => [...stats.entries()].flatMap(([id, st]) => st.last && byId.get(id) ? [{ site: byId.get(id)!, visit: st.last }] : [])
+    .sort((a, b) => b.visit.visited_at.localeCompare(a.visit.visited_at)).slice(0, 3), [stats, byId])
+  const tagCounts = useMemo(() => {
+    const n = new Map<string, number>()
+    for (const x of sites) for (const t of x.tags ?? []) n.set(t, (n.get(t) ?? 0) + 1)
+    return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+  }, [sites])
   const visitsDone = visits.filter(v => v.status === 'done').length
 
   return (
@@ -49,18 +58,38 @@ export default function FieldSites() {
         <button className="primary" onClick={() => setAdding(true)}>New site</button>
       </header>
 
-      <div className="stats">
-        <div><b>{sites.filter(s => s.status === 'active').length}</b><span>active</span></div>
-        <div><b>{upcoming}</b><span>with a visit planned</span></div>
-        <div><b>{visitsDone}</b><span>visits logged</span></div>
-        <div><b>{sites.filter(s => !hasPin(s)).length}</b><span>not on the map</span></div>
-      </div>
-
       {error && <p className="error">{error}</p>}
       {adding && <NewSite onClose={() => setAdding(false)} onCreated={id => { setAdding(false); nav(`/sites/${id}`) }} />}
 
-      {pins.length > 0 && (
-        <Suspense fallback={<div className="site-map" />}><SitesMap sites={pins} onOpen={id => nav(`/sites/${id}`)} /></Suspense>
+      {sites.length > 0 && (
+        <div className="sites-top">
+          {pins.length > 0 && <Suspense fallback={<div className="site-map" />}><SitesMap sites={pins} onOpen={id => nav(`/sites/${id}`)} /></Suspense>}
+          <section className="card sites-summary">
+            <h2>Field season</h2>
+            <p className="muted small sites-totals">
+              {sites.filter(s => s.status === 'active').length} active · {visitsDone} visit{visitsDone === 1 ? '' : 's'} logged
+              {sites.some(s => !hasPin(s)) && ` · ${sites.filter(s => !hasPin(s)).length} not on the map`}
+            </p>
+            <h3>Next up</h3>
+            {nextUp.length ? (
+              <ul className="sites-list">
+                {nextUp.map(({ site, visit }) => <li key={visit.id}><Link to={`/sites/${site.id}`}><b>{site.name}</b></Link><span>{fmtWhen(new Date(visit.visited_at))}{visit.purpose ? ` · ${visit.purpose}` : ''}</span></li>)}
+              </ul>
+            ) : <p className="muted small">No visits planned.</p>}
+            <h3>Recently visited</h3>
+            {recent.length ? (
+              <ul className="sites-list">
+                {recent.map(({ site, visit }) => <li key={visit.id}><Link to={`/sites/${site.id}`}><b>{site.name}</b></Link><span>{ago(visit.visited_at)}{visit.purpose ? ` · ${visit.purpose}` : ''}</span></li>)}
+              </ul>
+            ) : <p className="muted small">No visits logged yet.</p>}
+            {tagCounts.length > 0 && (
+              <>
+                <h3>By tag</h3>
+                <div className="site-tags">{tagCounts.map(([t, n]) => <span key={t}>#{t} · {n}</span>)}</div>
+              </>
+            )}
+          </section>
+        </div>
       )}
 
       {sites.length > 0 && (
