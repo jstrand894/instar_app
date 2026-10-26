@@ -82,6 +82,7 @@ alter table project_events enable row level security;
 -- added later: pinned projects and manual ordering (safe to re-run)
 alter table projects add column if not exists pinned boolean not null default false;
 alter table projects add column if not exists sort_order int;
+alter table projects add column if not exists cover_path text;  -- a picture in the 'sites' bucket, so cards are easy to spot
 
 -- added later: manuscript tracker fields and paper-to-project links (safe to re-run)
 alter table projects add column if not exists stage text;

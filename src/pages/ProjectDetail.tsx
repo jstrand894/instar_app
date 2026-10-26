@@ -1,6 +1,7 @@
 import Icon from '../components/Icon'
 import BackButton from '../components/BackButton'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { toCover } from '../lib/sites'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { store, type ProjectPage } from '../lib/store'
 import { notify } from '../lib/notify'
@@ -86,6 +87,9 @@ export default function ProjectDetail() {
   const [timeId, setTimeId] = useState<string | null>(null)
   const [recent, setRecent] = useState<ProjectUpdate[]>([]) // recent entries across projects, for the linked-work progress lines
 
+  const pick = useRef<HTMLInputElement>(null)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const [cover, setCover] = useState<string | null>(null)
   const load = useCallback(async () => {
     try {
       const pls = await store.projectLinks().catch(() => [] as ProjectLink[])
@@ -94,7 +98,8 @@ export default function ProjectDetail() {
       setAllProjects(ps); setProjLinks(pls)
       setEvents(evs.filter(e => shared.has(e.project_id))); setPapers(pp); setLinks(ls.filter(l => shared.has(l.project_id))); setDeadlines(dls.filter(d => shared.has(d.project_id))); setTasks(tks.filter(t => t.project_id && shared.has(t.project_id))); setTime(tes.filter(t => t.project_id && shared.has(t.project_id)))
       const p = ps.find(x => x.id === id) ?? null
-      setProject(p); setTotal(us.total); setPushes({ n: us.commits, last: us.lastPush })
+      setProject(p); setTotal(us.total)
+      setCover(p?.cover_path ? (await store.siteCoverUrls([p.cover_path]).catch((): Record<string, string> => ({})))[p.cover_path] ?? null : null); setPushes({ n: us.commits, last: us.lastPush })
       setEntries(us.rows)
       setRecent(await store.updates().catch(() => []))
       setAllUpdates(p ? await store.mentionsOf(p.name, p.id).catch(() => []) : [])
@@ -175,6 +180,11 @@ export default function ProjectDetail() {
 
   if (!project) return <div className="page">{error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>}<Link to="/projects" className="link">← Projects</Link></div>
 
+  async function setPhoto(file: File | null) {
+    setPhotoBusy(true)
+    try { await store.saveProjectCover(project!.id, file ? await toCover(file, 600) : null); await load() }
+    catch (e) { notify.error(e) } finally { setPhotoBusy(false) }
+  }
   return (
     <div className="page detail">
       <div className="title-row"><BackButton /><Link to={project.type === 'manuscript' ? '/manuscripts' : '/projects'} className="link back-link" onClick={() => forgetOpen(project.type === 'manuscript' ? 'manuscripts' : 'projects')}>← {project.type === 'manuscript' ? 'Manuscripts' : 'Projects'}</Link></div>
@@ -204,6 +214,12 @@ export default function ProjectDetail() {
           </select>
         </div>
       </header>
+      <div className="proj-pic">
+        {cover && <img src={cover} alt="" />}
+        <button className="small" disabled={photoBusy} onClick={() => pick.current?.click()}><Icon name="camera" size={14} /> {photoBusy ? 'Saving…' : cover ? 'Change picture' : 'Add a picture'}</button>
+        {cover && !photoBusy && <button className="link small" onClick={() => setPhoto(null)}>Remove</button>}
+        <input ref={pick} type="file" accept="image/*" hidden onChange={e => { const f = e.target.files?.[0]; if (f) setPhoto(f); e.target.value = '' }} />
+      </div>
       <TagEditor tags={project.tags ?? []} onChange={t => patch({ tags: t })} />
       <input className="desc-input" placeholder="Short description" defaultValue={project.description}
         onBlur={e => e.target.value !== project.description && patch({ description: e.target.value })} />

@@ -14,6 +14,7 @@ export interface Project {
   pinned?: boolean
   github_repo?: string | null
   sort_order?: number | null
+  cover_path?: string | null
   stage?: Stage | null
   journal?: string
   coauthors?: string

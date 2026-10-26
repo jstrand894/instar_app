@@ -1510,3 +1510,9 @@ img.avatar { object-fit: cover; background: var(--chip); }
 }
 .leaflet-tooltip.site-label { transition: opacity .15s; } .leaflet-tooltip.site-label.crowded { opacity: 0; pointer-events: none; }
 .linked-progress { display: grid; gap: .3rem; margin-top: .3rem; } .linked-bar { display: block; height: 5px; width: min(220px, 100%); border-radius: 99px; background: var(--line); overflow: hidden; } .linked-bar i { display: block; height: 100%; background: var(--accent); }
+
+/* project pictures: a banner on the card, a small preview on the project page */
+.project .proj-cover { margin: -1rem -1rem .3rem; aspect-ratio: 16 / 7; overflow: hidden; border-radius: 11px 11px 0 0; background: var(--chip); }
+.project .proj-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.proj-pic { display: flex; align-items: center; gap: .6rem; margin: .4rem 0; }
+.proj-pic img { height: 56px; aspect-ratio: 16 / 7; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }

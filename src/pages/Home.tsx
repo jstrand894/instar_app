@@ -56,9 +56,11 @@ export default function Home() {
     } catch (e) { setError(friendlyError(e)) }
   }
 
+  const [covers, setCovers] = useState<Record<string, string>>({})
   const refresh = useCallback(async () => {
     try {
       const [p, u, ev, tk, pl] = await Promise.all([store.projects(), store.updates(), store.events().catch(() => [] as ProjectEvent[]), store.tasks().catch(() => [] as ProjectTask[]), store.projectLinks().catch(() => [] as ProjectLink[])])
+      setCovers(await store.siteCoverUrls(p.map(x => x.cover_path).filter((x): x is string => !!x)).catch((): Record<string, string> => ({})))
       setProjects(p); setUpdates(u); setEvents(ev); setTasks(tk); setProjLinks(pl)
     } catch (e) { setError(friendlyError(e)) }
   }, [])
@@ -132,7 +134,7 @@ export default function Home() {
       <SortableContext items={list.map(p => p.id)} strategy={rectSortingStrategy}>
         <div className="grid">
           {list.map(p => (
-            <ProjectCard key={p.id} project={p} updates={byProject.get(p.id) ?? []} upcoming={upcomingByProject.get(p.id) ?? []} openTasks={tasks.filter(t => t.project_id === p.id && !t.done)}
+            <ProjectCard key={p.id} project={p} cover={p.cover_path ? covers[p.cover_path] : undefined} updates={byProject.get(p.id) ?? []} upcoming={upcomingByProject.get(p.id) ?? []} openTasks={tasks.filter(t => t.project_id === p.id && !t.done)}
               allTasks={tasks} linked={linkedTo(p.id, projLinks).map(i => projects.find(x => x.id === i)).filter((x): x is Project => !!x)}
               onChange={refresh} onPin={() => togglePin(p)} />
           ))}
@@ -241,9 +243,9 @@ function NewProject({ area, onClose, onCreated }: { area: Area; onClose: () => v
 
 const overdueCount = (ts: ProjectTask[]) => ts.filter(t => t.due_on && t.due_on < new Date().toISOString().slice(0, 10)).length
 
-function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks, linked, allTasks }: {
+function ProjectCard({ project, cover, updates, upcoming, onChange, onPin, openTasks, linked, allTasks }: {
   openTasks: ProjectTask[]; allTasks: ProjectTask[]; linked: Project[]
-  project: Project; updates: ProjectUpdate[]; upcoming: { id: string; title: string; when: Date; weekly: boolean }[]; onChange: () => void; onPin: () => void }) {
+  project: Project; cover?: string; updates: ProjectUpdate[]; upcoming: { id: string; title: string; when: Date; weekly: boolean }[]; onChange: () => void; onPin: () => void }) {
   const nav = useNavigate()
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: project.id })
   const dragStyle = { transform: CSS.Transform.toString(transform), transition }
@@ -264,6 +266,7 @@ function ProjectCard({ project, updates, upcoming, onChange, onPin, openTasks, l
   return (
     <article ref={setNodeRef} style={dragStyle} className={`card project clickable t-${project.type} ${isDragging ? 'dragging-card' : ''}`}
       onClick={e => { if (!(e.target as HTMLElement).closest('select, input, button, a, textarea, form')) nav(`/project/${project.id}`) }}>
+      {cover && <div className="proj-cover"><img src={cover} alt="" loading="lazy" /></div>}
       <div className="project-head">
         <span className="tag"><i className="dotc" />{TYPES.find(t => t.id === project.type)?.label}</span>
         <span className="card-tools">

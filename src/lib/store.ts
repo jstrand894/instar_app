@@ -137,6 +137,11 @@ const local = {
     const d = load(); d.sites = d.sites.map(x => x.id === id ? { ...x, cover_path: url } : x); save(d)
   },
   async siteCoverUrls(paths: string[]): Promise<Record<string, string>> { return Object.fromEntries(paths.map(p => [p, p])) },
+  /** A project's picture; in local mode a data URL kept in the project itself. */
+  async saveProjectCover(id: string, photo: Blob | null) {
+    const url = photo ? await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = () => rej(r.error); r.readAsDataURL(photo) }) : null
+    const d = load(); d.projects = d.projects.map(x => x.id === id ? { ...x, cover_path: url } : x); save(d)
+  },
   async siteVisits() { return load().visits },
   async addSiteVisit(v: Omit<SiteVisit, 'id' | 'created_at'>) {
     const d = load(); const row: SiteVisit = { ...v, id: uid(), created_at: now() }
@@ -360,6 +365,18 @@ const remote: typeof local = {
     }
     ok(await sb().from('field_sites').update({ cover_path: path }).eq('id', id))
     if (old?.cover_path) await sb().storage.from('sites').remove([old.cover_path]) // the old photo goes, so nothing piles up
+  },
+  async saveProjectCover(id, photo) {
+    const { data: old } = await sb().from('projects').select('cover_path').eq('id', id).single()
+    let path: string | null = null
+    if (photo) {
+      const { data: { user } } = await sb().auth.getUser()
+      path = `${user!.id}/${uid()}.jpg`
+      const up = await sb().storage.from('sites').upload(path, photo, { contentType: 'image/jpeg' })
+      if (up.error) throw new Error(up.error.message)
+    }
+    ok(await sb().from('projects').update({ cover_path: path }).eq('id', id))
+    if (old?.cover_path) await sb().storage.from('sites').remove([old.cover_path])
   },
   async siteCoverUrls(paths) {
     if (!paths.length) return {}
