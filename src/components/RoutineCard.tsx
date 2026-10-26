@@ -154,8 +154,11 @@ export default function RoutineCard({ routines, checks, projects, events, tasks,
             {comingAll.length
               ? <ul className="ag-list">{comingAll.map(x => (
                 <li key={x.k} className="ag-row ag-up">
-                  <b className="ag-day">{x.day.toLocaleDateString(undefined, { weekday: 'short' })}</b>
-                  <div className="ag-body">
+                  <div className="ag-date" aria-hidden>
+                    <span>{x.day.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                    <b>{x.day.getDate()}</b>
+                  </div>
+                  <div className="ag-body ag-event">
                     <div className="ag-title">{x.label}</div>
                     {(x.at || x.pr) && <div className="ag-meta">{x.at && <b className="ag-time">{x.at}</b>}{x.pr && <span>{x.pr.name}</span>}</div>}
                   </div>

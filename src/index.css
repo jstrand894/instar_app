@@ -1477,8 +1477,10 @@ img.avatar { object-fit: cover; background: var(--chip); }
 .routine-card .ag-meta .pill { white-space: nowrap; }
 .routine-card .ag-add { opacity: 0; transition: opacity .15s; } .routine-card .ag-row:hover .ag-add, .routine-card .when-btn:focus-visible .ag-add { opacity: 1; }
 .routine-card .ag-x { opacity: 0; align-self: start; padding: 0 .3rem; } .routine-card .ag-row:hover .ag-x, .routine-card .ag-x:focus-visible { opacity: 1; }
-.routine-card .ag-up { grid-template-columns: 2.6rem minmax(0, 1fr); }
-.routine-card .ag-day { color: var(--accent); font-size: .85rem; padding-top: .1rem; }
+.routine-card .ag-up { grid-template-columns: 2.8rem minmax(0, 1fr); align-items: stretch; padding: .25rem .5rem; }
+.routine-card .ag-date { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; color: var(--muted); font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.routine-card .ag-date b { font-size: 1.25rem; color: var(--text); letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.routine-card .ag-event { background: color-mix(in srgb, var(--accent) 12%, var(--card)); border-left: 3px solid var(--accent); border-radius: 8px; padding: .4rem .65rem; }
 .routine-card .ag-row.late .ag-title { font-weight: 600; }
 @media (max-width: 760px) { .routine-card .ag-x, .routine-card .ag-add { opacity: 1; } }
 
